@@ -1,0 +1,647 @@
+{
+  "prompt": "def calculate_total(prices):\n    result = 0\n    for price in prices:\n        result = result + price\n    return",
+  "model": "google/gemma-2-2b",
+  "transcoders": "gemma",
+  "dtype": "torch.bfloat16",
+  "slug": "py-return-variable",
+  "tokens": [
+    "<bos>",
+    "def",
+    " calculate",
+    "_",
+    "total",
+    "(",
+    "prices",
+    "):",
+    "\n",
+    "    ",
+    "result",
+    " =",
+    " ",
+    "0",
+    "\n",
+    "    ",
+    "for",
+    " price",
+    " in",
+    " prices",
+    ":",
+    "\n",
+    "        ",
+    "result",
+    " =",
+    " result",
+    " +",
+    " price",
+    "\n",
+    "    ",
+    "return"
+  ],
+  "top_predictions": [
+    {
+      "token": " result",
+      "prob": 0.953125
+    },
+    {
+      "token": "(",
+      "prob": 0.0106201171875
+    },
+    {
+      "token": " round",
+      "prob": 0.005859375
+    },
+    {
+      "token": " (",
+      "prob": 0.0052490234375
+    },
+    {
+      "token": " int",
+      "prob": 0.0028076171875
+    },
+    {
+      "token": " price",
+      "prob": 0.0026397705078125
+    },
+    {
+      "token": "  ",
+      "prob": 0.001983642578125
+    },
+    {
+      "token": " f",
+      "prob": 0.00183868408203125
+    },
+    {
+      "token": " print",
+      "prob": 0.00183868408203125
+    },
+    {
+      "token": " float",
+      "prob": 0.0015716552734375
+    }
+  ],
+  "logit_targets": [
+    {
+      "token": " result",
+      "prob": 0.953125
+    }
+  ],
+  "n_feature_nodes": 8192,
+  "thresholds": {
+    "node": 0.8,
+    "edge": 0.98
+  },
+  "top_by_influence": [
+    {
+      "kind": "token",
+      "node_id": "E_1",
+      "influence": 0.05708136782050133,
+      "direct_effect": -0.51171875,
+      "layer": null,
+      "pos": 1,
+      "feature_idx": null,
+      "token": "def",
+      "activation": null
+    },
+    {
+      "kind": "token",
+      "node_id": "E_0",
+      "influence": 0.08823486417531967,
+      "direct_effect": -0.0308837890625,
+      "layer": null,
+      "pos": 0,
+      "feature_idx": null,
+      "token": "<bos>",
+      "activation": null
+    },
+    {
+      "kind": "token",
+      "node_id": "E_10",
+      "influence": 0.11264486610889435,
+      "direct_effect": 2.5625,
+      "layer": null,
+      "pos": 10,
+      "feature_idx": null,
+      "token": "result",
+      "activation": null
+    },
+    {
+      "kind": "token",
+      "node_id": "E_2",
+      "influence": 0.1353953778743744,
+      "direct_effect": 0.2734375,
+      "layer": null,
+      "pos": 2,
+      "feature_idx": null,
+      "token": " calculate",
+      "activation": null
+    },
+    {
+      "kind": "feature",
+      "node_id": "18_4769_10",
+      "influence": 0.15365807712078094,
+      "direct_effect": 5.34375,
+      "layer": 18,
+      "pos": 10,
+      "feature_idx": 4769,
+      "token": "result",
+      "activation": 103.0
+    },
+    {
+      "kind": "token",
+      "node_id": "E_6",
+      "influence": 0.17104893922805786,
+      "direct_effect": 0.03125,
+      "layer": null,
+      "pos": 6,
+      "feature_idx": null,
+      "token": "prices",
+      "activation": null
+    },
+    {
+      "kind": "token",
+      "node_id": "E_4",
+      "influence": 0.18825463950634003,
+      "direct_effect": 0.0869140625,
+      "layer": null,
+      "pos": 4,
+      "feature_idx": null,
+      "token": "total",
+      "activation": null
+    },
+    {
+      "kind": "feature",
+      "node_id": "24_15424_30",
+      "influence": 0.2046242356300354,
+      "direct_effect": -5.09375,
+      "layer": 24,
+      "pos": 30,
+      "feature_idx": 15424,
+      "token": "return",
+      "activation": 47.75
+    },
+    {
+      "kind": "token",
+      "node_id": "E_23",
+      "influence": 0.21989735960960388,
+      "direct_effect": 2.203125,
+      "layer": null,
+      "pos": 23,
+      "feature_idx": null,
+      "token": "result",
+      "activation": null
+    },
+    {
+      "kind": "token",
+      "node_id": "E_7",
+      "influence": 0.23124445974826813,
+      "direct_effect": -0.07958984375,
+      "layer": null,
+      "pos": 7,
+      "feature_idx": null,
+      "token": "):",
+      "activation": null
+    },
+    {
+      "kind": "token",
+      "node_id": "E_5",
+      "influence": 0.24061547219753265,
+      "direct_effect": 0.06982421875,
+      "layer": null,
+      "pos": 5,
+      "feature_idx": null,
+      "token": "(",
+      "activation": null
+    },
+    {
+      "kind": "feature",
+      "node_id": "18_4769_23",
+      "influence": 0.24988646805286407,
+      "direct_effect": 2.734375,
+      "layer": 18,
+      "pos": 23,
+      "feature_idx": 4769,
+      "token": "result",
+      "activation": 44.0
+    },
+    {
+      "kind": "token",
+      "node_id": "E_30",
+      "influence": 0.2581839859485626,
+      "direct_effect": 0.44140625,
+      "layer": null,
+      "pos": 30,
+      "feature_idx": null,
+      "token": "return",
+      "activation": null
+    },
+    {
+      "kind": "token",
+      "node_id": "E_3",
+      "influence": 0.26567086577415466,
+      "direct_effect": 0.0087890625,
+      "layer": null,
+      "pos": 3,
+      "feature_idx": null,
+      "token": "_",
+      "activation": null
+    },
+    {
+      "kind": "token",
+      "node_id": "E_9",
+      "influence": 0.2727624177932739,
+      "direct_effect": 0.07470703125,
+      "layer": null,
+      "pos": 9,
+      "feature_idx": null,
+      "token": "    ",
+      "activation": null
+    },
+    {
+      "kind": "token",
+      "node_id": "E_16",
+      "influence": 0.27963966131210327,
+      "direct_effect": -0.1416015625,
+      "layer": null,
+      "pos": 16,
+      "feature_idx": null,
+      "token": "for",
+      "activation": null
+    },
+    {
+      "kind": "token",
+      "node_id": "E_8",
+      "influence": 0.28423959016799927,
+      "direct_effect": 0.031982421875,
+      "layer": null,
+      "pos": 8,
+      "feature_idx": null,
+      "token": "\n",
+      "activation": null
+    },
+    {
+      "kind": "token",
+      "node_id": "E_11",
+      "influence": 0.2883554697036743,
+      "direct_effect": -0.126953125,
+      "layer": null,
+      "pos": 11,
+      "feature_idx": null,
+      "token": " =",
+      "activation": null
+    },
+    {
+      "kind": "token",
+      "node_id": "E_26",
+      "influence": 0.2919214367866516,
+      "direct_effect": 0.020263671875,
+      "layer": null,
+      "pos": 26,
+      "feature_idx": null,
+      "token": " +",
+      "activation": null
+    },
+    {
+      "kind": "token",
+      "node_id": "E_22",
+      "influence": 0.2950354814529419,
+      "direct_effect": -0.04248046875,
+      "layer": null,
+      "pos": 22,
+      "feature_idx": null,
+      "token": "        ",
+      "activation": null
+    },
+    {
+      "kind": "token",
+      "node_id": "E_29",
+      "influence": 0.29802194237709045,
+      "direct_effect": 0.0625,
+      "layer": null,
+      "pos": 29,
+      "feature_idx": null,
+      "token": "    ",
+      "activation": null
+    },
+    {
+      "kind": "feature",
+      "node_id": "24_12518_30",
+      "influence": 0.30097565054893494,
+      "direct_effect": 0.890625,
+      "layer": 24,
+      "pos": 30,
+      "feature_idx": 12518,
+      "token": "return",
+      "activation": 86.5
+    },
+    {
+      "kind": "error",
+      "node_id": "E_0_1",
+      "influence": 0.30374035239219666,
+      "direct_effect": -0.1533203125,
+      "layer": 0,
+      "pos": 1,
+      "feature_idx": null,
+      "token": "def",
+      "activation": null
+    },
+    {
+      "kind": "feature",
+      "node_id": "18_4769_14",
+      "influence": 0.30638387799263,
+      "direct_effect": 0.77734375,
+      "layer": 18,
+      "pos": 14,
+      "feature_idx": 4769,
+      "token": "\n",
+      "activation": 55.5
+    },
+    {
+      "kind": "token",
+      "node_id": "E_15",
+      "influence": 0.3089534044265747,
+      "direct_effect": 0.00159454345703125,
+      "layer": null,
+      "pos": 15,
+      "feature_idx": null,
+      "token": "    ",
+      "activation": null
+    }
+  ],
+  "top_by_direct_effect": [
+    {
+      "kind": "feature",
+      "node_id": "18_4769_10",
+      "influence": 0.15365807712078094,
+      "direct_effect": 5.34375,
+      "layer": 18,
+      "pos": 10,
+      "feature_idx": 4769,
+      "token": "result",
+      "activation": 103.0
+    },
+    {
+      "kind": "feature",
+      "node_id": "24_15424_30",
+      "influence": 0.2046242356300354,
+      "direct_effect": -5.09375,
+      "layer": 24,
+      "pos": 30,
+      "feature_idx": 15424,
+      "token": "return",
+      "activation": 47.75
+    },
+    {
+      "kind": "feature",
+      "node_id": "18_4769_23",
+      "influence": 0.24988646805286407,
+      "direct_effect": 2.734375,
+      "layer": 18,
+      "pos": 23,
+      "feature_idx": 4769,
+      "token": "result",
+      "activation": 44.0
+    },
+    {
+      "kind": "token",
+      "node_id": "E_10",
+      "influence": 0.11264486610889435,
+      "direct_effect": 2.5625,
+      "layer": null,
+      "pos": 10,
+      "feature_idx": null,
+      "token": "result",
+      "activation": null
+    },
+    {
+      "kind": "token",
+      "node_id": "E_23",
+      "influence": 0.21989735960960388,
+      "direct_effect": 2.203125,
+      "layer": null,
+      "pos": 23,
+      "feature_idx": null,
+      "token": "result",
+      "activation": null
+    },
+    {
+      "kind": "feature",
+      "node_id": "24_12518_30",
+      "influence": 0.30097565054893494,
+      "direct_effect": 0.890625,
+      "layer": 24,
+      "pos": 30,
+      "feature_idx": 12518,
+      "token": "return",
+      "activation": 86.5
+    },
+    {
+      "kind": "feature",
+      "node_id": "18_4769_14",
+      "influence": 0.30638387799263,
+      "direct_effect": 0.77734375,
+      "layer": 18,
+      "pos": 14,
+      "feature_idx": 4769,
+      "token": "\n",
+      "activation": 55.5
+    },
+    {
+      "kind": "error",
+      "node_id": "E_19_30",
+      "influence": 0.31819358468055725,
+      "direct_effect": -0.65234375,
+      "layer": 19,
+      "pos": 30,
+      "feature_idx": null,
+      "token": "return",
+      "activation": null
+    },
+    {
+      "kind": "feature",
+      "node_id": "21_5255_30",
+      "influence": 0.31361377239227295,
+      "direct_effect": 0.61328125,
+      "layer": 21,
+      "pos": 30,
+      "feature_idx": 5255,
+      "token": "return",
+      "activation": 38.5
+    },
+    {
+      "kind": "error",
+      "node_id": "E_25_30",
+      "influence": 0.33736303448677063,
+      "direct_effect": -0.5234375,
+      "layer": 25,
+      "pos": 30,
+      "feature_idx": null,
+      "token": "return",
+      "activation": null
+    },
+    {
+      "kind": "feature",
+      "node_id": "25_4717_30",
+      "influence": 0.33900612592697144,
+      "direct_effect": 0.51171875,
+      "layer": 25,
+      "pos": 30,
+      "feature_idx": 4717,
+      "token": "return",
+      "activation": 252.0
+    },
+    {
+      "kind": "token",
+      "node_id": "E_1",
+      "influence": 0.05708136782050133,
+      "direct_effect": -0.51171875,
+      "layer": null,
+      "pos": 1,
+      "feature_idx": null,
+      "token": "def",
+      "activation": null
+    },
+    {
+      "kind": "feature",
+      "node_id": "24_13541_30",
+      "influence": 0.34227296710014343,
+      "direct_effect": 0.453125,
+      "layer": 24,
+      "pos": 30,
+      "feature_idx": 13541,
+      "token": "return",
+      "activation": 112.5
+    },
+    {
+      "kind": "token",
+      "node_id": "E_30",
+      "influence": 0.2581839859485626,
+      "direct_effect": 0.44140625,
+      "layer": null,
+      "pos": 30,
+      "feature_idx": null,
+      "token": "return",
+      "activation": null
+    },
+    {
+      "kind": "error",
+      "node_id": "E_24_30",
+      "influence": 0.3530525863170624,
+      "direct_effect": 0.435546875,
+      "layer": 24,
+      "pos": 30,
+      "feature_idx": null,
+      "token": "return",
+      "activation": null
+    },
+    {
+      "kind": "error",
+      "node_id": "E_16_30",
+      "influence": 0.35012519359588623,
+      "direct_effect": 0.4140625,
+      "layer": 16,
+      "pos": 30,
+      "feature_idx": null,
+      "token": "return",
+      "activation": null
+    },
+    {
+      "kind": "feature",
+      "node_id": "22_4943_30",
+      "influence": 0.3544679582118988,
+      "direct_effect": 0.396484375,
+      "layer": 22,
+      "pos": 30,
+      "feature_idx": 4943,
+      "token": "return",
+      "activation": 18.25
+    },
+    {
+      "kind": "feature",
+      "node_id": "14_2024_10",
+      "influence": 0.33398810029029846,
+      "direct_effect": 0.3828125,
+      "layer": 14,
+      "pos": 10,
+      "feature_idx": 2024,
+      "token": "result",
+      "activation": 21.75
+    },
+    {
+      "kind": "feature",
+      "node_id": "25_2904_30",
+      "influence": 0.36230844259262085,
+      "direct_effect": 0.380859375,
+      "layer": 25,
+      "pos": 30,
+      "feature_idx": 2904,
+      "token": "return",
+      "activation": 72.0
+    },
+    {
+      "kind": "feature",
+      "node_id": "23_13877_30",
+      "influence": 0.3558557629585266,
+      "direct_effect": 0.35546875,
+      "layer": 23,
+      "pos": 30,
+      "feature_idx": 13877,
+      "token": "return",
+      "activation": 68.5
+    },
+    {
+      "kind": "feature",
+      "node_id": "16_5343_10",
+      "influence": 0.3438933491706848,
+      "direct_effect": 0.3515625,
+      "layer": 16,
+      "pos": 10,
+      "feature_idx": 5343,
+      "token": "result",
+      "activation": 29.375
+    },
+    {
+      "kind": "feature",
+      "node_id": "0_533_23",
+      "influence": 0.35722360014915466,
+      "direct_effect": 0.333984375,
+      "layer": 0,
+      "pos": 23,
+      "feature_idx": 533,
+      "token": "result",
+      "activation": 16.25
+    },
+    {
+      "kind": "feature",
+      "node_id": "15_2858_10",
+      "influence": 0.3516071140766144,
+      "direct_effect": 0.33203125,
+      "layer": 15,
+      "pos": 10,
+      "feature_idx": 2858,
+      "token": "result",
+      "activation": 20.75
+    },
+    {
+      "kind": "feature",
+      "node_id": "24_13277_30",
+      "influence": 0.3714114725589752,
+      "direct_effect": 0.32421875,
+      "layer": 24,
+      "pos": 30,
+      "feature_idx": 13277,
+      "token": "return",
+      "activation": 65.5
+    },
+    {
+      "kind": "feature",
+      "node_id": "22_2657_30",
+      "influence": 0.3669683039188385,
+      "direct_effect": -0.322265625,
+      "layer": 22,
+      "pos": 30,
+      "feature_idx": 2657,
+      "token": "return",
+      "activation": 18.125
+    }
+  ]
+}

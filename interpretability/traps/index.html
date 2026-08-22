@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>Right Name, Wrong Rules — Chia-chun Liang (Anna)</title>
+		<meta name="description" content="gemma-2-2b names the right variable but holds the wrong binding rules: ten classic Python traps in near-identical pairs, 0/4 pairs passed, and why per-case scoring hides it." />
+		<meta name="author" content="Chia-chun Liang" />
+		<link rel="stylesheet" href="../../style.css" />
+		<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90' font-family='Georgia,serif'>A</text></svg>" />
+
+		<style>
+			/* Page-local styles, shared with ../index.html by copy. */
+
+			.breadcrumb { font-size: .88rem; color: var(--text-muted); margin: 0 0 1.5rem; }
+			header.hero .subtitle { margin: .6rem 0 0; color: var(--text-muted); font-size: 1.05rem; }
+			header.hero .venue { margin: .9rem 0 0; font-size: .88rem; color: var(--text-muted); }
+
+			code {
+				font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+				font-size: .88em;
+				background: var(--accent-soft);
+				padding: .1em .35em;
+				border-radius: 4px;
+			}
+
+			pre {
+				background: var(--surface);
+				border: 1px solid var(--border);
+				border-radius: var(--radius);
+				padding: 1rem 1.1rem;
+				overflow-x: auto;
+				font-size: .85rem;
+				line-height: 1.55;
+				margin: 0 0 1.1rem;
+			}
+			pre code { background: none; padding: 0; font-size: 1em; }
+
+			table {
+				width: 100%;
+				border-collapse: collapse;
+				font-size: .9rem;
+				margin: 0 0 1.1rem;
+				display: block;
+				overflow-x: auto;
+			}
+			th, td {
+				text-align: left;
+				padding: .45rem .7rem;
+				border-bottom: 1px solid var(--border);
+				white-space: nowrap;
+			}
+			th {
+				font-weight: 600;
+				color: var(--text-muted);
+				font-size: .8rem;
+				letter-spacing: .04em;
+				text-transform: uppercase;
+			}
+			td.num { text-align: right; font-variant-numeric: tabular-nums; }
+			td.node { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .85rem; }
+			td.wrap-cell { white-space: normal; }
+			.pos { color: #2e7d5b; }
+			.neg { color: #b1453a; }
+
+			.callout {
+				background: var(--surface);
+				border: 1px solid var(--border);
+				border-left: 3px solid var(--accent);
+				border-radius: var(--radius);
+				padding: 1rem 1.15rem;
+				margin: 0 0 1.1rem;
+				font-size: .95rem;
+			}
+			.callout p:last-child { margin-bottom: 0; }
+
+			.pairgrid {
+				display: grid;
+				gap: 1rem;
+				grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+				margin: 0 0 1.1rem;
+			}
+			.pairgrid pre { margin: 0; }
+			.pairgrid .panel-label { font-size: .82rem; color: var(--text-muted); margin: 0 0 .35rem; }
+			.pairgrid .panel-label strong { color: var(--text); }
+
+			.figure { margin: 0 0 1.4rem; }
+			.figure figcaption { font-size: .85rem; color: var(--text-muted); margin-top: .7rem; }
+
+			.cta {
+				display: inline-block;
+				padding: .55rem 1.1rem;
+				border: 1px solid var(--accent);
+				border-radius: 999px;
+				color: var(--accent);
+				font-size: .92rem;
+				background: var(--surface);
+			}
+			.cta:hover { background: var(--accent-soft); border-bottom-color: var(--accent); }
+
+			.viz {
+				--viz-s1: #2a78d6;
+				--viz-s2: #eb6834;
+				--viz-grid: #ece9e3;
+				--viz-axis: #b9b3a8;
+				--viz-ink-1: #232323;
+				--viz-ink-2: #52514e;
+				--viz-ink-3: #6b6862;
+				--viz-surface: #ffffff;
+				background: var(--surface);
+				border: 1px solid var(--border);
+				border-radius: var(--radius);
+				padding: 1rem 1.1rem .8rem;
+			}
+			.viz svg { width: 100%; height: auto; display: block; overflow: visible; }
+			.viz figcaption { font-size: .85rem; color: var(--text-muted); margin-top: .9rem; }
+
+			.viz-legend {
+				display: flex; flex-wrap: wrap; gap: .3rem 1.2rem;
+				font-size: .82rem; color: var(--text-muted); margin: 0 0 .5rem;
+			}
+			.viz-legend i {
+				display: inline-block; width: 10px; height: 10px;
+				border-radius: 3px; margin-right: .4rem; vertical-align: 0;
+			}
+
+			@media (prefers-color-scheme: dark) {
+				:root:not([data-theme="light"]) .viz {
+					--viz-s1: #3987e5;
+					--viz-s2: #d95926;
+					--viz-grid: #302d28;
+					--viz-axis: #5d574e;
+					--viz-ink-1: #eae7e1;
+					--viz-ink-2: #c0bbb2;
+					--viz-ink-3: #a29d94;
+					--viz-surface: #1f1e1b;
+				}
+				:root:not([data-theme="light"]) .pos { color: #6cc39a; }
+				:root:not([data-theme="light"]) .neg { color: #e0837a; }
+			}
+			:root[data-theme="dark"] .viz {
+				--viz-s1: #3987e5;
+				--viz-s2: #d95926;
+				--viz-grid: #302d28;
+				--viz-axis: #5d574e;
+				--viz-ink-1: #eae7e1;
+				--viz-ink-2: #c0bbb2;
+				--viz-ink-3: #a29d94;
+				--viz-surface: #1f1e1b;
+			}
+		</style>
+	</head>
+	<body>
+
+		<!-- ============================ Header ============================ -->
+		<header class="hero">
+			<div class="wrap">
+				<p class="breadcrumb"><a href="../">&larr; Which variable does the model return?</a></p>
+				<h1>Right name, wrong rules</h1>
+				<p class="subtitle">
+					Ten classic Python binding traps, in pairs <code>gemma-2-2b</code> cannot tell apart
+				</p>
+				<p class="venue">Companion to the <a href="../">attribution-graph study</a></p>
+
+				<ul class="links">
+					<li><a href="../">The main experiment</a></li>
+					<li><a href="probe_binding_traps_gemma-2-2b.txt">Raw probe output</a></li>
+				</ul>
+			</div>
+		</header>
+
+		<main>
+
+			<!-- ============================ Summary ============================ -->
+			<section id="summary">
+				<div class="wrap">
+					<h2>In one paragraph</h2>
+					<p class="lead">
+						The <a href="../">main experiment</a> shows <code>gemma-2-2b</code> reliably
+						returning the right local variable — 71 of 72 name-and-shape combinations — through
+						a mechanism of per-name pathways. This page asks the harder question that mechanism
+						invites: does the model hold the actual <em>rules</em> of Python binding? Ten classic
+						traps, each cut at a single token where the correct semantics and the natural
+						misreading predict different continuations, say no. Scored per case it gets 4 of 10,
+						and even that number is misleading. The cases come in <strong>pairs</strong> of
+						near-identical surface form with opposite answers, and the pairs settle it:
+						<strong>0 of 4 pairs passed</strong>. Where the model scores a hit, it gives the same
+						answer to both members of the pair — surface-form matching, not binding semantics.
+					</p>
+
+					<p>
+						The sharpest case: the <code>for</code>-loop variable <em>does</em> leak into
+						enclosing scope, and the model says it does not (35.6% on
+						<code>Traceback</code>); a comprehension variable does <em>not</em> leak, and the
+						model says it does (33.6% on <code>2</code>). It holds both rules, swapped, with
+						matching confidence.
+					</p>
+				</div>
+			</section>
+
+			<!-- ============================ Design ============================ -->
+			<section id="design">
+				<div class="wrap">
+					<h2>The design</h2>
+
+					<p>
+						Three decisions carry this probe, and each one closes a way of fooling yourself.
+					</p>
+
+					<ul class="notes" style="margin:0 0 1.1rem;padding-left:1.15rem;">
+						<li style="margin:0 0 .7rem;">
+							<strong>Ground truth is executed, not remembered.</strong> Every case carries its
+							runnable source and an expected output, and the script runs the source and
+							<em>refuses to start</em> if Python disagrees. Binding traps are famous precisely
+							because people get them wrong — asserting the answers from memory would put the
+							scorer's memory on the same footing as the model's.
+						</li>
+						<li style="margin:0 0 .7rem;">
+							<strong>Every case cuts at a single-token divergence point.</strong> The prompt is
+							a transcript prefix ending exactly where the correct semantics and the natural
+							misreading predict different next tokens, so one forward pass decides it — no
+							generation, no parsing of free-form output.
+						</li>
+						<li style="margin:0;">
+							<strong>Cases come in pairs.</strong> Each pair differs by a few characters —
+							<code>lambda: i</code> against <code>lambda i=i: i</code> — and has opposite
+							correct answers. A model matching on surface form will give the same answer to
+							both, scoring one hit by luck. Only passing <em>both</em> members counts.
+						</li>
+					</ul>
+
+					<p>
+						One scoring rule on top: if both candidate tokens sit below a 2% floor, the
+						comparison is recorded as <strong>noise</strong>, not as a win — 0.54% against 0.07%
+						is the model answering something else entirely, and calling the larger of two
+						negligible numbers "correct" would be free points.
+					</p>
+				</div>
+			</section>
+
+			<!-- ============================ Results ============================ -->
+			<section id="results">
+				<div class="wrap">
+					<h2>What the model answers</h2>
+
+					<figure class="figure viz">
+						<div class="viz-legend">
+							<span><i style="background:var(--viz-s1)"></i>P(correct continuation)</span>
+							<span><i style="background:var(--viz-s2)"></i>P(the natural misreading)</span>
+						</div>
+						<svg viewBox="0 0 760 567" role="img" aria-labelledby="trap-t trap-d">
+							<title id="trap-t">Ten binding traps: correct versus misreading, by pair</title>
+							<desc id="trap-d">
+								Ten rows of paired bars grouped into four pairs and two unpaired cases. In
+								each failed pair the taller bars sit on the same token for both members: the
+								blue bar is tall for one member and the orange bar tall for the other,
+								at similar heights, because the model gives the same answer to both prompts.
+								All four pairs fail.
+							</desc>
+							<line x1="216.0" y1="26" x2="216.0" y2="539" stroke="var(--viz-grid)" stroke-width="1"/>
+							<text x="216.0" y="20" text-anchor="middle" font-size="10.5" fill="var(--viz-ink-3)">0%</text>
+							<line x1="326.0" y1="26" x2="326.0" y2="539" stroke="var(--viz-grid)" stroke-width="1"/>
+							<text x="326.0" y="20" text-anchor="middle" font-size="10.5" fill="var(--viz-ink-3)">25%</text>
+							<line x1="436.0" y1="26" x2="436.0" y2="539" stroke="var(--viz-grid)" stroke-width="1"/>
+							<text x="436.0" y="20" text-anchor="middle" font-size="10.5" fill="var(--viz-ink-3)">50%</text>
+							<line x1="546.0" y1="26" x2="546.0" y2="539" stroke="var(--viz-grid)" stroke-width="1"/>
+							<text x="546.0" y="20" text-anchor="middle" font-size="10.5" fill="var(--viz-ink-3)">75%</text>
+							<line x1="656.0" y1="26" x2="656.0" y2="539" stroke="var(--viz-grid)" stroke-width="1"/>
+							<text x="656.0" y="20" text-anchor="middle" font-size="10.5" fill="var(--viz-ink-3)">100%</text>
+							<line x1="216.0" y1="26" x2="216.0" y2="539" stroke="var(--viz-axis)" stroke-width="1.5"/>
+							<line x1="224.8" y1="26" x2="224.8" y2="539" stroke="var(--viz-ink-3)" stroke-width="1" stroke-dasharray="3 4" opacity=".6"/>
+							<text x="228.8" y="535" font-size="10" fill="var(--viz-ink-3)">2% noise floor</text>
+							<text x="0" y="53" font-size="11" font-weight="600" fill="var(--viz-ink-1)">closure capture — FAIL: same answer to both</text>
+							<text x="204" y="75" text-anchor="end" font-size="11" font-family="ui-monospace, Menlo, monospace" fill="var(--viz-ink-1)">closure-late-binding</text>
+							<g><title>P('2' — the correct continuation) = 0.88%</title><rect x="216.0" y="59" width="3.9" height="9" rx="4" fill="var(--viz-s1)"/></g>
+							<g><title>P('0' — the natural misreading) = 79.30%</title><rect x="216.0" y="71" width="348.9" height="9" rx="4" fill="var(--viz-s2)"/></g>
+							<text x="572.9" y="75" font-size="11" font-weight="700" fill="var(--viz-ink-1)">MISS</text>
+							<text x="204" y="110" text-anchor="end" font-size="11" font-family="ui-monospace, Menlo, monospace" fill="var(--viz-ink-1)">closure-default-arg-fix</text>
+							<g><title>P('0' — the correct continuation) = 66.80%</title><rect x="216.0" y="94" width="293.9" height="9" rx="4" fill="var(--viz-s1)"/></g>
+							<g><title>P('2' — the natural misreading) = 1.39%</title><rect x="216.0" y="106" width="6.1" height="9" rx="4" fill="var(--viz-s2)"/></g>
+							<text x="517.9" y="110" font-size="11" font-weight="400" fill="var(--viz-ink-2)">ok</text>
+							<text x="0" y="152" font-size="11" font-weight="600" fill="var(--viz-ink-1)">default argument — FAIL: same answer to both</text>
+							<text x="204" y="174" text-anchor="end" font-size="11" font-family="ui-monospace, Menlo, monospace" fill="var(--viz-ink-1)">mutable-default</text>
+							<g><title>P('1' — the correct continuation) = 89.06%</title><rect x="216.0" y="158" width="391.9" height="9" rx="4" fill="var(--viz-s1)"/></g>
+							<g><title>P('2' — the natural misreading) = 10.64%</title><rect x="216.0" y="170" width="46.8" height="9" rx="4" fill="var(--viz-s2)"/></g>
+							<text x="615.9" y="174" font-size="11" font-weight="400" fill="var(--viz-ink-2)">ok</text>
+							<text x="204" y="209" text-anchor="end" font-size="11" font-family="ui-monospace, Menlo, monospace" fill="var(--viz-ink-1)">mutable-default-fix</text>
+							<g><title>P('2' — the correct continuation) = 6.74%</title><rect x="216.0" y="193" width="29.7" height="9" rx="4" fill="var(--viz-s1)"/></g>
+							<g><title>P('1' — the natural misreading) = 93.36%</title><rect x="216.0" y="205" width="410.8" height="9" rx="4" fill="var(--viz-s2)"/></g>
+							<text x="634.8" y="209" font-size="11" font-weight="700" fill="var(--viz-ink-1)">MISS</text>
+							<text x="0" y="251" font-size="11" font-weight="600" fill="var(--viz-ink-1)">does the loop var leak — FAIL: exactly inverted</text>
+							<text x="204" y="273" text-anchor="end" font-size="11" font-family="ui-monospace, Menlo, monospace" fill="var(--viz-ink-1)">for-var-leaks</text>
+							<g><title>P('2' — the correct continuation) = 1.56%</title><rect x="216.0" y="257" width="6.9" height="9" rx="4" fill="var(--viz-s1)"/></g>
+							<g><title>P('Traceback' — the natural misreading) = 35.55%</title><rect x="216.0" y="269" width="156.4" height="9" rx="4" fill="var(--viz-s2)"/></g>
+							<text x="380.4" y="273" font-size="11" font-weight="700" fill="var(--viz-ink-1)">MISS</text>
+							<text x="204" y="308" text-anchor="end" font-size="11" font-family="ui-monospace, Menlo, monospace" fill="var(--viz-ink-1)">comprehension-no-leak</text>
+							<g><title>P('Traceback' — the correct continuation) = 5.15%</title><rect x="216.0" y="292" width="22.7" height="9" rx="4" fill="var(--viz-s1)"/></g>
+							<g><title>P('2' — the natural misreading) = 33.59%</title><rect x="216.0" y="304" width="147.8" height="9" rx="4" fill="var(--viz-s2)"/></g>
+							<text x="371.8" y="308" font-size="11" font-weight="700" fill="var(--viz-ink-1)">MISS</text>
+							<text x="0" y="350" font-size="11" font-weight="600" fill="var(--viz-ink-1)">class-body comprehension — FAIL: illegal one at noise</text>
+							<text x="204" y="372" text-anchor="end" font-size="11" font-family="ui-monospace, Menlo, monospace" fill="var(--viz-ink-1)">class-body-scope</text>
+							<g><title>P('Traceback' — the correct continuation) = 0.54%</title><rect x="216.0" y="356" width="2.4" height="9" rx="4" fill="var(--viz-s1)"/></g>
+							<g><title>P('&gt;' — the natural misreading) = 0.07%</title><rect x="216.0" y="368" width="1.5" height="9" rx="4" fill="var(--viz-s2)"/></g>
+							<text x="226.4" y="372" font-size="11" font-weight="400" fill="var(--viz-ink-3)">noise</text>
+							<text x="204" y="407" text-anchor="end" font-size="11" font-family="ui-monospace, Menlo, monospace" fill="var(--viz-ink-1)">class-body-ok</text>
+							<g><title>P('2' — the correct continuation) = 93.75%</title><rect x="216.0" y="391" width="412.5" height="9" rx="4" fill="var(--viz-s1)"/></g>
+							<g><title>P('Traceback' — the natural misreading) = 0.00%</title><rect x="216.0" y="403" width="1.5" height="9" rx="4" fill="var(--viz-s2)"/></g>
+							<text x="636.5" y="407" font-size="11" font-weight="400" fill="var(--viz-ink-2)">ok</text>
+							<text x="0" y="449" font-size="11" font-weight="600" fill="var(--viz-ink-2)">unpaired</text>
+							<text x="204" y="471" text-anchor="end" font-size="11" font-family="ui-monospace, Menlo, monospace" fill="var(--viz-ink-1)">tuple-augmented-assign</text>
+							<g><title>P(',' — the correct continuation) = 32.81%</title><rect x="216.0" y="455" width="144.4" height="9" rx="4" fill="var(--viz-s1)"/></g>
+							<g><title>P(']' — the natural misreading) = 0.60%</title><rect x="216.0" y="467" width="2.6" height="9" rx="4" fill="var(--viz-s2)"/></g>
+							<text x="368.4" y="471" font-size="11" font-weight="400" fill="var(--viz-ink-2)">ok</text>
+							<text x="204" y="506" text-anchor="end" font-size="11" font-family="ui-monospace, Menlo, monospace" fill="var(--viz-ink-1)">chained-comparison</text>
+							<g><title>P('False' — the correct continuation) = 5.30%</title><rect x="216.0" y="490" width="23.3" height="9" rx="4" fill="var(--viz-s1)"/></g>
+							<g><title>P('True' — the natural misreading) = 11.23%</title><rect x="216.0" y="502" width="49.4" height="9" rx="4" fill="var(--viz-s2)"/></g>
+							<text x="273.4" y="506" font-size="11" font-weight="700" fill="var(--viz-ink-1)">MISS</text>
+						</svg>
+						<figcaption>
+							Each case shows the probability of the correct continuation (blue) against the
+							natural misreading (orange). Read the pairs: an <em>ok</em> directly above or
+							below a <em>MISS</em> at similar height is one answer given to two opposite
+							questions. The dashed line is the 2% noise floor.
+						</figcaption>
+					</figure>
+
+					<table>
+						<thead>
+							<tr>
+								<th>Case</th><th>Correct</th><th>P(correct)</th>
+								<th>Misreading</th><th>P(wrong)</th><th>Model's top-1</th><th>Verdict</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr>
+								<td class="node">closure-late-binding</td>
+								<td class="node">2</td><td class="num">0.88%</td>
+								<td class="node">0</td><td class="num">79.30%</td>
+								<td class="node">0 &middot; 79.3%</td><td>MISS</td>
+							</tr>
+							<tr>
+								<td class="node">closure-default-arg-fix</td>
+								<td class="node">0</td><td class="num pos"><strong>66.80%</strong></td>
+								<td class="node">2</td><td class="num">1.39%</td>
+								<td class="node">0 &middot; 66.8%</td><td>ok</td>
+							</tr>
+							<tr>
+								<td class="node">mutable-default</td>
+								<td class="node">1</td><td class="num pos"><strong>89.06%</strong></td>
+								<td class="node">2</td><td class="num">10.64%</td>
+								<td class="node">1 &middot; 89.1%</td><td>ok</td>
+							</tr>
+							<tr>
+								<td class="node">mutable-default-fix</td>
+								<td class="node">2</td><td class="num">6.74%</td>
+								<td class="node">1</td><td class="num">93.36%</td>
+								<td class="node">1 &middot; 93.4%</td><td>MISS</td>
+							</tr>
+							<tr>
+								<td class="node">for-var-leaks</td>
+								<td class="node">2</td><td class="num">1.56%</td>
+								<td class="node">Traceback</td><td class="num">35.55%</td>
+								<td class="node">Traceback &middot; 35.6%</td><td>MISS</td>
+							</tr>
+							<tr>
+								<td class="node">comprehension-no-leak</td>
+								<td class="node">Traceback</td><td class="num">5.15%</td>
+								<td class="node">2</td><td class="num">33.59%</td>
+								<td class="node">2 &middot; 33.6%</td><td>MISS</td>
+							</tr>
+							<tr>
+								<td class="node">tuple-augmented-assign</td>
+								<td class="node">,</td><td class="num pos"><strong>32.81%</strong></td>
+								<td class="node">]</td><td class="num">0.60%</td>
+								<td class="node">], &middot; 37.1%</td><td>ok</td>
+							</tr>
+							<tr>
+								<td class="node">class-body-scope</td>
+								<td class="node">Traceback</td><td class="num">0.54%</td>
+								<td class="node">&gt;</td><td class="num">0.07%</td>
+								<td class="node">&gt;&gt;&gt; &middot; 70.7%</td><td>noise</td>
+							</tr>
+							<tr>
+								<td class="node">class-body-ok</td>
+								<td class="node">2</td><td class="num pos"><strong>93.75%</strong></td>
+								<td class="node">Traceback</td><td class="num">0.00%</td>
+								<td class="node">2 &middot; 93.8%</td><td>ok</td>
+							</tr>
+							<tr>
+								<td class="node">chained-comparison</td>
+								<td class="node">False</td><td class="num">5.30%</td>
+								<td class="node">True</td><td class="num">11.23%</td>
+								<td class="node">&gt;&gt;&gt; &middot; 64.5%</td><td>MISS</td>
+							</tr>
+						</tbody>
+					</table>
+
+					<p>
+						The top-1 column is worth reading on its own. In two cases
+						(<code>class-body-scope</code>, <code>chained-comparison</code>) the model's actual
+						answer is a REPL prompt marker — it is not choosing either semantics, it is
+						continuing the transcript's <em>shape</em>. That is what the noise floor exists to
+						catch.
+					</p>
+				</div>
+			</section>
+
+			<!-- ============================ Pairs ============================ -->
+			<section id="pairs">
+				<div class="wrap">
+					<h2>The four pairs</h2>
+
+					<h3 style="font-size:1rem;margin:0 0 .6rem;">Closure capture — same answer to both</h3>
+
+					<div class="pairgrid">
+						<div>
+							<p class="panel-label"><code>lambda: i</code> captures the <strong>variable</strong>; Python prints <code>[2, 2, 2]</code></p>
+<pre><code>&gt;&gt;&gt; fs = [lambda: i for i in range(3)]
+&gt;&gt;&gt; print([f() for f in fs])
+[&#9608;   &larr; model: '0' at 79.3%   (wrong)</code></pre>
+						</div>
+						<div>
+							<p class="panel-label"><code>lambda i=i: i</code> binds <strong>now</strong>; Python prints <code>[0, 1, 2]</code></p>
+<pre><code>&gt;&gt;&gt; fs = [lambda i=i: i for i in range(3)]
+&gt;&gt;&gt; print([f() for f in fs])
+[&#9608;   &larr; model: '0' at 66.8%   (right)</code></pre>
+						</div>
+					</div>
+
+					<p>
+						The <code>i=i</code> is the whole difference between the two prompts, and the model's
+						answer does not move: <code>0</code> at 79.3%, <code>0</code> at 66.8%. It has
+						learned that this <em>shape</em> of snippet prints <code>[0, 1, 2]</code> — which is
+						the famous <em>expectation</em> the first trap exists to break. One of the two scores
+						"correct". It should get no credit.
+					</p>
+
+					<h3 style="font-size:1rem;margin:2rem 0 .6rem;">Mutable default — same answer to both</h3>
+
+					<div class="pairgrid">
+						<div>
+							<p class="panel-label"><code>acc=[]</code> is created once and <strong>persists</strong>; second call prints <code>[1, 2]</code></p>
+<pre><code>&gt;&gt;&gt; def add(x, acc=[]):
+...     acc.append(x)
+...     return acc
+...
+&gt;&gt;&gt; add(1)
+[1]
+&gt;&gt;&gt; add(2)
+[&#9608;   &larr; model: '1' at 89.1%   (right)</code></pre>
+						</div>
+						<div>
+							<p class="panel-label"><code>acc=None</code> makes a <strong>fresh</strong> list; second call prints <code>[2]</code></p>
+<pre><code>&gt;&gt;&gt; def add(x, acc=None):
+...     acc = acc or []
+...     acc.append(x)
+...     return acc
+...
+&gt;&gt;&gt; add(1)
+[1]
+&gt;&gt;&gt; add(2)
+[&#9608;   &larr; model: '1' at 93.4%   (wrong)</code></pre>
+						</div>
+					</div>
+
+					<p>
+						Here the model's fixed answer happens to match the trap side, so the <em>famous</em>
+						case scores "correct" — and the fixed version, the one every Python tutorial tells
+						you to write, is answered as if the fix did nothing. Its confidence is
+						<em>higher</em> on the wrong member (93.4%) than on the right one (89.1%).
+					</p>
+
+					<h3 style="font-size:1rem;margin:2rem 0 .6rem;">Loop-variable leak — exactly inverted</h3>
+
+					<div class="pairgrid">
+						<div>
+							<p class="panel-label">The <code>for</code> variable <strong>does leak</strong>; Python prints <code>2</code></p>
+<pre><code>&gt;&gt;&gt; for i in range(3):
+...     pass
+...
+&gt;&gt;&gt; print(i)
+&#9608;   &larr; model: 'Traceback' at 35.6%   (wrong)</code></pre>
+						</div>
+						<div>
+							<p class="panel-label">A comprehension variable <strong>does not</strong>; Python raises <code>NameError</code></p>
+<pre><code>&gt;&gt;&gt; [j for j in range(3)]
+[0, 1, 2]
+&gt;&gt;&gt; print(j)
+&#9608;   &larr; model: '2' at 33.6%   (wrong)</code></pre>
+						</div>
+					</div>
+
+					<p>
+						The sharpest result in the set. This is not ignorance — ignorance would look like
+						noise. The model holds a definite rule for each construct, both rules are wrong, and
+						they are wrong <em>in opposite directions</em>, at matching confidence. It has the
+						two scoping behaviours swapped.
+					</p>
+
+					<h3 style="font-size:1rem;margin:2rem 0 .6rem;">Class-body comprehension — the illegal one vanishes</h3>
+
+					<div class="pairgrid">
+						<div>
+							<p class="panel-label">The comprehension <strong>cannot see</strong> <code>xs</code>; Python raises <code>NameError</code></p>
+<pre><code>&gt;&gt;&gt; class C:
+...     xs = [1, 2, 3]
+...     ys = [x for x in range(5) if x in xs]
+...
+&#9608;   &larr; model: '&gt;&gt;&gt;' at 70.7%   (neither)</code></pre>
+						</div>
+						<div>
+							<p class="panel-label">The <strong>outermost iterable</strong> is evaluated in class scope; this one is legal</p>
+<pre><code>&gt;&gt;&gt; class C:
+...     xs = [1, 2, 3]
+...     ys = [x * 2 for x in xs]
+...
+&gt;&gt;&gt; C.ys
+[&#9608;   &larr; model: '2' at 93.8%   (right)</code></pre>
+						</div>
+					</div>
+
+					<p>
+						The legal member is answered confidently and correctly. The illegal member gets a
+						fresh REPL prompt at 70.7% — the model continues the session as if the class defined
+						cleanly, with <code>Traceback</code> at 0.54%. Both candidates are under the noise
+						floor, so this scores <em>noise</em>, not a hit for either side: the model was not
+						weighing the two semantics at all.
+					</p>
+				</div>
+			</section>
+
+			<!-- ============================ Why scoring lies ============================ -->
+			<section id="scoring">
+				<div class="wrap">
+					<h2>Why per-case scoring lies</h2>
+
+					<div class="callout">
+						<p>
+							Read down the verdict column and 4 of 10 say "ok". Read the <em>pairs</em> and the
+							score is 0 of 4. Every single "ok" in a failed pair is the model giving one fixed
+							answer to two opposite questions and being right by coin-flip. Per-case accuracy on
+							trap sets rewards exactly the surface-form matching the traps exist to expose.
+						</p>
+					</div>
+
+					<p>
+						This is a measurement point as much as a model point. A benchmark reporting
+						"gemma-2-2b: 40% on Python binding traps" would be technically true and completely
+						misleading — the paired design shows the number is not 40% of the <em>semantics</em>,
+						it is one shape-prior scoring lucky hits. The two scoring rules that make the result
+						honest, <strong>only pairs count</strong> and <strong>sub-noise comparisons score
+						nothing</strong>, both exist to take away points the model did not earn.
+					</p>
+
+					<p>
+						The unpaired cases carry the same warning in miniature: <code>tuple-augmented-assign</code>
+						scores "ok", but the model's actual top choice was <code>],</code> — a token that
+						starts the right answer for a plausibly different reason. And
+						<code>chained-comparison</code>'s miss comes with the model mostly answering
+						<code>&gt;&gt;&gt;</code>: it would rather end the transcript than evaluate the
+						expression.
+					</p>
+				</div>
+			</section>
+
+			<!-- ============================ What this bounds ============================ -->
+			<section id="bounds">
+				<div class="wrap">
+					<h2>What this bounds</h2>
+
+					<p>
+						The <a href="../">main page</a> shows a mechanism — per-name pathways, volume set by
+						binding, winner-take-all at the logit layer — that reliably returns the right
+						variable in accumulator functions: 71 of 72 name-and-shape combinations. This page is
+						the boundary of that result. The mechanism tracks <em>which name carries how much
+						drive</em>; it is not backed by the rules of Python binding. Step outside the prompt
+						family, into cases where the question is <em>when a name is resolved</em> rather than
+						<em>which name is strongest</em>, and the model answers from surface shape.
+					</p>
+
+					<p>
+						Both facts matter for the same audience. An AI coding tool built on a model this size
+						can name the right variable essentially always — and will confidently misjudge
+						closure capture, mutable defaults and comprehension scope, the exact places where
+						human intuition also fails and where a debugger is most needed. The failure is not
+						"the model is weak": it holds <em>definite, confident, wrong</em> rules, which is
+						worse than noise, and per-case benchmarks will score much of it as competence.
+					</p>
+
+					<p style="margin-bottom:1.4rem;">
+						<a class="cta" href="../">Back to the main experiment &rarr;</a>
+					</p>
+				</div>
+			</section>
+
+			<!-- ============================ Reproducing ============================ -->
+			<section id="reproduce">
+				<div class="wrap">
+					<h2>Reproducing this</h2>
+
+					<p>
+						This probe needs no transcoders and no attribution run — it is plain
+						<code>transformers</code> forward passes on <code>google/gemma-2-2b</code> in
+						bfloat16, one per case. The script (<code>probe_binding_traps.py</code>, in the same
+						currently-private fork as the <a href="../">main experiment's</a> code) carries each
+						case's runnable source and expected output, executes every snippet first, and refuses
+						to start if Python's actual behaviour disagrees with the recorded ground truth. The
+						full output behind every number on this page is published here as
+						<a href="probe_binding_traps_gemma-2-2b.txt">probe_binding_traps_gemma-2-2b.txt</a>.
+					</p>
+
+					<p>
+						Related, in the same spirit: on generator-expression late binding (PEP 289) the model
+						handles a no-reassignment control at 98.4% but gives the correct continuation
+						<strong>0.00%</strong> on the one cut that separates eager from lazy capture —
+						where it answers correctly, a recency heuristic explains it just as well.
+					</p>
+				</div>
+			</section>
+
+			<!-- ======================= Credits ======================= -->
+			<section id="credits">
+				<div class="wrap">
+					<h2>Credits</h2>
+					<p>
+						Companion page to
+						<a href="../">Which variable does the model return?</a> — model
+						<code>google/gemma-2-2b</code>, probed with plain
+						<a href="https://github.com/huggingface/transformers" target="_blank" rel="noopener">transformers</a>.
+						The trap cases are the community's classics; ground truth is re-executed on every
+						run rather than taken on authority.
+					</p>
+				</div>
+			</section>
+
+		</main>
+
+		<!-- ============================ Footer ============================ -->
+		<footer>
+			<div class="wrap">
+				<p>Chia-chun Liang (Anna) &middot; <a href="mailto:d14948004@ntu.edu.tw">d14948004@ntu.edu.tw</a></p>
+				<p>&copy; 2026 Chia-chun Liang</p>
+			</div>
+		</footer>
+
+	</body>
+</html>

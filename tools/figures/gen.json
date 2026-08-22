@@ -1,0 +1,514 @@
+{
+ "consistent": [
+  {
+   "name": "result",
+   "acc": 96.09,
+   "distr": 0.0,
+   "margin": 96.09,
+   "miss": false
+  },
+  {
+   "name": "total",
+   "acc": 97.27,
+   "distr": 0.0,
+   "margin": 97.27,
+   "miss": false
+  },
+  {
+   "name": "acc",
+   "acc": 97.27,
+   "distr": 0.0,
+   "margin": 97.27,
+   "miss": false
+  },
+  {
+   "name": "out",
+   "acc": 95.7,
+   "distr": 0.0,
+   "margin": 95.7,
+   "miss": false
+  },
+  {
+   "name": "count",
+   "acc": 94.14,
+   "distr": 0.0,
+   "margin": 94.14,
+   "miss": false
+  },
+  {
+   "name": "buf",
+   "acc": 96.48,
+   "distr": 0.0,
+   "margin": 96.48,
+   "miss": false
+  },
+  {
+   "name": "value",
+   "acc": 92.58,
+   "distr": 0.0,
+   "margin": 92.58,
+   "miss": false
+  },
+  {
+   "name": "tmp",
+   "acc": 91.41,
+   "distr": 0.0,
+   "margin": 91.41,
+   "miss": false
+  },
+  {
+   "name": "res",
+   "acc": 96.09,
+   "distr": 0.0,
+   "margin": 96.09,
+   "miss": false
+  },
+  {
+   "name": "agg",
+   "acc": 95.7,
+   "distr": 0.0,
+   "margin": 95.7,
+   "miss": false
+  },
+  {
+   "name": "score",
+   "acc": 93.75,
+   "distr": 0.0,
+   "margin": 93.75,
+   "miss": false
+  },
+  {
+   "name": "data",
+   "acc": 92.58,
+   "distr": 0.0,
+   "margin": 92.58,
+   "miss": false
+  },
+  {
+   "name": "accum",
+   "acc": 92.58,
+   "distr": 0.0,
+   "margin": 92.58,
+   "miss": false
+  },
+  {
+   "name": "output",
+   "acc": 96.88,
+   "distr": 0.0,
+   "margin": 96.88,
+   "miss": false
+  },
+  {
+   "name": "running",
+   "acc": 97.27,
+   "distr": 0.0,
+   "margin": 97.27,
+   "miss": false
+  },
+  {
+   "name": "tally",
+   "acc": 93.36,
+   "distr": 0.0,
+   "margin": 93.36,
+   "miss": false
+  },
+  {
+   "name": "subtotal",
+   "acc": 92.58,
+   "distr": 0.0,
+   "margin": 92.58,
+   "miss": false
+  },
+  {
+   "name": "amount",
+   "acc": 95.31,
+   "distr": 0.0,
+   "margin": 95.31,
+   "miss": false
+  }
+ ],
+ "two-valid": [
+  {
+   "name": "result",
+   "acc": 82.42,
+   "distr": 11.18,
+   "margin": 71.24,
+   "miss": false
+  },
+  {
+   "name": "total",
+   "acc": 79.69,
+   "distr": 13.87,
+   "margin": 65.82,
+   "miss": false
+  },
+  {
+   "name": "acc",
+   "acc": 69.14,
+   "distr": 22.46,
+   "margin": 46.68,
+   "miss": false
+  },
+  {
+   "name": "out",
+   "acc": 72.27,
+   "distr": 20.7,
+   "margin": 51.57,
+   "miss": false
+  },
+  {
+   "name": "count",
+   "acc": 68.75,
+   "distr": 19.73,
+   "margin": 49.02,
+   "miss": false
+  },
+  {
+   "name": "buf",
+   "acc": 81.25,
+   "distr": 14.06,
+   "margin": 67.19,
+   "miss": false
+  },
+  {
+   "name": "value",
+   "acc": 85.55,
+   "distr": 7.96,
+   "margin": 77.59,
+   "miss": false
+  },
+  {
+   "name": "tmp",
+   "acc": 75.0,
+   "distr": 14.75,
+   "margin": 60.25,
+   "miss": false
+  },
+  {
+   "name": "res",
+   "acc": 67.19,
+   "distr": 24.71,
+   "margin": 42.48,
+   "miss": false
+  },
+  {
+   "name": "agg",
+   "acc": 77.73,
+   "distr": 7.23,
+   "margin": 70.5,
+   "miss": false
+  },
+  {
+   "name": "score",
+   "acc": 73.05,
+   "distr": 18.46,
+   "margin": 54.59,
+   "miss": false
+  },
+  {
+   "name": "data",
+   "acc": 76.56,
+   "distr": 11.77,
+   "margin": 64.79,
+   "miss": false
+  },
+  {
+   "name": "accum",
+   "acc": 65.62,
+   "distr": 18.85,
+   "margin": 46.77,
+   "miss": false
+  },
+  {
+   "name": "output",
+   "acc": 85.16,
+   "distr": 8.94,
+   "margin": 76.22,
+   "miss": false
+  },
+  {
+   "name": "running",
+   "acc": 89.06,
+   "distr": 5.03,
+   "margin": 84.03,
+   "miss": false
+  },
+  {
+   "name": "tally",
+   "acc": 67.19,
+   "distr": 19.34,
+   "margin": 47.85,
+   "miss": false
+  },
+  {
+   "name": "subtotal",
+   "acc": 64.84,
+   "distr": 16.31,
+   "margin": 48.53,
+   "miss": false
+  },
+  {
+   "name": "amount",
+   "acc": 67.19,
+   "distr": 19.24,
+   "margin": 47.95,
+   "miss": false
+  }
+ ],
+ "never-bound": [
+  {
+   "name": "result",
+   "acc": 7.23,
+   "distr": 88.28,
+   "margin": 81.05,
+   "miss": false
+  },
+  {
+   "name": "total",
+   "acc": 5.15,
+   "distr": 91.41,
+   "margin": 86.26,
+   "miss": false
+  },
+  {
+   "name": "acc",
+   "acc": 1.73,
+   "distr": 94.92,
+   "margin": 93.19,
+   "miss": false
+  },
+  {
+   "name": "out",
+   "acc": 1.94,
+   "distr": 93.36,
+   "margin": 91.42,
+   "miss": false
+  },
+  {
+   "name": "count",
+   "acc": 1.05,
+   "distr": 94.53,
+   "margin": 93.48,
+   "miss": false
+  },
+  {
+   "name": "buf",
+   "acc": 7.23,
+   "distr": 87.89,
+   "margin": 80.66,
+   "miss": false
+  },
+  {
+   "name": "value",
+   "acc": 2.2,
+   "distr": 93.36,
+   "margin": 91.16,
+   "miss": false
+  },
+  {
+   "name": "tmp",
+   "acc": 8.11,
+   "distr": 87.11,
+   "margin": 79.0,
+   "miss": false
+  },
+  {
+   "name": "res",
+   "acc": 6.45,
+   "distr": 89.06,
+   "margin": 82.61,
+   "miss": false
+  },
+  {
+   "name": "agg",
+   "acc": 0.38,
+   "distr": 93.75,
+   "margin": 93.37,
+   "miss": false
+  },
+  {
+   "name": "score",
+   "acc": 1.51,
+   "distr": 93.75,
+   "margin": 92.24,
+   "miss": false
+  },
+  {
+   "name": "data",
+   "acc": 1.51,
+   "distr": 93.36,
+   "margin": 91.85,
+   "miss": false
+  },
+  {
+   "name": "accum",
+   "acc": 0.93,
+   "distr": 95.31,
+   "margin": 94.38,
+   "miss": false
+  },
+  {
+   "name": "output",
+   "acc": 5.71,
+   "distr": 89.06,
+   "margin": 83.35,
+   "miss": false
+  },
+  {
+   "name": "running",
+   "acc": 3.15,
+   "distr": 92.19,
+   "margin": 89.04,
+   "miss": false
+  },
+  {
+   "name": "tally",
+   "acc": 0.93,
+   "distr": 94.92,
+   "margin": 93.99,
+   "miss": false
+  },
+  {
+   "name": "subtotal",
+   "acc": 1.18,
+   "distr": 93.75,
+   "margin": 92.57,
+   "miss": false
+  },
+  {
+   "name": "amount",
+   "acc": 1.5,
+   "distr": 92.97,
+   "margin": 91.47,
+   "miss": false
+  }
+ ],
+ "split": [
+  {
+   "name": "result",
+   "acc": 71.09,
+   "distr": 23.14,
+   "margin": 47.95,
+   "miss": false
+  },
+  {
+   "name": "total",
+   "acc": 78.12,
+   "distr": 17.48,
+   "margin": 60.64,
+   "miss": false
+  },
+  {
+   "name": "acc",
+   "acc": 50.39,
+   "distr": 44.34,
+   "margin": 6.05,
+   "miss": false
+  },
+  {
+   "name": "out",
+   "acc": 64.45,
+   "distr": 30.27,
+   "margin": 34.18,
+   "miss": false
+  },
+  {
+   "name": "count",
+   "acc": 47.66,
+   "distr": 42.19,
+   "margin": 5.47,
+   "miss": false
+  },
+  {
+   "name": "buf",
+   "acc": 62.11,
+   "distr": 29.49,
+   "margin": 32.62,
+   "miss": false
+  },
+  {
+   "name": "value",
+   "acc": 65.62,
+   "distr": 27.34,
+   "margin": 38.28,
+   "miss": false
+  },
+  {
+   "name": "tmp",
+   "acc": 61.72,
+   "distr": 29.1,
+   "margin": 32.62,
+   "miss": false
+  },
+  {
+   "name": "res",
+   "acc": 63.67,
+   "distr": 30.08,
+   "margin": 33.59,
+   "miss": false
+  },
+  {
+   "name": "agg",
+   "acc": 55.47,
+   "distr": 33.79,
+   "margin": 21.68,
+   "miss": false
+  },
+  {
+   "name": "score",
+   "acc": 44.92,
+   "distr": 44.92,
+   "margin": 0.0,
+   "miss": true
+  },
+  {
+   "name": "data",
+   "acc": 53.12,
+   "distr": 36.72,
+   "margin": 16.4,
+   "miss": false
+  },
+  {
+   "name": "accum",
+   "acc": 51.95,
+   "distr": 40.43,
+   "margin": 11.52,
+   "miss": false
+  },
+  {
+   "name": "output",
+   "acc": 75.78,
+   "distr": 19.14,
+   "margin": 56.64,
+   "miss": false
+  },
+  {
+   "name": "running",
+   "acc": 66.41,
+   "distr": 24.41,
+   "margin": 42.0,
+   "miss": false
+  },
+  {
+   "name": "tally",
+   "acc": 45.31,
+   "distr": 40.04,
+   "margin": 5.27,
+   "miss": false
+  },
+  {
+   "name": "subtotal",
+   "acc": 55.86,
+   "distr": 29.88,
+   "margin": 25.98,
+   "miss": false
+  },
+  {
+   "name": "amount",
+   "acc": 46.48,
+   "distr": 41.02,
+   "margin": 5.46,
+   "miss": false
+  }
+ ]
+}

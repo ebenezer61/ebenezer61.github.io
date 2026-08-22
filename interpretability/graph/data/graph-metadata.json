@@ -1,0 +1,45 @@
+{
+  "graphs": [
+    {
+      "slug": "py-return-variable-small",
+      "scan": "mwhanna/gemma-scope-transcoders",
+      "transcoder_list": [],
+      "prompt_tokens": [
+        "<bos>",
+        "def",
+        " calculate",
+        "_",
+        "total",
+        "(",
+        "prices",
+        "):",
+        "\n",
+        "    ",
+        "result",
+        " =",
+        " ",
+        "0",
+        "\n",
+        "    ",
+        "for",
+        " price",
+        " in",
+        " prices",
+        ":",
+        "\n",
+        "        ",
+        "result",
+        " =",
+        " result",
+        " +",
+        " price",
+        "\n",
+        "    ",
+        "return"
+      ],
+      "prompt": "<bos>def calculate_total(prices):\n    result = 0\n    for price in prices:\n        result = result + price\n    return",
+      "node_threshold": 0.7,
+      "schema_version": 1
+    }
+  ]
+}
