@@ -165,6 +165,7 @@
 				<ul class="links">
 					<li><a href="../">The main experiment</a></li>
 					<li><a href="probe_binding_traps_gemma-2-2b.txt">Raw probe output</a></li>
+					<li><a href="../gotchas/">Companion: the expression is not enough</a></li>
 				</ul>
 			</div>
 		</header>
@@ -610,10 +611,14 @@
 					</p>
 
 					<p>
-						Related, in the same spirit: on generator-expression late binding (PEP 289) the model
-						handles a no-reassignment control at 98.4% but gives the correct continuation
-						<strong>0.00%</strong> on the one cut that separates eager from lazy capture —
-						where it answers correctly, a recency heuristic explains it just as well.
+						Related, in the same spirit and now with its
+						<a href="../gotchas/">own page</a>: on generator-expression late binding (PEP 289)
+						the model handles a no-reassignment control at 98.4% but gives the correct
+						continuation <strong>0.00%</strong> on the one cut that separates eager from lazy
+						capture — and it is <em>worse</em> on the generator expression than on the desugared
+						function PEP&nbsp;289 defines it to mean. Four further chapters (floats,
+						set order, bound-method identity, interpreter versions) pass
+						<strong>1 of 13 pairs</strong>.
 					</p>
 				</div>
 			</section>

@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>The Expression Is Not Enough — Chia-chun Liang (Anna)</title>
+		<meta name="description" content="Two executed-ground-truth probes of gemma-2-2b: it is worse on a generator expression than on its own PEP 289 desugaring, answers float comparisons by literal identity, assumes sets keep insertion order, and gives one locals() answer across Python 3.11/3.12/3.13. 1 of 13 pairs pass." />
+		<meta name="author" content="Chia-chun Liang" />
+		<link rel="stylesheet" href="../../style.css" />
+		<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90' font-family='Georgia,serif'>A</text></svg>" />
+
+		<style>
+			/* Page-local styles, shared with ../index.html and ../traps/ by copy. */
+
+			.breadcrumb { font-size: .88rem; color: var(--text-muted); margin: 0 0 1.5rem; }
+			header.hero .subtitle { margin: .6rem 0 0; color: var(--text-muted); font-size: 1.05rem; }
+			header.hero .venue { margin: .9rem 0 0; font-size: .88rem; color: var(--text-muted); }
+
+			code {
+				font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+				font-size: .88em;
+				background: var(--accent-soft);
+				padding: .1em .35em;
+				border-radius: 4px;
+			}
+
+			pre {
+				background: var(--surface);
+				border: 1px solid var(--border);
+				border-radius: var(--radius);
+				padding: 1rem 1.1rem;
+				overflow-x: auto;
+				font-size: .85rem;
+				line-height: 1.55;
+				margin: 0 0 1.1rem;
+			}
+			pre code { background: none; padding: 0; font-size: 1em; }
+
+			table {
+				width: 100%;
+				border-collapse: collapse;
+				font-size: .9rem;
+				margin: 0 0 1.1rem;
+				display: block;
+				overflow-x: auto;
+			}
+			th, td {
+				text-align: left;
+				padding: .45rem .7rem;
+				border-bottom: 1px solid var(--border);
+				white-space: nowrap;
+			}
+			th {
+				font-weight: 600;
+				color: var(--text-muted);
+				font-size: .8rem;
+				letter-spacing: .04em;
+				text-transform: uppercase;
+			}
+			td.num { text-align: right; font-variant-numeric: tabular-nums; }
+			td.node { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .85rem; }
+			td.wrap-cell { white-space: normal; }
+			.pos { color: #2e7d5b; }
+			.neg { color: #b1453a; }
+
+			.callout {
+				background: var(--surface);
+				border: 1px solid var(--border);
+				border-left: 3px solid var(--accent);
+				border-radius: var(--radius);
+				padding: 1rem 1.15rem;
+				margin: 0 0 1.1rem;
+				font-size: .95rem;
+			}
+			.callout p:last-child { margin-bottom: 0; }
+
+			.pairgrid {
+				display: grid;
+				gap: 1rem;
+				grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+				margin: 0 0 1.1rem;
+			}
+			.pairgrid pre { margin: 0; }
+			.pairgrid .panel-label { font-size: .82rem; color: var(--text-muted); margin: 0 0 .35rem; }
+			.pairgrid .panel-label strong { color: var(--text); }
+
+			.figure { margin: 0 0 1.4rem; }
+			.figure figcaption { font-size: .85rem; color: var(--text-muted); margin-top: .7rem; }
+
+			.cta {
+				display: inline-block;
+				padding: .55rem 1.1rem;
+				border: 1px solid var(--accent);
+				border-radius: 999px;
+				color: var(--accent);
+				font-size: .92rem;
+				background: var(--surface);
+			}
+			.cta:hover { background: var(--accent-soft); border-bottom-color: var(--accent); }
+
+			@media (prefers-color-scheme: dark) {
+				:root:not([data-theme="light"]) .pos { color: #6cc39a; }
+				:root:not([data-theme="light"]) .neg { color: #e0837a; }
+			}
+		</style>
+	</head>
+	<body>
+
+		<!-- ============================ Header ============================ -->
+		<header class="hero">
+			<div class="wrap">
+				<p class="breadcrumb"><a href="../">&larr; Which variable does the model return?</a></p>
+				<h1>The expression is not enough</h1>
+				<p class="subtitle">
+					One program written twice, and four chapters where the answer depends on what the
+					page does not show — <code>gemma-2-2b</code> passes 1 of 13 pairs
+				</p>
+				<p class="venue">Companion to the <a href="../">attribution-graph study</a> and
+					<a href="../traps/">Right name, wrong rules</a></p>
+
+				<ul class="links">
+					<li><a href="../">The main experiment</a></li>
+					<li><a href="../traps/">The ten binding traps</a></li>
+					<li><a href="probe_late_binding_gemma-2-2b.txt">Raw output: late binding</a></li>
+					<li><a href="probe_gotchas_gemma-2-2b.txt">Raw output: four chapters</a></li>
+					<li><a href="../paper.pdf">Paper (PDF)</a></li>
+					<li><a href="../poster.pdf">PyCon TW 2026 poster (PDF)</a></li>
+				</ul>
+			</div>
+		</header>
+
+		<main>
+
+			<!-- ============================ Summary ============================ -->
+			<section id="summary">
+				<div class="wrap">
+					<h2>In one paragraph</h2>
+					<p class="lead">
+						The <a href="../">main experiment</a> shows <code>gemma-2-2b</code> tracking
+						<em>what a name is bound to</em>; the <a href="../traps/">trap pairs</a> show it does
+						not hold the rules of <em>when</em> a binding happens. This page pushes on two more
+						fronts, with 35 scored single-token cases across two probes, 30 of them new. First, PEP&nbsp;289 <em>defines</em> a
+						generator expression to mean its desugared generator function — one program, written
+						twice — and the model is <strong>worse on the form a human would actually
+						write</strong>, on both cuts probed. Second, four chapters of behaviours where the
+						printed expression underdetermines the answer (float width, hash-table order,
+						bound-method identity, interpreter version): <strong>1 of 13 pairs pass</strong>. The
+						model answers float comparisons by literal identity rather than arithmetic, assumes
+						sets preserve insertion order at 97.3% confidence, and gives the same
+						<code>locals()</code> answer for Python 3.11, 3.12 and 3.13 — versions across which
+						the answer changed.
+					</p>
+				</div>
+			</section>
+
+			<!-- ============================ Design ============================ -->
+			<section id="design">
+				<div class="wrap">
+					<h2>The design, and three new honesty mechanisms</h2>
+
+					<p>
+						Everything from the <a href="../traps/#design">trap probe's design</a> carries over:
+						ground truth is <strong>executed, not remembered</strong> — here under the exact
+						interpreter (<code>python3.11</code>/<code>3.12</code>/<code>3.13</code> where a case
+						names one) and environment (<code>PYTHONHASHSEED=0</code> where it matters) — every
+						case cuts at a <strong>single-token divergence point</strong>, and cases come in
+						<strong>pairs</strong> of near-identical form with opposite answers. Three new
+						mechanisms were each forced by a failure observed while building this probe:
+					</p>
+
+					<ul class="notes" style="margin:0 0 1.1rem;padding-left:1.15rem;">
+						<li style="margin:0 0 .7rem;">
+							<strong>Coverage, because the model may not be answering.</strong> On bare
+							<code>&gt;&gt;&gt; expr</code> prompts the model's top prediction was
+							<code>&gt;&gt;&gt;</code> itself, at 37–45% — it declined to answer and moved to
+							the next prompt, leaving both candidates in the noise. The summary now prints
+							P(correct)&nbsp;+&nbsp;P(wrong) for every case, so a verdict resting on scraps is
+							visible as such.
+						</li>
+						<li style="margin:0 0 .7rem;">
+							<strong>Counterbalanced priming, because the context can answer for the
+							model.</strong> The fix for the non-answering failure is two worked True/False
+							exchanges before the prompt — but a primer can bias the answer, so every primed
+							case runs under <em>both</em> primer orders, and a verdict that flips with the
+							order scores <code>prime-dep</code>, not a win. Three cases flipped, including
+							<code>0.1 + 0.2 == 0.3</code> itself: an exact 48.83/48.83 split under one primer,
+							74.2% <code>True</code> under the other. That verdict belongs to the primer.
+						</li>
+						<li style="margin:0;">
+							<strong>Exact ties score <code>tie</code>, because argmax invents a
+							preference.</strong> bfloat16 makes exact ties common (40.43/40.43, 44.14/44.14
+							in this work). Argmax resolves them by candidate order — and the correct candidate
+							is always listed first, so every such coin flip would have been recorded as a hit.
+						</li>
+					</ul>
+				</div>
+			</section>
+
+			<!-- ============================ Genexp ============================ -->
+			<section id="genexp">
+				<div class="wrap">
+					<h2>One program, written twice (PEP 289)</h2>
+
+					<p>
+						The material is real — snippets from a teaching video, kept precisely because
+						synthetic prompts invite "you designed that":
+					</p>
+
+<pre><code>&gt;&gt;&gt; lst = [1, 2, 3, 4, 5]
+&gt;&gt;&gt; g = (n for n in lst if n in lst)
+&gt;&gt;&gt; lst = [0, 1, 2]
+&gt;&gt;&gt; print(list(g))
+[1, 2]</code></pre>
+
+					<p>
+						The iterable is captured <em>eagerly</em> (old <code>[1..5]</code>); the filter
+						resolves the global <em>lazily</em> (new <code>[0,1,2]</code>); the output is their
+						intersection — neither list on the page. PEP&nbsp;289 <em>defines</em> this
+						expression to mean its desugaring: an explicit generator function taking
+						<code>iter(lst)</code> as an argument and filtering on the global. The probe cuts
+						both spellings at the same two points. A disagreement between them rules out reading
+						of the semantics outright; agreement proves little, since two matching wrong answers
+						also agree.
+					</p>
+
+					<table>
+						<thead>
+							<tr>
+								<th>Cut (correct token)</th><th>Genexp form</th><th>Desugared form</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr>
+								<td class="wrap-cell">which list is iterated (<code>1</code>)</td>
+								<td class="num neg"><code>0</code> at <strong>55.08%</strong> vs <code>1</code> 37.70% — MISS</td>
+								<td class="num">40.43% / 40.43% — <strong>exact tie</strong></td>
+							</tr>
+							<tr>
+								<td class="wrap-cell">which list the filter uses (<code>]</code>)</td>
+								<td class="num">53.12% — ok, margin 6.25&nbsp;pp</td>
+								<td class="num pos"><strong>73.05%</strong> — ok, margin 46.09&nbsp;pp</td>
+							</tr>
+						</tbody>
+					</table>
+
+					<p>
+						Both cuts move the same way: <strong>the sugar itself costs it</strong>. Controls
+						rule out the cheap explanations — with no reassignment it is correct at 99.61% at the
+						same list length, so closing the list early is not a taste for short lists; merely
+						adding the vacuous filter <code>if n in lst</code>, before any rebinding, costs
+						10&nbsp;pp (89.45%). On the one cut that cleanly separates eager from lazy capture
+						(whether <code>(3,&nbsp;…)</code> appears after the inner list is exhausted), the
+						correct continuation receives <strong>0.00%</strong>.
+					</p>
+
+					<div class="callout">
+						<p>
+							Stated carefully, because this project has retired an overclaim before: this
+							<em>supports</em> surface-form reading over semantics, it does not establish it.
+							The design catches an outright contradiction between the two spellings, and it did
+							not get one — an exact tie has no answer to contradict.
+						</p>
+					</div>
+				</div>
+			</section>
+
+			<!-- ============================ Four chapters ============================ -->
+			<section id="chapters">
+				<div class="wrap">
+					<h2>Four chapters, thirteen pairs, one pass</h2>
+
+					<p>
+						Twenty-six scored cases in four separately scored chapters — separately, because
+						pooled accuracy across a float-arithmetic chapter and an interpreter-versioning
+						chapter measures nothing. The single passing pair is list-vs-set order preservation,
+						the least surprising in the set.
+					</p>
+
+					<h3 style="font-size:1rem;margin:2rem 0 .6rem;">ch.1 — floats: literal identity, not arithmetic (0/6 pairs)</h3>
+
+					<p>
+						<code>1e500</code> is not a big number — the literal overflows to <code>inf</code> at
+						parse time, and <code>1e500/1e500</code> is <code>nan</code>. Twelve cases, six
+						pairs, and all twelve verdicts fit a single heuristic: <em>same expression written
+						twice &rarr; True, different literals &rarr; False</em>.
+					</p>
+
+					<table>
+						<thead>
+							<tr><th>Case</th><th>Truth</th><th>Model</th><th>Verdict</th></tr>
+						</thead>
+						<tbody>
+							<tr>
+								<td class="node">1e500 == 1e500</td>
+								<td class="node">True (inf == inf)</td>
+								<td class="num">True at 78.91%</td><td>ok</td>
+							</tr>
+							<tr>
+								<td class="node">1e500/1e500 == 1e500/1e500</td>
+								<td class="node">False (nan != nan)</td>
+								<td class="num neg">True at 83.20%</td><td>MISS</td>
+							</tr>
+							<tr>
+								<td class="node">1e50 == 1e60</td>
+								<td class="node">False</td>
+								<td class="num">False at 69.14%</td><td>ok</td>
+							</tr>
+							<tr>
+								<td class="node">1e500 == 1e600</td>
+								<td class="node">True (both inf)</td>
+								<td class="num neg">False at 67.58%</td><td>MISS</td>
+							</tr>
+						</tbody>
+					</table>
+
+					<p>
+						The four identity-shaped cases, side by side, are the tell: the verdict tracks
+						whether the two sides are the same <em>string</em>, never what they evaluate to.
+						Nothing was computed. (<code>0.1 + 0.2 == 0.3</code> and two others scored
+						<code>prime-dep</code> — see the design section — and the exact/inexact pairs
+						<code>0.25 + 0.5 == 0.75</code> and <code>2.0**50 == 2**50</code> were answered
+						<code>True</code>, consistent with a general lean toward <code>True</code> on
+						arithmetic that is not an identity comparison.)
+					</p>
+
+					<h3 style="font-size:1rem;margin:2rem 0 .6rem;">ch.2 — sets: the order you see is the hash table (1/3 pairs)</h3>
+
+					<p>
+						dicts preserve insertion order; sets never promised to. The sharpest minimal pairs
+						in the whole probe: a dict comprehension and a set built from the same elements, both
+						printed with braces, opposite first element.
+					</p>
+
+					<table>
+						<thead>
+							<tr><th>Case</th><th>Truth</th><th>Model</th><th>Verdict</th></tr>
+						</thead>
+						<tbody>
+							<tr>
+								<td class="node">list(reversed([0..4]))</td>
+								<td class="node">[4, 3, 2, 1, 0]</td>
+								<td class="num">4-first at 48.24%</td><td>ok</td>
+							</tr>
+							<tr>
+								<td class="node">set(reversed([0..4]))</td>
+								<td class="node">{0, 1, 2, 3, 4}</td>
+								<td class="num">0-first at 35.16%</td><td>ok — the one passing pair</td>
+							</tr>
+							<tr>
+								<td class="node">{x: None for x in range(1022, 1027)}</td>
+								<td class="node">1022 first (insertion)</td>
+								<td class="num">1022-first at 81.64%</td><td>ok</td>
+							</tr>
+							<tr>
+								<td class="node">set(range(1022, 1027))</td>
+								<td class="node">1024 first (table wraps)</td>
+								<td class="num neg">1022-first at <strong>97.27%</strong></td><td>MISS</td>
+							</tr>
+						</tbody>
+					</table>
+
+					<p>
+						The wrap case is the most confident wrong answer in this study: the model assumes
+						sets keep insertion order the way dicts do. A string-set case under
+						<code>PYTHONHASHSEED=0</code> is included only as a floor (deterministic but
+						underivable — passing it would mean having memorised CPython's siphash) and the
+						unseeded variant is executed under two seeds to prove its output differs, then
+						<em>never shown to the model</em>: there is no correct token to score.
+					</p>
+
+					<h3 style="font-size:1rem;margin:2rem 0 .6rem;">ch.3 — bound methods: CPython behaviour, stated as such (0/3 pairs)</h3>
+
+					<p>
+						<code>o.f</code> constructs a fresh bound method on every attribute access, so
+						<code>o.f is o.f</code> is <code>False</code> while <code>C.f is C.f</code> and
+						<code>o.f == o.f</code> are <code>True</code> — and <code>id(o.f) == id(o.f)</code>
+						is <code>True</code> only because the allocator hands the freed address straight
+						back, which a single interleaved allocation flips to <code>False</code> (both stable
+						5/5 on this build). This chapter is marked implementation-defined in the harness: a
+						ground-truth mismatch on another build warns instead of aborting, and none of it is
+						evidence about "Python".
+					</p>
+
+					<table>
+						<thead>
+							<tr><th>Case</th><th>Truth (this build)</th><th>Model</th><th>Verdict</th></tr>
+						</thead>
+						<tbody>
+							<tr>
+								<td class="node">C.f is C.f</td><td class="node">True</td>
+								<td class="num">True at 52.73%</td><td>ok</td>
+							</tr>
+							<tr>
+								<td class="node">o.f is o.f</td><td class="node">False</td>
+								<td class="num neg">True at 53.52%</td><td>MISS</td>
+							</tr>
+							<tr>
+								<td class="node">o.f == o.f</td><td class="node">True</td>
+								<td class="num">44.14% / 44.14%</td><td>exact tie</td>
+							</tr>
+							<tr>
+								<td class="node">id(o.f) == id(o.f)</td><td class="node">True (address reuse)</td>
+								<td class="num">True at 55.47%</td><td>ok — for the wrong reason</td>
+							</tr>
+							<tr>
+								<td class="node">…with one allocation between</td><td class="node">False</td>
+								<td class="num neg">True at 48.83%</td><td>MISS</td>
+							</tr>
+						</tbody>
+					</table>
+
+					<p>
+						Read the last three rows together: the model says <code>True</code> to every
+						<code>id()</code> question, which happens to be right exactly once. The
+						<code>is</code>/<code>==</code> pair fails on a miss and an exact tie.
+					</p>
+
+					<h3 style="font-size:1rem;margin:2rem 0 .6rem;">ch.4 — the same code, three interpreters (0/1 pair)</h3>
+
+					<p>
+						A comprehension with a cell variable, asking for <code>locals()</code> inside it,
+						prints <code>{'.0': &lt;iterator&gt;, 'k': 0}</code> on Python 3.11 and
+						<code>{'k': 0}</code> on 3.12/3.13 — PEP&nbsp;709 inlined comprehensions. Ground
+						truth was executed on all three interpreters; the prompt is a shell transcript naming
+						the interpreter, and only that token differs between cases.
+					</p>
+
+					<table>
+						<thead>
+							<tr><th>Interpreter</th><th>Truth</th><th>P(<code>k</code>)</th><th>P(<code>.</code>)</th><th>Verdict</th></tr>
+						</thead>
+						<tbody>
+							<tr>
+								<td class="node">python3.11</td><td class="node">'.0' first</td>
+								<td class="num">22.46%</td><td class="num neg">0.00%</td><td>MISS</td>
+							</tr>
+							<tr>
+								<td class="node">python3.12</td><td class="node">'k' only</td>
+								<td class="num pos">21.09%</td><td class="num">0.00%</td><td>ok</td>
+							</tr>
+							<tr>
+								<td class="node">python3.13</td><td class="node">'k' only</td>
+								<td class="num pos">22.85%</td><td class="num">0.00%</td><td>ok</td>
+							</tr>
+						</tbody>
+					</table>
+
+					<p>
+						The model answers <code>'k'</code> for <em>every</em> version — right for 3.12/3.13,
+						and structurally incapable of the 3.11 answer, at 0.00%. It has one answer per
+						snippet, not a model of interpreter versions.
+					</p>
+				</div>
+			</section>
+
+			<!-- ============================ What this bounds ============================ -->
+			<section id="bounds">
+				<div class="wrap">
+					<h2>What this bounds</h2>
+
+					<p>
+						With the <a href="../traps/">trap pairs</a>, the picture is consistent across three
+						probes and 45 scored cases: the mechanism the <a href="../">main experiment</a>
+						verified tracks <em>which name carries how much drive</em>, and essentially nothing
+						beyond it. When the answer requires evaluation — of time, of scope, of float width,
+						of a hash table, of an interpreter version — the model substitutes the nearest
+						surface regularity, often at high confidence. For an AI debugging tool this is the
+						exact failure profile that matters: the places where the expression on the page
+						underdetermines the behaviour are the places debugging happens.
+					</p>
+
+					<p>
+						One model, behavioural probes only, single-token cuts; no cross-model claims. The
+						full harness findings and numbers are written up in the
+						<a href="../paper.pdf">companion paper (PDF)</a>; the
+						<a href="../poster.pdf">PyCon TW 2026 poster (PDF)</a> carries the whole project.
+					</p>
+
+					<p style="margin-bottom:1.4rem;">
+						<a class="cta" href="../">Back to the main experiment &rarr;</a>
+					</p>
+				</div>
+			</section>
+
+			<!-- ============================ Reproducing ============================ -->
+			<section id="reproduce">
+				<div class="wrap">
+					<h2>Reproducing this</h2>
+
+					<p>
+						Both probes are plain <code>transformers</code> forward passes on
+						<code>google/gemma-2-2b</code> in bfloat16 — no transcoders, no attribution run. The
+						scripts (<code>probe_late_binding.py</code>, <code>probe_gotchas.py</code>, in the
+						same currently-private fork as the <a href="../">main experiment's</a> code) execute
+						every snippet before loading the model — under the interpreter and environment each
+						case names — and refuse to start unless the prompt is a true prefix of what Python
+						prints, the candidate labelled correct is the actual next character, and the
+						distractor is not. The complete per-token outputs behind every number on this page:
+						<a href="probe_late_binding_gemma-2-2b.txt">probe_late_binding_gemma-2-2b.txt</a> and
+						<a href="probe_gotchas_gemma-2-2b.txt">probe_gotchas_gemma-2-2b.txt</a>.
+					</p>
+				</div>
+			</section>
+
+			<!-- ======================= Credits ======================= -->
+			<section id="credits">
+				<div class="wrap">
+					<h2>Credits</h2>
+					<p>
+						Companion page to
+						<a href="../">Which variable does the model return?</a> and
+						<a href="../traps/">Right name, wrong rules</a> — model
+						<code>google/gemma-2-2b</code>, probed with plain
+						<a href="https://github.com/huggingface/transformers" target="_blank" rel="noopener">transformers</a>.
+						The generator-expression material follows a teaching video on PEP&nbsp;289; the
+						gotcha cases are the community's classics. Ground truth is re-executed on every run
+						rather than taken on authority.
+					</p>
+				</div>
+			</section>
+
+		</main>
+
+		<!-- ============================ Footer ============================ -->
+		<footer>
+			<div class="wrap">
+				<p>Chia-chun Liang (Anna) &middot; <a href="mailto:d14948004@ntu.edu.tw">d14948004@ntu.edu.tw</a></p>
+				<p>&copy; 2026 Chia-chun Liang</p>
+			</div>
+		</footer>
+
+	</body>
+</html>

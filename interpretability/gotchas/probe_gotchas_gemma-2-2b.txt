@@ -1,0 +1,528 @@
+`torch_dtype` is deprecated! Use `dtype` instead!
+ground truth verified by execution for 27/27 cases
+
+Loading checkpoint shards:   0%|          | 0/3 [00:00<?, ?it/s]Loading checkpoint shards:  33%|███▎      | 1/3 [00:01<00:03,  1.61s/it]Loading checkpoint shards:  67%|██████▋   | 2/3 [00:03<00:01,  1.74s/it]Loading checkpoint shards: 100%|██████████| 3/3 [00:03<00:00,  1.02s/it]Loading checkpoint shards: 100%|██████████| 3/3 [00:03<00:00,  1.20s/it]
+The module name  (originally ) is not a valid Python identifier. Please rename the original module to avoid import issues.
+model=google/gemma-2-2b (local snapshot c5ebcd40) dtype=torch.bfloat16
+
+========================================================================
+ch.1  floats: inf and nan swallow the arithmetic
+========================================================================
+    `1e500` looks like a big number and is not one -- the literal overflows to `inf` at parse time. Every answer below follows from the width of a float, which the expression does not show. Twelve cases, six pairs; within each pair the form is near-identical and the answer flips.
+
+--- float-sum ---
+    the classic: 0.1 and 0.2 are not exact, so the sum is not 0.3
+  [primer: False-first]
+   48.83%  'False'
+   48.83%  'True'
+    0.54%  'Traceback'
+    0.48%  '0'
+    0.33%  '1'
+    0.12%  '...'
+  -> P('False') =  48.83%   [correct (binary floating point)]
+  -> P('True') =  48.83%   [wrong (decimal intuition)]
+  [primer: True-first]
+   74.22%  'True'
+   24.12%  'False'
+    0.27%  '0'
+    0.27%  'Traceback'
+    0.24%  '1'
+    0.14%  '>>>'
+  -> P('False') =  24.12%   [correct (binary floating point)]
+  -> P('True') =  74.22%   [wrong (decimal intuition)]
+
+--- float-sum-exact ---
+    pair of the above: quarters and halves ARE exact in binary
+  [primer: False-first]
+   60.55%  'True'
+   36.72%  'False'
+    0.98%  'Traceback'
+    0.36%  '0'
+    0.32%  '1'
+    0.12%  '>>>'
+  -> P('True') =  60.55%   [correct (exact in binary)]
+  -> P('False') =  36.72%   [wrong (over-generalises the 0.1+0.2 lesson)]
+  [primer: True-first]
+   85.16%  'True'
+   13.09%  'False'
+    0.39%  'Traceback'
+    0.22%  '1'
+    0.17%  '0'
+    0.15%  '>>>'
+  -> P('True') =  85.16%   [correct (exact in binary)]
+  -> P('False') =  13.09%   [wrong (over-generalises the 0.1+0.2 lesson)]
+
+--- float-int-exact ---
+    1e50 is a float and cannot hold 10**50 exactly; the int can
+  [primer: False-first]
+   46.09%  'False'
+   46.09%  'True'
+    2.60%  '1'
+    1.23%  'Traceback'
+    0.96%  '0'
+    0.85%  '>>>'
+  -> P('False') =  46.09%   [correct (the float is not exactly 10**50)]
+  -> P('True') =  46.09%   [wrong (they read as the same number)]
+  [primer: True-first]
+   58.59%  'True'
+   35.55%  'False'
+    2.27%  '1'
+    0.95%  '>>>'
+    0.65%  'Traceback'
+    0.51%  '0'
+  -> P('False') =  35.55%   [correct (the float is not exactly 10**50)]
+  -> P('True') =  58.59%   [wrong (they read as the same number)]
+
+--- float-int-pow2 ---
+    pair of the above: a power of TWO is exact, so == holds
+  [primer: False-first]
+   57.81%  'True'
+   34.96%  'False'
+    1.98%  '1'
+    1.35%  '2'
+    1.06%  'Traceback'
+    0.64%  '0'
+  -> P('True') =  57.81%   [correct (powers of two are exact floats)]
+  -> P('False') =  34.96%   [wrong (over-generalises the 1e50 lesson)]
+  [primer: True-first]
+   80.86%  'True'
+   14.06%  'False'
+    1.48%  '1'
+    0.79%  '>>>'
+    0.62%  '2'
+    0.42%  'Traceback'
+  -> P('True') =  80.86%   [correct (powers of two are exact floats)]
+  -> P('False') =  14.06%   [wrong (over-generalises the 1e50 lesson)]
+
+--- inf-equals-other-inf ---
+    TRAP: two obviously different literals, both overflow to inf
+  [primer: False-first]
+   66.41%  'False'
+   27.73%  'True'
+    1.56%  '1'
+    1.07%  'Traceback'
+    0.95%  '0'
+    0.51%  '>>>'
+  -> P('True') =  27.73%   [correct (both are inf)]
+  -> P('False') =  66.41%   [wrong (reads them as different magnitudes)]
+  [primer: True-first]
+   67.58%  'False'
+   28.12%  'True'
+    0.96%  '1'
+    0.75%  'Traceback'
+    0.66%  '0'
+    0.45%  '>>>'
+  -> P('True') =  28.12%   [correct (both are inf)]
+  -> P('False') =  67.58%   [wrong (reads them as different magnitudes)]
+
+--- floats-differ ---
+    pair of the above: same form below the overflow line, so False
+  [primer: False-first]
+   69.14%  'False'
+   25.39%  'True'
+    1.27%  '1'
+    0.87%  '0'
+    0.77%  'Traceback'
+    0.53%  '>>>'
+  -> P('False') =  69.14%   [correct (finite and different)]
+  -> P('True') =  25.39%   [wrong (would mean 1eX == 1eY generally)]
+  [primer: True-first]
+   74.61%  'False'
+   21.39%  'True'
+    0.83%  '1'
+    0.64%  '0'
+    0.57%  '>>>'
+    0.57%  'Traceback'
+  -> P('False') =  74.61%   [correct (finite and different)]
+  -> P('True') =  21.39%   [wrong (would mean 1eX == 1eY generally)]
+
+--- inf-beats-bigint ---
+    inf beats every finite int, however many digits it has
+  [primer: False-first]
+   47.66%  'False'
+   47.66%  'True'
+    1.44%  '1'
+    0.68%  'Traceback'
+    0.60%  '>>>'
+    0.53%  '0'
+  -> P('True') =  47.66%   [correct (inf > any finite int)]
+  -> P('False') =  47.66%   [wrong (10**1000 looks bigger than 1e500)]
+  [primer: True-first]
+   62.50%  'True'
+   33.59%  'False'
+    1.15%  '1'
+    0.70%  '>>>'
+    0.42%  'Traceback'
+    0.29%  '0'
+  -> P('True') =  62.50%   [correct (inf > any finite int)]
+  -> P('False') =  33.59%   [wrong (10**1000 looks bigger than 1e500)]
+
+--- finite-loses-bigint ---
+    pair of the above: 1e300 is finite, so the bigint wins
+  [primer: False-first]
+   50.78%  'True'
+   44.92%  'False'
+    1.20%  '1'
+    0.82%  'Traceback'
+    0.56%  '>>>'
+    0.39%  '0'
+  -> P('False') =  44.92%   [correct (finite float < 10**1000)]
+  -> P('True') =  50.78%   [wrong (would mean floats always beat ints)]
+  [primer: True-first]
+   62.89%  'True'
+   33.59%  'False'
+    0.90%  '1'
+    0.70%  '>>>'
+    0.54%  'Traceback'
+    0.26%  '0'
+  -> P('False') =  33.59%   [correct (finite float < 10**1000)]
+  -> P('True') =  62.89%   [wrong (would mean floats always beat ints)]
+
+--- inf-equals-itself ---
+    pair anchor: inf == inf is True, so `x == x` holds here
+  [primer: False-first]
+   78.91%  'True'
+   17.58%  'False'
+    1.27%  '1'
+    0.99%  'Traceback'
+    0.25%  '0'
+    0.22%  '>>>'
+  -> P('True') =  78.91%   [correct (inf == inf)]
+  -> P('False') =  17.58%   [wrong]
+  [primer: True-first]
+   91.41%  'True'
+    5.83%  'False'
+    1.01%  '1'
+    0.45%  'Traceback'
+    0.27%  '>>>'
+    0.13%  '0'
+  -> P('True') =  91.41%   [correct (inf == inf)]
+  -> P('False') =   5.83%   [wrong]
+
+--- nan-not-itself ---
+    TRAP: surface form is `x == x`, but x is nan, so it is False
+  [primer: False-first]
+   83.20%  'True'
+   12.70%  'False'
+    1.95%  '1'
+    0.72%  'Traceback'
+    0.34%  '0'
+    0.13%  '>>>'
+  -> P('False') =  12.70%   [correct (nan != nan)]
+  -> P('True') =  83.20%   [wrong (reads it as x == x)]
+  [primer: True-first]
+   91.02%  'True'
+    5.83%  'False'
+    1.30%  '1'
+    0.40%  'Traceback'
+    0.20%  '0'
+    0.18%  '>>>'
+  -> P('False') =   5.83%   [correct (nan != nan)]
+  -> P('True') =  91.02%   [wrong (reads it as x == x)]
+
+--- inf-times-inf ---
+    inf * inf is inf, which is positive
+  [primer: False-first]
+   58.20%  'True'
+   35.35%  'False'
+    1.56%  'Traceback'
+    1.21%  '1'
+    1.07%  '>>>'
+    0.35%  '0'
+  -> P('True') =  58.20%   [correct (inf > 0)]
+  -> P('False') =  35.35%   [wrong]
+  [primer: True-first]
+   64.06%  'True'
+   30.27%  'False'
+    1.51%  '>>>'
+    1.04%  '1'
+    0.71%  'Traceback'
+    0.23%  '...'
+  -> P('True') =  64.06%   [correct (inf > 0)]
+  -> P('False') =  30.27%   [wrong]
+
+--- nan-not-positive ---
+    pair of the above: inf / inf is nan, and nan fails every comparison
+  [primer: False-first]
+   58.98%  'True'
+   35.74%  'False'
+    1.39%  'Traceback'
+    0.95%  '1'
+    0.84%  '>>>'
+    0.45%  '0'
+  -> P('False') =  35.74%   [correct (nan > 0 is False)]
+  -> P('True') =  58.98%   [wrong (expects 1.0 from x/x)]
+  [primer: True-first]
+   72.27%  'True'
+   23.44%  'False'
+    1.03%  '>>>'
+    0.91%  '1'
+    0.55%  'Traceback'
+    0.33%  '0'
+  -> P('False') =  23.44%   [correct (nan > 0 is False)]
+  -> P('True') =  72.27%   [wrong (expects 1.0 from x/x)]
+
+========================================================================
+ch.2  sets: the order you see is the hash table, not the insertion order
+========================================================================
+    dicts preserve insertion order; sets never promised to. The dict/set pairs below are the sharpest form of that: identical braces, identical elements, opposite first element. For ints the set's order is still deterministic (small ints hash to themselves); for strings it depends on a per-process seed, so the unseeded case is not scoreable at all.
+
+--- list-reversed-keeps-order ---
+    pair anchor: a list keeps what reversed() gave it
+   48.24%  '4'
+   33.20%  '5'
+    6.54%  '0'
+    2.72%  '1'
+    1.87%  '2'
+    1.46%  'None'
+  -> P('4') =  48.24%   [correct ([4, 3, 2, 1, 0])]
+  -> P('0') =   6.54%   [wrong (would mean reversed() did nothing)]
+
+--- dict-reversed-keeps-order ---
+    dicts DO preserve insertion order -- same braces as the set below
+   18.95%  '5'
+   16.70%  '1'
+   11.47%  '0'
+   10.11%  'None'
+    7.91%  '4'
+    6.15%  'k'
+  -> P('4') =   7.91%   [correct (insertion order: 4 first)]
+  -> P('0') =  11.47%   [wrong (that is what the SET does)]
+
+--- set-reversed-loses-order ---
+    pair of both above: the set discards it and shows table order
+   39.84%  '5'
+   35.16%  '0'
+   11.43%  '4'
+    4.76%  '1'
+    2.89%  '3'
+    1.99%  '2'
+  -> P('0') =  35.16%   [correct ({0, 1, 2, 3, 4}: order is the hash table)]
+  -> P('4') =  11.43%   [wrong (would mean sets keep insertion order, like dicts)]
+
+--- dict-int-no-wrap ---
+    the dict shows 1022 first: insertion order, no table artefact
+   81.64%  '2'
+    5.91%  '3'
+    2.80%  '4'
+    2.80%  '1'
+    2.17%  '5'
+    1.70%  '6'
+  -> P('2') =  81.64%   [correct (1022 first: insertion order)]
+  -> P('4') =   2.80%   [wrong (that is what the SET does)]
+
+--- set-int-table-wrap ---
+    pair of the above: {1024, 1025, 1026, 1022, 1023} -- the table wraps
+   97.27%  '2'
+    1.39%  '3'
+    0.45%  '4'
+    0.35%  '1'
+    0.19%  '5'
+    0.15%  '6'
+  -> P('4') =   0.45%   [correct (1024 first: the table wrapped)]
+  -> P('2') =  97.27%   [wrong (1022 first: assumes sorted/insertion order)]
+
+--- set-str-seeded ---
+    FLOOR, not a fair test: pinning the seed makes this deterministic but not derivable -- getting it right means having memorised CPython's siphash output. Expect a MISS; it shows what the int cases above are contrasted against. Unpaired for that reason.
+   80.08%  '0'
+    9.57%  '1'
+    1.66%  '5'
+    1.47%  '2'
+    1.30%  'a'
+    0.89%  '3'
+  -> P('2') =   1.47%   [correct (seed 0 puts '2' first on this build)]
+  -> P('0') =  80.08%   [wrong (assumes '0' first)]
+
+--- set-str-unseeded (not scored) ---
+    NOT SCORED: same code under two different seeds gives two different orders, so there is no correct next token to ask for. Verified by running it under seed 0 and seed 1 and requiring the outputs to differ.
+
+========================================================================
+ch.3  bound methods: a fresh object on every attribute access
+========================================================================
+    `o.f` builds a new bound-method object each time it is evaluated, so `o.f is o.f` is False while `C.f is C.f` is True and `o.f == o.f` is True. The id() pair is the deep end: id(o.f) == id(o.f) is True only because the first temporary is freed before the second is built and the allocator hands the address straight back -- let anything allocate in between and the same comparison is False. Allocator behaviour, not semantics; hence implementation_defined.
+
+--- classfunc-is-itself ---
+    pair anchor: through the class, `is` holds -- it is one function
+   52.73%  'True'
+   41.02%  'False'
+    2.97%  'Traceback'
+    0.85%  '>>>'
+    0.58%  'true'
+    0.28%  'false'
+  -> P('True') =  52.73%   [correct (the plain function, no binding)]
+  -> P('False') =  41.02%   [wrong]
+
+--- method-is-fresh-object ---
+    through the instance, a new bound method each access: `is` fails
+   53.52%  'True'
+   41.60%  'False'
+    2.06%  'Traceback'
+    0.67%  'true'
+    0.36%  'false'
+    0.36%  '>>>'
+  -> P('False') =  41.60%   [correct (a new bound method each access)]
+  -> P('True') =  53.52%   [wrong (assumes o.f is one cached object)]
+
+--- method-compares-equal ---
+    pair of the above: bound methods compare equal by (self, func)
+   44.14%  'True'
+   44.14%  'False'
+    5.27%  'Traceback'
+    1.94%  '>>>'
+    1.04%  'true'
+    0.71%  'false'
+  -> P('True') =  44.14%   [correct (same self, same function)]
+  -> P('False') =  44.14%   [wrong (would follow from `is` being False)]
+
+--- id-reuses-freed-address ---
+    TRAP: `is` said False, yet id()==id() is True -- address reuse
+   55.47%  'True'
+   38.09%  'False'
+    1.48%  'Traceback'
+    1.02%  '>>>'
+    0.62%  '1'
+    0.54%  'true'
+  -> P('True') =  55.47%   [correct (the freed address is handed straight back)]
+  -> P('False') =  38.09%   [wrong (would follow from `is` being False)]
+
+--- id-differs-after-alloc ---
+    pair of the above: one allocation between the id() calls takes the freed slot, and the same comparison flips to False (stable 5/5 on this build; still allocator behaviour)
+   48.83%  'True'
+   33.59%  'False'
+    5.15%  '>>>'
+    5.15%  'Traceback'
+    1.47%  '1'
+    1.01%  'true'
+  -> P('False') =  33.59%   [correct (str(a) took the freed address)]
+  -> P('True') =  48.83%   [wrong (address reuse is not guaranteed)]
+
+========================================================================
+ch.4  comprehension scope: the answer changed in Python 3.12 (PEP 709)
+========================================================================
+    Up to 3.11 a comprehension ran in its own frame, so `locals()` inside it showed the hidden `.0` iterator argument. From 3.12 comprehensions are inlined into the enclosing function and `.0` is gone. The code is byte-for-byte identical; only the interpreter differs, and the prompt is the only place that says which one.
+
+--- locals-py311 ---
+    3.11: the comprehension has its own frame, so `.0` shows up
+   22.46%  'k'
+   15.43%  '__'
+   13.57%  'locals'
+    8.25%  'lambda'
+    7.28%  'f'
+    2.37%  'x'
+  -> P('.') =   0.00%   [correct ('.0': the hidden iterator argument)]
+  -> P('k') =  22.46%   [wrong (that is the 3.12+ answer)]
+
+--- locals-py312 ---
+    pair of the above: 3.12 inlines the comprehension, so `.0` is gone
+   21.09%  'k'
+   16.41%  '__'
+   14.45%  'locals'
+    7.76%  'lambda'
+    7.76%  'f'
+    2.22%  'a'
+  -> P('k') =  21.09%   [correct (inlined: only 'k' is left)]
+  -> P('.') =   0.00%   [wrong (that is the 3.11 answer)]
+
+--- locals-py313 ---
+    3.13 keeps the 3.12 behaviour; included so the pair is not a fluke
+   22.85%  'k'
+   15.72%  '__'
+   12.26%  'locals'
+    8.40%  'lambda'
+    7.42%  'f'
+    2.40%  'x'
+  -> P('k') =  22.85%   [correct (same as 3.12)]
+  -> P('.') =   0.00%   [wrong (that is the 3.11 answer)]
+
+
+========================================================================
+PER-CHAPTER SUMMARY
+========================================================================
+  coverage = P(correct) + P(wrong): how much of the model's answer the
+  two candidates account for. Low coverage means it answered something
+  else entirely, and the verdict is about scraps.
+
+ch.1  floats: inf and nan swallow the arithmetic
+  float-sum                  [False-first] P('False')= 48.83%  P('True')= 48.83%   cov=97.66%  margin= 0.00%   tie
+  float-sum                  [True-first]  P('False')= 24.12%  P('True')= 74.22%   cov=98.34%  margin=50.10%   MISS
+  float-sum                                => combined: prime-dep
+  float-sum-exact            [False-first] P('True')= 60.55%  P('False')= 36.72%   cov=97.27%  margin=23.83%   ok
+  float-sum-exact            [True-first]  P('True')= 85.16%  P('False')= 13.09%   cov=98.24%  margin=72.07%   ok
+  float-sum-exact                          => combined: ok
+  float-int-exact            [False-first] P('False')= 46.09%  P('True')= 46.09%   cov=92.19%  margin= 0.00%   tie
+  float-int-exact            [True-first]  P('False')= 35.55%  P('True')= 58.59%   cov=94.14%  margin=23.05%   MISS
+  float-int-exact                          => combined: prime-dep
+  float-int-pow2             [False-first] P('True')= 57.81%  P('False')= 34.96%   cov=92.77%  margin=22.85%   ok
+  float-int-pow2             [True-first]  P('True')= 80.86%  P('False')= 14.06%   cov=94.92%  margin=66.80%   ok
+  float-int-pow2                           => combined: ok
+  inf-equals-other-inf       [False-first] P('True')= 27.73%  P('False')= 66.41%   cov=94.14%  margin=38.67%   MISS
+  inf-equals-other-inf       [True-first]  P('True')= 28.12%  P('False')= 67.58%   cov=95.70%  margin=39.45%   MISS
+  inf-equals-other-inf                     => combined: MISS
+  floats-differ              [False-first] P('False')= 69.14%  P('True')= 25.39%   cov=94.53%  margin=43.75%   ok
+  floats-differ              [True-first]  P('False')= 74.61%  P('True')= 21.39%   cov=96.00%  margin=53.22%   ok
+  floats-differ                            => combined: ok
+  inf-beats-bigint           [False-first] P('True')= 47.66%  P('False')= 47.66%   cov=95.31%  margin= 0.00%   tie
+  inf-beats-bigint           [True-first]  P('True')= 62.50%  P('False')= 33.59%   cov=96.09%  margin=28.91%   ok
+  inf-beats-bigint                         => combined: prime-dep
+  finite-loses-bigint        [False-first] P('False')= 44.92%  P('True')= 50.78%   cov=95.70%  margin= 5.86%   MISS
+  finite-loses-bigint        [True-first]  P('False')= 33.59%  P('True')= 62.89%   cov=96.48%  margin=29.30%   MISS
+  finite-loses-bigint                      => combined: MISS
+  inf-equals-itself          [False-first] P('True')= 78.91%  P('False')= 17.58%   cov=96.48%  margin=61.33%   ok
+  inf-equals-itself          [True-first]  P('True')= 91.41%  P('False')=  5.83%   cov=97.24%  margin=85.57%   ok
+  inf-equals-itself                        => combined: ok
+  nan-not-itself             [False-first] P('False')= 12.70%  P('True')= 83.20%   cov=95.90%  margin=70.51%   MISS
+  nan-not-itself             [True-first]  P('False')=  5.83%  P('True')= 91.02%   cov=96.85%  margin=85.18%   MISS
+  nan-not-itself                           => combined: MISS
+  inf-times-inf              [False-first] P('True')= 58.20%  P('False')= 35.35%   cov=93.55%  margin=22.85%   ok
+  inf-times-inf              [True-first]  P('True')= 64.06%  P('False')= 30.27%   cov=94.34%  margin=33.79%   ok
+  inf-times-inf                            => combined: ok
+  nan-not-positive           [False-first] P('False')= 35.74%  P('True')= 58.98%   cov=94.73%  margin=23.24%   MISS
+  nan-not-positive           [True-first]  P('False')= 23.44%  P('True')= 72.27%   cov=95.70%  margin=48.83%   MISS
+  nan-not-positive                         => combined: MISS
+  per-case: 5/12  <- flatters the model; the pairs below decide
+    pair a + b == c, inexact vs exact            float-sum=prime-dep float-sum-exact=ok        -> fail
+    pair float == int, inexact vs exact          float-int-exact=prime-dep float-int-pow2=ok        -> fail
+    pair 1eX == 1eY, overflowed vs not           inf-equals-other-inf=MISS      floats-differ=ok        -> fail
+    pair float > 10**1000, inf vs finite         inf-beats-bigint=prime-dep finite-loses-bigint=MISS      -> fail
+    pair x == x, inf vs nan                      inf-equals-itself=ok        nan-not-itself=MISS      -> fail
+    pair > 0 after an inf operation              inf-times-inf=ok        nan-not-positive=MISS      -> fail
+    pairs passed: 0/6
+
+ch.2  sets: the order you see is the hash table, not the insertion order
+  list-reversed-keeps-order                P('4')= 48.24%  P('0')=  6.54%   cov=54.79%  margin=41.70%   ok
+  dict-reversed-keeps-order                P('4')=  7.91%  P('0')= 11.47%   cov=19.38%  margin= 3.56%   MISS
+  set-reversed-loses-order                 P('0')= 35.16%  P('4')= 11.43%   cov=46.58%  margin=23.73%   ok
+  dict-int-no-wrap                         P('2')= 81.64%  P('4')=  2.80%   cov=84.44%  margin=78.85%   ok
+  set-int-table-wrap                       P('4')=  0.45%  P('2')= 97.27%   cov=97.72%  margin=96.81%   MISS
+  set-str-seeded                           P('2')=  1.47%  P('0')= 80.08%   cov=81.55%  margin=78.61%   MISS
+  per-case: 3/6  <- flatters the model; the pairs below decide
+    pair reversed() into {} -- dict vs set       dict-reversed-keeps-order=MISS      set-reversed-loses-order=ok        -> fail
+    pair range(1022,1027) into {} -- dict vs set dict-int-no-wrap=ok        set-int-table-wrap=MISS      -> fail
+    pair reversed() into [] vs {}                list-reversed-keeps-order=ok        set-reversed-loses-order=ok        -> PASS
+    pairs passed: 1/3
+
+ch.3  bound methods: a fresh object on every attribute access
+  classfunc-is-itself                      P('True')= 52.73%  P('False')= 41.02%   cov=93.75%  margin=11.72%   ok
+  method-is-fresh-object                   P('False')= 41.60%  P('True')= 53.52%   cov=95.12%  margin=11.91%   MISS
+  method-compares-equal                    P('True')= 44.14%  P('False')= 44.14%   cov=88.28%  margin= 0.00%   tie
+  id-reuses-freed-address                  P('True')= 55.47%  P('False')= 38.09%   cov=93.55%  margin=17.38%   ok
+  id-differs-after-alloc                   P('False')= 33.59%  P('True')= 48.83%   cov=82.42%  margin=15.23%   MISS
+  per-case: 2/5  <- flatters the model; the pairs below decide
+    pair is vs == on o.f                         method-is-fresh-object=MISS      method-compares-equal=tie       -> fail
+    pair C.f vs o.f under is                     classfunc-is-itself=ok        method-is-fresh-object=MISS      -> fail
+    pair same two id() calls, one allocation apartid-reuses-freed-address=ok        id-differs-after-alloc=MISS      -> fail
+    pairs passed: 0/3
+
+ch.4  comprehension scope: the answer changed in Python 3.12 (PEP 709)
+  locals-py311                             P('.')=  0.00%  P('k')= 22.46%   cov=22.46%  margin=22.46%   MISS
+  locals-py312                             P('k')= 21.09%  P('.')=  0.00%   cov=21.09%  margin=21.09%   ok
+  locals-py313                             P('k')= 22.85%  P('.')=  0.00%   cov=22.85%  margin=22.85%   ok
+  per-case: 2/3  <- flatters the model; the pairs below decide
+    pair same code, 3.11 vs 3.12                 locals-py311=MISS      locals-py312=ok        -> fail
+    pairs passed: 0/1
+
+  A pair scored 'ok'+'MISS' means the model gave the SAME answer to both
+  members -- surface-form matching, not the semantics. 'prime-dep' means
+  the answer flipped with the primer order, which is even weaker.
+  Chapter 3 is CPython behaviour, not a language guarantee; do not quote
+  it as a statement about 'Python'.
