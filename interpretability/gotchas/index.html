@@ -3,7 +3,7 @@
 	<head>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
-		<title>The Expression Is Not Enough — Chia-chun Liang (Anna)</title>
+		<title>The Expression Is Not Enough &middot; Chia-chun Liang (Anna)</title>
 		<meta name="description" content="Two executed-ground-truth probes of gemma-2-2b: it is worse on a generator expression than on its own PEP 289 desugaring, answers float comparisons by literal identity, assumes sets keep insertion order, and gives one locals() answer across Python 3.11/3.12/3.13. 1 of 13 pairs pass." />
 		<meta name="author" content="Chia-chun Liang" />
 		<link rel="stylesheet" href="../../style.css" />
@@ -113,7 +113,7 @@
 				<h1>The expression is not enough</h1>
 				<p class="subtitle">
 					One program written twice, and four chapters where the answer depends on what the
-					page does not show — <code>gemma-2-2b</code> passes 1 of 13 pairs
+					page does not show. <code>gemma-2-2b</code> passes 1 of 13 pairs
 				</p>
 				<p class="venue">Companion to the <a href="../">attribution-graph study</a> and
 					<a href="../traps/">Right name, wrong rules</a></p>
@@ -137,17 +137,17 @@
 					<h2>In one paragraph</h2>
 					<p class="lead">
 						The <a href="../">main experiment</a> shows <code>gemma-2-2b</code> tracking
-						<em>what a name is bound to</em>; the <a href="../traps/">trap pairs</a> show it does
+						<em>what a name is bound to</em>. The <a href="../traps/">trap pairs</a> show it does
 						not hold the rules of <em>when</em> a binding happens. This page pushes on two more
 						fronts, with 35 scored single-token cases across two probes, 30 of them new. First, PEP&nbsp;289 <em>defines</em> a
-						generator expression to mean its desugared generator function — one program, written
-						twice — and the model is <strong>worse on the form a human would actually
+						generator expression to mean its desugared generator function: one program, written
+						twice. The model is <strong>worse on the form a human would actually
 						write</strong>, on both cuts probed. Second, four chapters of behaviours where the
 						printed expression underdetermines the answer (float width, hash-table order,
 						bound-method identity, interpreter version): <strong>1 of 13 pairs pass</strong>. The
-						model answers float comparisons by literal identity rather than arithmetic, assumes
-						sets preserve insertion order at 97.3% confidence, and gives the same
-						<code>locals()</code> answer for Python 3.11, 3.12 and 3.13 — versions across which
+						model answers float comparisons by literal identity rather than arithmetic. It assumes
+						sets preserve insertion order at 97.3% confidence. It gives the same
+						<code>locals()</code> answer for Python 3.11, 3.12 and 3.13, versions across which
 						the answer changed.
 					</p>
 				</div>
@@ -159,11 +159,11 @@
 					<h2>The design, and three new honesty mechanisms</h2>
 
 					<p>
-						Everything from the <a href="../traps/#design">trap probe's design</a> carries over:
-						ground truth is <strong>executed, not remembered</strong> — here under the exact
+						Everything from the <a href="../traps/#design">trap probe's design</a> carries over.
+						Ground truth is <strong>executed, not remembered</strong>, here under the exact
 						interpreter (<code>python3.11</code>/<code>3.12</code>/<code>3.13</code> where a case
-						names one) and environment (<code>PYTHONHASHSEED=0</code> where it matters) — every
-						case cuts at a <strong>single-token divergence point</strong>, and cases come in
+						names one) and environment (<code>PYTHONHASHSEED=0</code> where it matters). Every
+						case cuts at a <strong>single-token divergence point</strong>. Cases come in
 						<strong>pairs</strong> of near-identical form with opposite answers. Three new
 						mechanisms were each forced by a failure observed while building this probe:
 					</p>
@@ -172,7 +172,7 @@
 						<li style="margin:0 0 .7rem;">
 							<strong>Coverage, because the model may not be answering.</strong> On bare
 							<code>&gt;&gt;&gt; expr</code> prompts the model's top prediction was
-							<code>&gt;&gt;&gt;</code> itself, at 37–45% — it declined to answer and moved to
+							<code>&gt;&gt;&gt;</code> itself, at 37–45%. It declined to answer and moved to
 							the next prompt, leaving both candidates in the noise. The summary now prints
 							P(correct)&nbsp;+&nbsp;P(wrong) for every case, so a verdict resting on scraps is
 							visible as such.
@@ -180,8 +180,8 @@
 						<li style="margin:0 0 .7rem;">
 							<strong>Counterbalanced priming, because the context can answer for the
 							model.</strong> The fix for the non-answering failure is two worked True/False
-							exchanges before the prompt — but a primer can bias the answer, so every primed
-							case runs under <em>both</em> primer orders, and a verdict that flips with the
+							exchanges before the prompt. But a primer can bias the answer, so every primed
+							case runs under <em>both</em> primer orders. A verdict that flips with the
 							order scores <code>prime-dep</code>, not a win. Three cases flipped, including
 							<code>0.1 + 0.2 == 0.3</code> itself: an exact 48.83/48.83 split under one primer,
 							74.2% <code>True</code> under the other. That verdict belongs to the primer.
@@ -189,7 +189,7 @@
 						<li style="margin:0;">
 							<strong>Exact ties score <code>tie</code>, because argmax invents a
 							preference.</strong> bfloat16 makes exact ties common (40.43/40.43, 44.14/44.14
-							in this work). Argmax resolves them by candidate order — and the correct candidate
+							in this work). Argmax resolves them by candidate order. The correct candidate
 							is always listed first, so every such coin flip would have been recorded as a hit.
 						</li>
 					</ul>
@@ -197,40 +197,40 @@
 					<h3 style="font-size:1rem;margin:1.8rem 0 .6rem;">How a case is scored</h3>
 
 					<p>
-						One forward pass per prompt. From the softmax at the cut the probe reads two numbers
-						— P(correct) and P(wrong), the probability of the correct continuation and of the
-						natural misreading — and ignores every other token. From those two numbers:
+						One forward pass per prompt. From the softmax at the cut the probe reads two numbers:
+						P(correct) and P(wrong), the probability of the correct continuation and of the
+						natural misreading. It ignores every other token. From those two numbers:
 					</p>
 
 					<ul class="notes" style="margin:0 0 1.1rem;padding-left:1.15rem;">
 						<li style="margin:0 0 .7rem;">
 							<strong>coverage</strong> = P(correct)&nbsp;+&nbsp;P(wrong). How much of the
-							model's answer the two candidates account for. It is printed for every case and is
-							not a verdict, but it says how much the verdict is worth: at 97% the model chose
-							between the two tokens; at 19% (<code>dict-reversed-keeps-order</code>) it mostly
-							predicted something else and the verdict rests on scraps.
+							model's answer the two candidates account for. It is printed for every case. It is
+							not a verdict, but it says how much the verdict is worth. At 97% the model chose
+							between the two tokens. At 19% (<code>dict-reversed-keeps-order</code>) it mostly
+							predicted something else, and the verdict rests on scraps.
 						</li>
 						<li style="margin:0 0 .7rem;">
 							<strong>margin</strong> = |P(correct)&nbsp;&minus;&nbsp;P(wrong)|. Reported, not
 							thresholded: no cutoff below which a win stops counting is claimed.
 						</li>
 						<li style="margin:0 0 .7rem;">
-							<strong><code>noise</code></strong> — the larger of the two candidates is below 2%.
+							<strong><code>noise</code></strong>: the larger of the two candidates is below 2%.
 							The answer is neither token; the case scores nothing.
 						</li>
 						<li style="margin:0 0 .7rem;">
-							<strong><code>tie</code></strong> — margin is exactly 0. The two candidates have
+							<strong><code>tie</code></strong>: margin is exactly 0. The two candidates have
 							identical probability, which in bfloat16 happens often. Scored as neither ok nor
 							MISS, and it fails its pair.
 						</li>
 						<li style="margin:0 0 .7rem;">
-							<strong><code>ok</code></strong> — P(correct) &gt; P(wrong), by any margin.
+							<strong><code>ok</code></strong>: P(correct) &gt; P(wrong), by any margin.
 						</li>
 						<li style="margin:0 0 .7rem;">
-							<strong><code>MISS</code></strong> — P(wrong) &gt; P(correct).
+							<strong><code>MISS</code></strong>: P(wrong) &gt; P(correct).
 						</li>
 						<li style="margin:0;">
-							<strong><code>prime-dep</code></strong> — ch.1 only, where each case runs under two
+							<strong><code>prime-dep</code></strong>: ch.1 only, where each case runs under two
 							primer orders. If the two runs give different verdicts, the case is
 							<code>prime-dep</code> regardless of what they were; only two matching verdicts
 							carry through. The two primers are shown at the top of ch.1.
@@ -245,9 +245,9 @@
 						<code>noise</code> or <code>prime-dep</code> on either side fails it just as a
 						<code>MISS</code> does. Pairs are counted per chapter and never pooled across
 						chapters, because ch.1 is float arithmetic and ch.4 is a fact about interpreter
-						releases — one number over both measures nothing. Cases marked unscored
+						releases. One number over both measures nothing. Cases marked unscored
 						(the unseeded string set, whose output changes with the process) are executed and
-						shown but never put to the model; the seeded string set is scored but unpaired.
+						shown but never put to the model. The seeded string set is scored but unpaired.
 					</p>
 				</div>
 			</section>
@@ -258,7 +258,7 @@
 					<h2>One program, written twice (PEP 289)</h2>
 
 					<p>
-						The material is real — snippets from a teaching video, kept precisely because
+						The material is real. The snippets come from a teaching video, kept precisely because
 						synthetic prompts invite "you designed that":
 					</p>
 
@@ -269,9 +269,9 @@
 [1, 2]</code></pre>
 
 					<p>
-						The iterable is captured <em>eagerly</em> (old <code>[1..5]</code>); the filter
-						resolves the global <em>lazily</em> (new <code>[0,1,2]</code>); the output is their
-						intersection — neither list on the page. PEP&nbsp;289 <em>defines</em> this
+						The iterable is captured <em>eagerly</em> (old <code>[1..5]</code>). The filter
+						resolves the global <em>lazily</em> (new <code>[0,1,2]</code>). The output is their
+						intersection, neither list on the page. PEP&nbsp;289 <em>defines</em> this
 						expression to mean its desugaring: an explicit generator function taking
 						<code>iter(lst)</code> as an argument and filtering on the global. That desugared
 						form is the second spelling the probe uses:
@@ -303,21 +303,21 @@
 						<tbody>
 							<tr>
 								<td class="wrap-cell">which list is iterated (<code>1</code>)</td>
-								<td class="num neg"><code>0</code> at <strong>55.08%</strong> vs <code>1</code> 37.70% — MISS</td>
-								<td class="num">40.43% / 40.43% — <strong>exact tie</strong></td>
+								<td class="num neg"><code>0</code> at <strong>55.08%</strong> vs <code>1</code> 37.70% (MISS)</td>
+								<td class="num">40.43% / 40.43% (<strong>exact tie</strong>)</td>
 							</tr>
 							<tr>
 								<td class="wrap-cell">which list the filter uses (<code>]</code>)</td>
-								<td class="num">53.12% — ok, margin 6.25&nbsp;pp</td>
-								<td class="num pos"><strong>73.05%</strong> — ok, margin 46.09&nbsp;pp</td>
+								<td class="num">53.12% (ok, margin 6.25&nbsp;pp)</td>
+								<td class="num pos"><strong>73.05%</strong> (ok, margin 46.09&nbsp;pp)</td>
 							</tr>
 						</tbody>
 					</table>
 
 					<p>
 						Both cuts move the same way: <strong>the sugar itself costs it</strong>. Controls
-						rule out the cheap explanations — with no reassignment it is correct at 99.61% at the
-						same list length, so closing the list early is not a taste for short lists; merely
+						rule out the cheap explanations. With no reassignment it is correct at 99.61% at the
+						same list length, so closing the list early is not a taste for short lists. Merely
 						adding the vacuous filter <code>if n in lst</code>, before any rebinding, costs
 						10&nbsp;pp (89.45%). On the one cut that cleanly separates eager from lazy capture
 						(whether <code>(3,&nbsp;…)</code> appears after the inner list is exhausted), the
@@ -329,7 +329,7 @@
 							Stated carefully: this
 							<em>supports</em> surface-form reading over semantics, it does not establish it.
 							The design catches an outright contradiction between the two spellings, and it did
-							not get one — an exact tie has no answer to contradict.
+							not get one. An exact tie has no answer to contradict.
 						</p>
 					</div>
 
@@ -337,29 +337,29 @@
 
 					<p>
 						Every case is a REPL transcript cut just before a single token that the correct
-						semantics and the natural misreading predict differently; the model sees exactly
+						semantics and the natural misreading predict differently. The model sees exactly
 						the text above the cursor and nothing else. Nine cuts, shown in full.
 					</p>
 
-					<h4 style="font-size:.95rem;margin:1.4rem 0 .5rem;">Controls — no reassignment, so nothing is captured early or late</h4>
+					<h4 style="font-size:.95rem;margin:1.4rem 0 .5rem;">Controls: no reassignment, so nothing is captured early or late</h4>
 
 					<div class="pairgrid">
 						<div>
-							<p class="panel-label"><strong><code>ctrl-no-reassign</code></strong> — Python prints <code>[1, 2, 3]</code>; the next token is <code>,</code></p>
+							<p class="panel-label"><strong><code>ctrl-no-reassign</code></strong>: Python prints <code>[1, 2, 3]</code>; the next token is <code>,</code></p>
 <pre><code>&gt;&gt;&gt; lst = [1, 2, 3]
 &gt;&gt;&gt; g = (a for a in lst)
 &gt;&gt;&gt; print(list(g))
 [1, 2&#9608;   &larr; model: ',' at 98.44%   (right)</code></pre>
 						</div>
 						<div>
-							<p class="panel-label"><strong><code>ctrl-plain-five</code></strong> — same at length five, so stopping early is not a taste for short lists</p>
+							<p class="panel-label"><strong><code>ctrl-plain-five</code></strong>: same at length five, so stopping early is not a taste for short lists</p>
 <pre><code>&gt;&gt;&gt; lst = [1, 2, 3, 4, 5]
 &gt;&gt;&gt; g = (n for n in lst)
 &gt;&gt;&gt; print(list(g))
 [1, 2&#9608;   &larr; model: ',' at 99.61%   (right)</code></pre>
 						</div>
 						<div>
-							<p class="panel-label"><strong><code>ctrl-filter-no-reassign</code></strong> — the vacuous filter alone costs 10&nbsp;pp before any rebinding</p>
+							<p class="panel-label"><strong><code>ctrl-filter-no-reassign</code></strong>: the vacuous filter alone costs 10&nbsp;pp before any rebinding</p>
 <pre><code>&gt;&gt;&gt; lst = [1, 2, 3, 4, 5]
 &gt;&gt;&gt; g = (n for n in lst if n in lst)
 &gt;&gt;&gt; print(list(g))
@@ -367,11 +367,11 @@
 						</div>
 					</div>
 
-					<h4 style="font-size:.95rem;margin:1.4rem 0 .5rem;">Which list is iterated — the outermost iterable is captured <em>eagerly</em>, so the first element is <code>1</code></h4>
+					<h4 style="font-size:.95rem;margin:1.4rem 0 .5rem;">Which list is iterated: the outermost iterable is captured <em>eagerly</em>, so the first element is <code>1</code></h4>
 
 					<div class="pairgrid">
 						<div>
-							<p class="panel-label"><strong><code>genexp-first-element</code></strong> — generator expression; correct <code>1</code>, misreading <code>0</code> (iterable also lazy)</p>
+							<p class="panel-label"><strong><code>genexp-first-element</code></strong>: generator expression; correct <code>1</code>, misreading <code>0</code> (iterable also lazy)</p>
 <pre><code>&gt;&gt;&gt; lst = [1, 2, 3, 4, 5]
 &gt;&gt;&gt; g = (n for n in lst if n in lst)
 &gt;&gt;&gt; lst = [0, 1, 2]
@@ -379,7 +379,7 @@
 [&#9608;   &larr; model: '0' at 55.08%, '1' at 37.70%   (wrong)</code></pre>
 						</div>
 						<div>
-							<p class="panel-label"><strong><code>test2-first-element</code></strong> — the same program, desugared as PEP&nbsp;289 defines it</p>
+							<p class="panel-label"><strong><code>test2-first-element</code></strong>: the same program, desugared as PEP&nbsp;289 defines it</p>
 <pre><code>&gt;&gt;&gt; lst = [1, 2, 3, 4, 5]
 &gt;&gt;&gt; def __g(it):
 ...     for n in it:
@@ -393,11 +393,11 @@
 						</div>
 					</div>
 
-					<h4 style="font-size:.95rem;margin:1.4rem 0 .5rem;">Which list the filter uses — <code>n in lst</code> is resolved <em>lazily</em> against the new list, so the output stops at <code>[1, 2]</code></h4>
+					<h4 style="font-size:.95rem;margin:1.4rem 0 .5rem;">Which list the filter uses: <code>n in lst</code> is resolved <em>lazily</em> against the new list, so the output stops at <code>[1, 2]</code></h4>
 
 					<div class="pairgrid">
 						<div>
-							<p class="panel-label"><strong><code>genexp-where-stop</code></strong> — generator expression; correct <code>]</code>, misreading <code>,</code> (filter still sees the old list, drops nothing)</p>
+							<p class="panel-label"><strong><code>genexp-where-stop</code></strong>: generator expression; correct <code>]</code>, misreading <code>,</code> (filter still sees the old list, drops nothing)</p>
 <pre><code>&gt;&gt;&gt; lst = [1, 2, 3, 4, 5]
 &gt;&gt;&gt; g = (n for n in lst if n in lst)
 &gt;&gt;&gt; lst = [0, 1, 2]
@@ -405,7 +405,7 @@
 [1, 2&#9608;   &larr; model: ']' at 53.12%, ',' at 46.88%   (right, by 6.25 pp)</code></pre>
 						</div>
 						<div>
-							<p class="panel-label"><strong><code>test2-where-stop</code></strong> — the same program, desugared</p>
+							<p class="panel-label"><strong><code>test2-where-stop</code></strong>: the same program, desugared</p>
 <pre><code>&gt;&gt;&gt; lst = [1, 2, 3, 4, 5]
 &gt;&gt;&gt; def __g(it):
 ...     for n in it:
@@ -419,19 +419,19 @@
 						</div>
 					</div>
 
-					<h4 style="font-size:.95rem;margin:1.4rem 0 .5rem;">Nested loops — outer <code>for a in lst</code> is eager (old <code>[1, 2, 3]</code>), inner <code>for b in lst</code> is lazy (new <code>[1, 2]</code>); Python prints <code>[(1, 1), (1, 2), (2, 1), (2, 2), (3, 1), (3, 2)]</code></h4>
+					<h4 style="font-size:.95rem;margin:1.4rem 0 .5rem;">Nested loops: outer <code>for a in lst</code> is eager (old <code>[1, 2, 3]</code>), inner <code>for b in lst</code> is lazy (new <code>[1, 2]</code>); Python prints <code>[(1, 1), (1, 2), (2, 1), (2, 2), (3, 1), (3, 2)]</code></h4>
 
 					<div class="pairgrid">
 						<div>
-							<p class="panel-label"><strong><code>test1-third-pair</code></strong> — after <code>(1, 2)</code> the inner loop is exhausted at 2, so the next pair starts <code>(2</code></p>
+							<p class="panel-label"><strong><code>test1-third-pair</code></strong>: after <code>(1, 2)</code> the inner loop is exhausted at 2, so the next pair starts <code>(2</code></p>
 <pre><code>&gt;&gt;&gt; lst = [1, 2, 3]
 &gt;&gt;&gt; g = ((a, b) for a in lst for b in lst)
 &gt;&gt;&gt; lst = [1, 2]
 &gt;&gt;&gt; print(list(g))
-[(1, 1), (1, 2), (&#9608;   &larr; model: '2' at 99.22%   (right — but recency predicts it too)</code></pre>
+[(1, 1), (1, 2), (&#9608;   &larr; model: '2' at 99.22%   (right, but recency predicts it too)</code></pre>
 						</div>
 						<div>
-							<p class="panel-label"><strong><code>test1-does-3-appear</code></strong> — after <code>(2, 2)</code>: <code>,</code> means the outer loop still reaches 3 (eager); <code>]</code> means it used the new list</p>
+							<p class="panel-label"><strong><code>test1-does-3-appear</code></strong>. After <code>(2, 2)</code>: <code>,</code> means the outer loop still reaches 3 (eager); <code>]</code> means it used the new list</p>
 <pre><code>&gt;&gt;&gt; lst = [1, 2, 3]
 &gt;&gt;&gt; g = ((a, b) for a in lst for b in lst)
 &gt;&gt;&gt; lst = [1, 2]
@@ -442,9 +442,9 @@
 
 					<p>
 						<code>test1-third-pair</code> passes because the inner loop being exhausted at 2 is
-						also what a recency heuristic predicts; <code>test1-does-3-appear</code> is the only
-						cut where eager and lazy capture of the <em>outer</em> iterable give different tokens,
-						and there the model's top prediction is a newline — it thinks the output ends at
+						also what a recency heuristic predicts. <code>test1-does-3-appear</code> is the only
+						cut where eager and lazy capture of the <em>outer</em> iterable give different tokens.
+						There the model's top prediction is a newline: it thinks the output ends at
 						<code>(2, 2)</code>.
 					</p>
 				</div>
@@ -456,16 +456,16 @@
 					<h2>Four chapters, thirteen pairs, one pass</h2>
 
 					<p>
-						Twenty-six scored cases in four separately scored chapters — separately, because
+						Twenty-six scored cases in four separately scored chapters. Separately, because
 						pooled accuracy across a float-arithmetic chapter and an interpreter-versioning
 						chapter measures nothing. The single passing pair is list-vs-set order preservation,
 						the least surprising in the set.
 					</p>
 
-					<h3 style="font-size:1rem;margin:2rem 0 .6rem;">ch.1 — floats: literal identity, not arithmetic (0/6 pairs)</h3>
+					<h3 style="font-size:1rem;margin:2rem 0 .6rem;">ch.1, floats: literal identity, not arithmetic (0/6 pairs)</h3>
 
 					<p>
-						<code>1e500</code> is not a big number — the literal overflows to <code>inf</code> at
+						<code>1e500</code> is not a big number. The literal overflows to <code>inf</code> at
 						parse time, and <code>1e500/1e500</code> is <code>nan</code>. Twelve cases, six
 						pairs, and all twelve verdicts fit a single heuristic: <em>same expression written
 						twice &rarr; True, different literals &rarr; False</em>.
@@ -475,14 +475,14 @@
 						Every prompt in this chapter is one bare expression. On its own the model tends to
 						answer with another <code>&gt;&gt;&gt;</code> rather than a value, so two worked
 						exchanges are placed in front of it. Because the last exchange might bias the answer,
-						each case is run twice, once under each order — <strong>False-first</strong> and
-						<strong>True-first</strong> are the names of those two prompts — and a case only
+						each case is run twice, once under each order. <strong>False-first</strong> and
+						<strong>True-first</strong> are the names of those two prompts. A case only
 						counts if both runs agree:
 					</p>
 
 					<div class="pairgrid">
 						<div>
-							<p class="panel-label"><strong>False-first</strong> — the <code>False</code> exchange comes first</p>
+							<p class="panel-label"><strong>False-first</strong>: the <code>False</code> exchange comes first</p>
 <pre><code>&gt;&gt;&gt; 1 == 2
 False
 &gt;&gt;&gt; 1 == 1
@@ -491,7 +491,7 @@ True
 &#9608;</code></pre>
 						</div>
 						<div>
-							<p class="panel-label"><strong>True-first</strong> — the same two exchanges, swapped</p>
+							<p class="panel-label"><strong>True-first</strong>: the same two exchanges, swapped</p>
 <pre><code>&gt;&gt;&gt; 1 == 1
 True
 &gt;&gt;&gt; 1 == 2
@@ -506,76 +506,76 @@ False
 						runs gave different verdicts, so the verdict belongs to the primer, not the model.
 					</p>
 
-					<h4 style="font-size:.95rem;margin:1.4rem 0 .5rem;">a + b == c — inexact vs exact</h4>
+					<h4 style="font-size:.95rem;margin:1.4rem 0 .5rem;">a + b == c: inexact vs exact</h4>
 					<div class="pairgrid">
 						<div>
-							<p class="panel-label"><strong><code>float-sum</code></strong> — Python prints <code>False</code> (0.1 and 0.2 are not exact)</p>
+							<p class="panel-label"><strong><code>float-sum</code></strong>: Python prints <code>False</code> (0.1 and 0.2 are not exact)</p>
 <pre><code>&gt;&gt;&gt; 0.1 + 0.2 == 0.3
 &#9608;   &larr; False-first: False 48.83% / True 48.83% (tie)
     True-first:  True 74.22%   (prime-dep)</code></pre>
 						</div>
 						<div>
-							<p class="panel-label"><strong><code>float-sum-exact</code></strong> — Python prints <code>True</code> (quarters and halves are exact in binary)</p>
+							<p class="panel-label"><strong><code>float-sum-exact</code></strong>: Python prints <code>True</code> (quarters and halves are exact in binary)</p>
 <pre><code>&gt;&gt;&gt; 0.25 + 0.5 == 0.75
 &#9608;   &larr; False-first: True 60.55%
     True-first:  True 85.16%   (right both ways)</code></pre>
 						</div>
 					</div>
-					<h4 style="font-size:.95rem;margin:1.4rem 0 .5rem;">float == int — inexact vs exact</h4>
+					<h4 style="font-size:.95rem;margin:1.4rem 0 .5rem;">float == int: inexact vs exact</h4>
 					<div class="pairgrid">
 						<div>
-							<p class="panel-label"><strong><code>float-int-exact</code></strong> — Python prints <code>False</code> (1e50 cannot hold 10**50 exactly)</p>
+							<p class="panel-label"><strong><code>float-int-exact</code></strong>: Python prints <code>False</code> (1e50 cannot hold 10**50 exactly)</p>
 <pre><code>&gt;&gt;&gt; 1e50 == 10 ** 50
 &#9608;   &larr; False-first: False 46.09% / True 46.09% (tie)
     True-first:  True 58.59%   (prime-dep)</code></pre>
 						</div>
 						<div>
-							<p class="panel-label"><strong><code>float-int-pow2</code></strong> — Python prints <code>True</code> (a power of two is exact)</p>
+							<p class="panel-label"><strong><code>float-int-pow2</code></strong>: Python prints <code>True</code> (a power of two is exact)</p>
 <pre><code>&gt;&gt;&gt; 2.0 ** 50 == 2 ** 50
 &#9608;   &larr; False-first: True 57.81%
     True-first:  True 80.86%   (right both ways)</code></pre>
 						</div>
 					</div>
-					<h4 style="font-size:.95rem;margin:1.4rem 0 .5rem;">1eX == 1eY — overflowed vs not</h4>
+					<h4 style="font-size:.95rem;margin:1.4rem 0 .5rem;">1eX == 1eY: overflowed vs not</h4>
 					<div class="pairgrid">
 						<div>
-							<p class="panel-label"><strong><code>inf-equals-other-inf</code></strong> — Python prints <code>True</code> (both literals overflow to <code>inf</code>)</p>
+							<p class="panel-label"><strong><code>inf-equals-other-inf</code></strong>: Python prints <code>True</code> (both literals overflow to <code>inf</code>)</p>
 <pre><code>&gt;&gt;&gt; 1e500 == 1e600
 &#9608;   &larr; False-first: False 66.41%
     True-first:  False 67.58%   (wrong both ways)</code></pre>
 						</div>
 						<div>
-							<p class="panel-label"><strong><code>floats-differ</code></strong> — Python prints <code>False</code> (finite and different)</p>
+							<p class="panel-label"><strong><code>floats-differ</code></strong>: Python prints <code>False</code> (finite and different)</p>
 <pre><code>&gt;&gt;&gt; 1e50 == 1e60
 &#9608;   &larr; False-first: False 69.14%
     True-first:  False 74.61%   (right both ways)</code></pre>
 						</div>
 					</div>
-					<h4 style="font-size:.95rem;margin:1.4rem 0 .5rem;">float &gt; 10**1000 — inf vs finite</h4>
+					<h4 style="font-size:.95rem;margin:1.4rem 0 .5rem;">float &gt; 10**1000: inf vs finite</h4>
 					<div class="pairgrid">
 						<div>
-							<p class="panel-label"><strong><code>inf-beats-bigint</code></strong> — Python prints <code>True</code> (<code>inf</code> beats any finite int)</p>
+							<p class="panel-label"><strong><code>inf-beats-bigint</code></strong>: Python prints <code>True</code> (<code>inf</code> beats any finite int)</p>
 <pre><code>&gt;&gt;&gt; 1e500 &gt; 10 ** 1000
 &#9608;   &larr; False-first: True 47.66% / False 47.66% (tie)
     True-first:  True 62.50%   (prime-dep)</code></pre>
 						</div>
 						<div>
-							<p class="panel-label"><strong><code>finite-loses-bigint</code></strong> — Python prints <code>False</code> (1e300 is finite)</p>
+							<p class="panel-label"><strong><code>finite-loses-bigint</code></strong>: Python prints <code>False</code> (1e300 is finite)</p>
 <pre><code>&gt;&gt;&gt; 1e300 &gt; 10 ** 1000
 &#9608;   &larr; False-first: True 50.78%
     True-first:  True 62.89%   (wrong both ways)</code></pre>
 						</div>
 					</div>
-					<h4 style="font-size:.95rem;margin:1.4rem 0 .5rem;">x == x — inf vs nan</h4>
+					<h4 style="font-size:.95rem;margin:1.4rem 0 .5rem;">x == x: inf vs nan</h4>
 					<div class="pairgrid">
 						<div>
-							<p class="panel-label"><strong><code>inf-equals-itself</code></strong> — Python prints <code>True</code> (<code>inf == inf</code>)</p>
+							<p class="panel-label"><strong><code>inf-equals-itself</code></strong>: Python prints <code>True</code> (<code>inf == inf</code>)</p>
 <pre><code>&gt;&gt;&gt; 1e500 == 1e500
 &#9608;   &larr; False-first: True 78.91%
     True-first:  True 91.41%   (right both ways)</code></pre>
 						</div>
 						<div>
-							<p class="panel-label"><strong><code>nan-not-itself</code></strong> — Python prints <code>False</code> (<code>1e500/1e500</code> is <code>nan</code>, and <code>nan != nan</code>)</p>
+							<p class="panel-label"><strong><code>nan-not-itself</code></strong>: Python prints <code>False</code> (<code>1e500/1e500</code> is <code>nan</code>, and <code>nan != nan</code>)</p>
 <pre><code>&gt;&gt;&gt; 1e500 / 1e500 == 1e500 / 1e500
 &#9608;   &larr; False-first: True 83.20%
     True-first:  True 91.02%   (wrong both ways)</code></pre>
@@ -584,13 +584,13 @@ False
 					<h4 style="font-size:.95rem;margin:1.4rem 0 .5rem;">&gt; 0 after an inf operation</h4>
 					<div class="pairgrid">
 						<div>
-							<p class="panel-label"><strong><code>inf-times-inf</code></strong> — Python prints <code>True</code> (<code>inf * inf</code> is <code>inf</code>)</p>
+							<p class="panel-label"><strong><code>inf-times-inf</code></strong>: Python prints <code>True</code> (<code>inf * inf</code> is <code>inf</code>)</p>
 <pre><code>&gt;&gt;&gt; 1e500 * 1e500 &gt; 0
 &#9608;   &larr; False-first: True 58.20%
     True-first:  True 64.06%   (right both ways)</code></pre>
 						</div>
 						<div>
-							<p class="panel-label"><strong><code>nan-not-positive</code></strong> — Python prints <code>False</code> (<code>nan</code> fails every comparison)</p>
+							<p class="panel-label"><strong><code>nan-not-positive</code></strong>: Python prints <code>False</code> (<code>nan</code> fails every comparison)</p>
 <pre><code>&gt;&gt;&gt; 1e500 / 1e500 &gt; 0
 &#9608;   &larr; False-first: True 58.98%
     True-first:  True 72.27%   (wrong both ways)</code></pre>
@@ -600,15 +600,15 @@ False
 					<p>
 						The four identity-shaped cases (<code>1e500 == 1e500</code>,
 						<code>1e500/1e500 == 1e500/1e500</code>, <code>1e50 == 1e60</code>,
-						<code>1e500 == 1e600</code>) are the tell: the verdict tracks whether the two sides
+						<code>1e500 == 1e600</code>) are the tell. The verdict tracks whether the two sides
 						are the same <em>string</em>, never what they evaluate to. Nothing was computed. The
 						three <code>prime-dep</code> cases are exact ties under one primer and a confident
-						answer under the other, so the verdict belongs to the primer; the exact/inexact
+						answer under the other, so the verdict belongs to the primer. The exact/inexact
 						pairs were answered <code>True</code> both ways, consistent with a general lean toward
 						<code>True</code> on arithmetic that is not an identity comparison.
 					</p>
 
-					<h3 style="font-size:1rem;margin:2rem 0 .6rem;">ch.2 — sets: the order you see is the hash table (1/3 pairs)</h3>
+					<h3 style="font-size:1rem;margin:2rem 0 .6rem;">ch.2, sets: the order you see is the hash table (1/3 pairs)</h3>
 
 					<p>
 						dicts preserve insertion order; sets never promised to. The sharpest minimal pairs
@@ -616,67 +616,67 @@ False
 						printed with braces, opposite first element.
 					</p>
 
-										<h4 style="font-size:.95rem;margin:1.4rem 0 .5rem;">reversed() into [] vs {} — the one passing pair, plus the dict twin</h4>
+										<h4 style="font-size:.95rem;margin:1.4rem 0 .5rem;">reversed() into [] vs {}: the one passing pair, plus the dict twin</h4>
 					<div class="pairgrid">
 						<div>
-							<p class="panel-label"><strong><code>list-reversed-keeps-order</code></strong> — Python prints <code>[4, 3, 2, 1, 0]</code></p>
+							<p class="panel-label"><strong><code>list-reversed-keeps-order</code></strong>: Python prints <code>[4, 3, 2, 1, 0]</code></p>
 <pre><code>&gt;&gt;&gt; list(reversed([x for x in range(5)]))
 [&#9608;   &larr; model: '4' at 48.24%, '0' at 6.54%   (right)</code></pre>
 						</div>
 						<div>
-							<p class="panel-label"><strong><code>set-reversed-loses-order</code></strong> — Python prints <code>{{0, 1, 2, 3, 4}}</code> — hash-table order</p>
+							<p class="panel-label"><strong><code>set-reversed-loses-order</code></strong>: Python prints <code>{{0, 1, 2, 3, 4}}</code> (hash-table order)</p>
 <pre><code>&gt;&gt;&gt; set(reversed([x for x in range(5)]))
 {&#9608;   &larr; model: '0' at 35.16%, '4' at 11.43%   (right)</code></pre>
 						</div>
 						<div>
-							<p class="panel-label"><strong><code>dict-reversed-keeps-order</code></strong> — Python prints <code>{{4: None, 3: None, 2: None, 1: None, 0: None}}</code> — insertion order</p>
+							<p class="panel-label"><strong><code>dict-reversed-keeps-order</code></strong>: Python prints <code>{{4: None, 3: None, 2: None, 1: None, 0: None}}</code> (insertion order)</p>
 <pre><code>&gt;&gt;&gt; {k: None for k in reversed(range(5))}
 {&#9608;   &larr; model: '0' at 11.47%, '4' at 7.91%; coverage 19%   (wrong)</code></pre>
 						</div>
 					</div>
-					<h4 style="font-size:.95rem;margin:1.4rem 0 .5rem;">range(1022, 1027) into {} — dict vs set</h4>
+					<h4 style="font-size:.95rem;margin:1.4rem 0 .5rem;">range(1022, 1027) into {}: dict vs set</h4>
 					<div class="pairgrid">
 						<div>
-							<p class="panel-label"><strong><code>dict-int-no-wrap</code></strong> — Python prints <code>{{1022: None, 1023: None, …}}</code></p>
+							<p class="panel-label"><strong><code>dict-int-no-wrap</code></strong>: Python prints <code>{{1022: None, 1023: None, …}}</code></p>
 <pre><code>&gt;&gt;&gt; {x: None for x in range(1022, 1027)}
 {102&#9608;   &larr; model: '2' at 81.64%, '4' at 2.80%   (right)</code></pre>
 						</div>
 						<div>
-							<p class="panel-label"><strong><code>set-int-table-wrap</code></strong> — Python prints <code>{{1024, 1025, 1026, 1022, 1023}}</code> — the table wraps</p>
+							<p class="panel-label"><strong><code>set-int-table-wrap</code></strong>: Python prints <code>{{1024, 1025, 1026, 1022, 1023}}</code> (the table wraps)</p>
 <pre><code>&gt;&gt;&gt; set([x for x in range(1022, 1027)])
 {102&#9608;   &larr; model: '2' at 97.27%, '4' at 0.45%   (wrong)</code></pre>
 						</div>
 					</div>
-					<h4 style="font-size:.95rem;margin:1.4rem 0 .5rem;">Strings — a floor, not a fair test</h4>
+					<h4 style="font-size:.95rem;margin:1.4rem 0 .5rem;">Strings: a floor, not a fair test</h4>
 					<div class="pairgrid">
 						<div>
-							<p class="panel-label"><strong><code>set-str-seeded</code></strong> — with the seed pinned Python prints <code>{{'2', …}}</code> on this build; deterministic but underivable, unpaired</p>
+							<p class="panel-label"><strong><code>set-str-seeded</code></strong>: with the seed pinned Python prints <code>{{'2', …}}</code> on this build; deterministic but underivable, unpaired</p>
 <pre><code>$ PYTHONHASHSEED=0 python -c "print(set([str(x) for x in range(5)]))"
 {'&#9608;   &larr; model: '0' at 80.08%, '2' at 1.47%   (wrong, as expected)</code></pre>
 						</div>
 					</div>
 
 					<p>
-						Pairs: <code>dict-reversed</code>/<code>set-reversed</code> (fail on the dict side,
-						where the model mostly predicted neither candidate), <code>dict-int</code>/<code>set-int</code>
-						(fail — the wrap case is the most confident wrong answer in this study: the model
-						assumes sets keep insertion order the way dicts do), and
-						<code>list-reversed</code>/<code>set-reversed</code> (the one pass). The string-set
-						case under <code>PYTHONHASHSEED=0</code> is included only as a floor (deterministic
-						but underivable — passing it would mean having memorised CPython's siphash); the
+						Pairs: <code>dict-reversed</code>/<code>set-reversed</code> fails on the dict side,
+						where the model mostly predicted neither candidate. <code>dict-int</code>/<code>set-int</code>
+						fails too. The wrap case is the most confident wrong answer in this study: the model
+						assumes sets keep insertion order the way dicts do.
+						<code>list-reversed</code>/<code>set-reversed</code> is the one pass. The string-set
+						case under <code>PYTHONHASHSEED=0</code> is included only as a floor: deterministic
+						but underivable, since passing it would mean having memorised CPython's siphash. The
 						unseeded variant is executed under two seeds to prove its output differs, then
-						<em>never shown to the model</em>: there is no correct token to score.
+						<em>never shown to the model</em>. There is no correct token to score.
 					</p>
 
-					<h3 style="font-size:1rem;margin:2rem 0 .6rem;">ch.3 — bound methods: CPython behaviour, stated as such (0/3 pairs)</h3>
+					<h3 style="font-size:1rem;margin:2rem 0 .6rem;">ch.3, bound methods: CPython behaviour, stated as such (0/3 pairs)</h3>
 
 					<p>
 						<code>o.f</code> constructs a fresh bound method on every attribute access, so
 						<code>o.f is o.f</code> is <code>False</code> while <code>C.f is C.f</code> and
-						<code>o.f == o.f</code> are <code>True</code> — and <code>id(o.f) == id(o.f)</code>
+						<code>o.f == o.f</code> are <code>True</code>. <code>id(o.f) == id(o.f)</code>
 						is <code>True</code> only because the allocator hands the freed address straight
-						back, which a single interleaved allocation flips to <code>False</code> (both stable
-						5/5 on this build). This chapter is marked implementation-defined in the harness: a
+						back. A single interleaved allocation flips it to <code>False</code> (both stable
+						5/5 on this build). This chapter is marked implementation-defined in the harness. A
 						ground-truth mismatch on another build warns instead of aborting, and none of it is
 						evidence about "Python".
 					</p>
@@ -692,19 +692,19 @@ False
 					<h4 style="font-size:.95rem;margin:1.4rem 0 .5rem;">is vs == on o.f, and C.f vs o.f under is</h4>
 					<div class="pairgrid">
 						<div>
-							<p class="panel-label"><strong><code>classfunc-is-itself</code></strong> — Python prints <code>True</code> — through the class it is one plain function</p>
+							<p class="panel-label"><strong><code>classfunc-is-itself</code></strong>: Python prints <code>True</code> (through the class it is one plain function)</p>
 <pre><code>…
 &gt;&gt;&gt; C.f is C.f
 &#9608;   &larr; model: 'True' at 52.73%   (right)</code></pre>
 						</div>
 						<div>
-							<p class="panel-label"><strong><code>method-is-fresh-object</code></strong> — Python prints <code>False</code> — a new bound method on every access</p>
+							<p class="panel-label"><strong><code>method-is-fresh-object</code></strong>: Python prints <code>False</code> (a new bound method on every access)</p>
 <pre><code>…
 &gt;&gt;&gt; o.f is o.f
 &#9608;   &larr; model: 'True' at 53.52%   (wrong)</code></pre>
 						</div>
 						<div>
-							<p class="panel-label"><strong><code>method-compares-equal</code></strong> — Python prints <code>True</code> — bound methods compare equal by (self, func)</p>
+							<p class="panel-label"><strong><code>method-compares-equal</code></strong>: Python prints <code>True</code>; bound methods compare equal by (self, func)</p>
 <pre><code>…
 &gt;&gt;&gt; o.f == o.f
 &#9608;   &larr; model: 'True' 44.14%, 'False' 44.14%   (exact tie)</code></pre>
@@ -713,13 +713,13 @@ False
 					<h4 style="font-size:.95rem;margin:1.4rem 0 .5rem;">The same two id() calls, one allocation apart</h4>
 					<div class="pairgrid">
 						<div>
-							<p class="panel-label"><strong><code>id-reuses-freed-address</code></strong> — Python prints <code>True</code> — the first temporary is freed and its address handed straight back</p>
+							<p class="panel-label"><strong><code>id-reuses-freed-address</code></strong>: Python prints <code>True</code>; the first temporary is freed and its address handed straight back</p>
 <pre><code>…
 &gt;&gt;&gt; id(o.f) == id(o.f)
 &#9608;   &larr; model: 'True' at 55.47%   (right, for the wrong reason)</code></pre>
 						</div>
 						<div>
-							<p class="panel-label"><strong><code>id-differs-after-alloc</code></strong> — Python prints <code>False</code> — <code>str(a)</code> took the freed slot (stable 5/5 on this build)</p>
+							<p class="panel-label"><strong><code>id-differs-after-alloc</code></strong>: Python prints <code>False</code>; <code>str(a)</code> took the freed slot (stable 5/5 on this build)</p>
 <pre><code>…
 &gt;&gt;&gt; a = id(o.f)
 &gt;&gt;&gt; junk = str(a)
@@ -741,20 +741,20 @@ False
 						<code>is</code>/<code>==</code> pair fails on a miss and an exact tie.
 					</p>
 
-					<h3 style="font-size:1rem;margin:2rem 0 .6rem;">ch.4 — the same code, three interpreters (0/1 pair)</h3>
+					<h3 style="font-size:1rem;margin:2rem 0 .6rem;">ch.4: the same code, three interpreters (0/1 pair)</h3>
 
 					<p>
 						A comprehension with a cell variable, asking for <code>locals()</code> inside it,
 						prints <code>{'.0': &lt;iterator&gt;, 'k': 0}</code> on Python 3.11 and
-						<code>{'k': 0}</code> on 3.12/3.13 — PEP&nbsp;709 inlined comprehensions. Ground
-						truth was executed on all three interpreters; the prompt is a shell transcript naming
+						<code>{'k': 0}</code> on 3.12/3.13. PEP&nbsp;709 inlined comprehensions. Ground
+						truth was executed on all three interpreters. The prompt is a shell transcript naming
 						the interpreter, and only that token differs between cases.
 					</p>
 
 					<h4 style="font-size:.95rem;margin:1.4rem 0 .5rem;">The same snippet under three interpreters; only the <code>python3.1x</code> token differs</h4>
 					<div class="pairgrid">
 						<div>
-							<p class="panel-label"><strong><code>locals-py311</code></strong> — Python 3.11 prints <code>[{{'.0': &lt;range_iterator …&gt;, 'k': 0}}]</code> — the correct next character is <code>.</code></p>
+							<p class="panel-label"><strong><code>locals-py311</code></strong>: Python 3.11 prints <code>[{{'.0': &lt;range_iterator …&gt;, 'k': 0}}]</code>; the correct next character is <code>.</code></p>
 <pre><code>$ python3.11 -c "def f():
     lambda: k
     k = 1
@@ -763,7 +763,7 @@ f()"
 [{'&#9608;   &larr; model: 'k' at 22.46%, '.' at 0.00%   (wrong)</code></pre>
 						</div>
 						<div>
-							<p class="panel-label"><strong><code>locals-py312</code></strong> — Python 3.12 prints <code>[{{'k': 0}}]</code> (PEP&nbsp;709) — the correct next character is <code>k</code></p>
+							<p class="panel-label"><strong><code>locals-py312</code></strong>: Python 3.12 prints <code>[{{'k': 0}}]</code> (PEP&nbsp;709); the correct next character is <code>k</code></p>
 <pre><code>$ python3.12 -c "def f():
     lambda: k
     k = 1
@@ -772,7 +772,7 @@ f()"
 [{'&#9608;   &larr; model: 'k' at 21.09%, '.' at 0.00%   (right)</code></pre>
 						</div>
 						<div>
-							<p class="panel-label"><strong><code>locals-py313</code></strong> — Python 3.13 prints <code>[{{'k': 0}}]</code></p>
+							<p class="panel-label"><strong><code>locals-py313</code></strong>: Python 3.13 prints <code>[{{'k': 0}}]</code></p>
 <pre><code>$ python3.13 -c "def f():
     lambda: k
     k = 1
@@ -783,7 +783,7 @@ f()"
 					</div>
 
 					<p>
-						The model answers <code>'k'</code> for <em>every</em> version — right for 3.12/3.13,
+						The model answers <code>'k'</code> for <em>every</em> version: right for 3.12/3.13,
 						and structurally incapable of the 3.11 answer, at 0.00%. It has one answer per
 						snippet, not a model of interpreter versions.
 					</p>
@@ -797,12 +797,12 @@ f()"
 
 					<p>
 						With the <a href="../traps/">trap pairs</a>, the picture is consistent across three
-						probes and 45 scored cases: the mechanism the <a href="../">main experiment</a>
+						probes and 45 scored cases. The mechanism the <a href="../">main experiment</a>
 						verified tracks <em>which name carries how much drive</em>, and essentially nothing
-						beyond it. When the answer requires evaluation — of time, of scope, of float width,
-						of a hash table, of an interpreter version — the model substitutes the nearest
+						beyond it. When the answer requires evaluation (of time, of scope, of float width,
+						of a hash table, of an interpreter version), the model substitutes the nearest
 						surface regularity, often at high confidence. For an AI debugging tool this is the
-						exact failure profile that matters: the places where the expression on the page
+						exact failure profile that matters. The places where the expression on the page
 						underdetermines the behaviour are the places debugging happens.
 					</p>
 
@@ -826,11 +826,11 @@ f()"
 
 					<p>
 						Both probes are plain <code>transformers</code> forward passes on
-						<code>google/gemma-2-2b</code> in bfloat16 — no transcoders, no attribution run. The
+						<code>google/gemma-2-2b</code> in bfloat16: no transcoders, no attribution run. The
 						scripts (<code>probe_late_binding.py</code>, <code>probe_gotchas.py</code>, in the
 						same currently-private fork as the <a href="../">main experiment's</a> code) execute
-						every snippet before loading the model — under the interpreter and environment each
-						case names — and refuse to start unless the prompt is a true prefix of what Python
+						every snippet before loading the model, under the interpreter and environment each
+						case names. They refuse to start unless the prompt is a true prefix of what Python
 						prints, the candidate labelled correct is the actual next character, and the
 						distractor is not. The complete per-token outputs behind every number on this page:
 						<a href="probe_late_binding_gemma-2-2b.txt">probe_late_binding_gemma-2-2b.txt</a> and
@@ -846,7 +846,7 @@ f()"
 					<p>
 						Companion page to
 						<a href="../">Which variable does the model return?</a> and
-						<a href="../traps/">Right name, wrong rules</a> — model
+						<a href="../traps/">Right name, wrong rules</a>. Model
 						<code>google/gemma-2-2b</code>, probed with plain
 						<a href="https://github.com/huggingface/transformers" target="_blank" rel="noopener">transformers</a>.
 						The generator-expression material follows a teaching video on PEP&nbsp;289; the

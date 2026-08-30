@@ -3,7 +3,7 @@
 	<head>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
-		<title>Right Name, Wrong Rules — Chia-chun Liang (Anna)</title>
+		<title>Right Name, Wrong Rules &middot; Chia-chun Liang (Anna)</title>
 		<meta name="description" content="gemma-2-2b names the right variable but holds the wrong binding rules: ten classic Python traps in near-identical pairs, 0/4 pairs passed, and why per-case scoring hides it." />
 		<meta name="author" content="Chia-chun Liang" />
 		<link rel="stylesheet" href="../../style.css" />
@@ -178,21 +178,21 @@
 					<h2>In one paragraph</h2>
 					<p class="lead">
 						The <a href="../">main experiment</a> shows <code>gemma-2-2b</code> reliably
-						returning the right local variable — 71 of 72 name-and-shape combinations — through
+						returning the right local variable (71 of 72 name-and-shape combinations) through
 						a mechanism of per-name pathways. This page asks the harder question that mechanism
 						invites: does the model hold the actual <em>rules</em> of Python binding? Ten classic
-						traps, each cut at a single token where the correct semantics and the natural
-						misreading predict different continuations, say no. Scored per case it gets 4 of 10,
+						traps say no. Each is cut at a single token where the correct semantics and the
+						natural misreading predict different continuations. Scored per case it gets 4 of 10,
 						and even that number is misleading. The cases come in <strong>pairs</strong> of
 						near-identical surface form with opposite answers, and the pairs settle it:
 						<strong>0 of 4 pairs passed</strong>. Where the model scores a hit, it gives the same
-						answer to both members of the pair — surface-form matching, not binding semantics.
+						answer to both members of the pair. That is surface-form matching, not binding semantics.
 					</p>
 
 					<p>
 						The sharpest case: the <code>for</code>-loop variable <em>does</em> leak into
 						enclosing scope, and the model says it does not (35.6% on
-						<code>Traceback</code>); a comprehension variable does <em>not</em> leak, and the
+						<code>Traceback</code>). A comprehension variable does <em>not</em> leak, and the
 						model says it does (33.6% on <code>2</code>). It holds both rules, swapped, with
 						matching confidence.
 					</p>
@@ -211,20 +211,20 @@
 					<ul class="notes" style="margin:0 0 1.1rem;padding-left:1.15rem;">
 						<li style="margin:0 0 .7rem;">
 							<strong>Ground truth is executed, not remembered.</strong> Every case carries its
-							runnable source and an expected output, and the script runs the source and
+							runnable source and an expected output. The script runs the source and
 							<em>refuses to start</em> if Python disagrees. Binding traps are famous precisely
-							because people get them wrong — asserting the answers from memory would put the
+							because people get them wrong. Asserting the answers from memory would put the
 							scorer's memory on the same footing as the model's.
 						</li>
 						<li style="margin:0 0 .7rem;">
 							<strong>Every case cuts at a single-token divergence point.</strong> The prompt is
 							a transcript prefix ending exactly where the correct semantics and the natural
-							misreading predict different next tokens, so one forward pass decides it — no
+							misreading predict different next tokens. One forward pass decides it: no
 							generation, no parsing of free-form output.
 						</li>
 						<li style="margin:0;">
-							<strong>Cases come in pairs.</strong> Each pair differs by a few characters —
-							<code>lambda: i</code> against <code>lambda i=i: i</code> — and has opposite
+							<strong>Cases come in pairs.</strong> Each pair differs by a few characters
+							(<code>lambda: i</code> against <code>lambda i=i: i</code>) and has opposite
 							correct answers. A model matching on surface form will give the same answer to
 							both, scoring one hit by luck. Only passing <em>both</em> members counts.
 						</li>
@@ -234,27 +234,27 @@
 
 					<p>
 						One forward pass per case. The model sees the transcript up to the cut and nothing
-						else; from the softmax at that position the probe reads the probability of two
-						tokens — the <em>correct</em> continuation and the <em>natural misreading</em> — and
+						else. From the softmax at that position the probe reads the probability of two
+						tokens, the <em>correct</em> continuation and the <em>natural misreading</em>, and
 						ignores every other token. The verdict follows three rules, applied in this order:
 					</p>
 
 					<ul class="notes" style="margin:0 0 1.1rem;padding-left:1.15rem;">
 						<li style="margin:0 0 .7rem;">
-							<strong><code>noise</code> — both candidates below 2%.</strong> The model's answer
+							<strong><code>noise</code>: both candidates below 2%.</strong> The model's answer
 							is neither token, so comparing them compares scraps. <code>class-body-scope</code>
 							is the example: <code>Traceback</code> 0.54% against <code>&gt;</code> 0.07%,
 							while the actual top-1 was <code>&gt;&gt;&gt;</code> at 70.7%. Calling the larger
 							of two negligible numbers "correct" would be free points, so it scores nothing.
 						</li>
 						<li style="margin:0 0 .7rem;">
-							<strong><code>ok</code> — P(correct) &gt; P(wrong).</strong> The correct token
-							beats the misreading, by any margin. There is no threshold on the margin; the
+							<strong><code>ok</code>: P(correct) &gt; P(wrong).</strong> The correct token
+							beats the misreading, by any margin. There is no threshold on the margin. The
 							top-1 column in the table below is there so a narrow or accidental "ok" can be
 							seen for what it is.
 						</li>
 						<li style="margin:0;">
-							<strong><code>MISS</code> — otherwise.</strong> The misreading is at least as
+							<strong><code>MISS</code>: otherwise.</strong> The misreading is at least as
 							likely as the correct token.
 						</li>
 					</ul>
@@ -263,12 +263,12 @@
 
 					<p>
 						A pair <strong>passes only if both members score <code>ok</code></strong>. Anything
-						else — <code>ok</code>+<code>MISS</code>, <code>ok</code>+<code>noise</code>,
-						<code>MISS</code>+<code>MISS</code> — is a fail. The reason is in what the members
-						share: the two prompts are near-identical in form and opposite in answer, so a model
+						else (<code>ok</code>+<code>MISS</code>, <code>ok</code>+<code>noise</code>,
+						<code>MISS</code>+<code>MISS</code>) is a fail. The reason is in what the members
+						share. The two prompts are near-identical in form and opposite in answer. A model
 						that answers from the form gives the <em>same</em> token to both, and that token is
 						correct for exactly one of them. An <code>ok</code> sitting next to a <code>MISS</code>
-						in the same pair is therefore not half credit; it is the signature of form-matching.
+						in the same pair therefore earns no half credit. It is the signature of form-matching.
 						The two cases without a natural twin (<code>tuple-augmented-assign</code>,
 						<code>chained-comparison</code>) are scored on their own and do not enter the pair
 						count. Per-case totals are reported only to show how much they flatter the model.
@@ -308,50 +308,50 @@
 							<line x1="216.0" y1="26" x2="216.0" y2="539" stroke="var(--viz-axis)" stroke-width="1.5"/>
 							<line x1="224.8" y1="26" x2="224.8" y2="539" stroke="var(--viz-ink-3)" stroke-width="1" stroke-dasharray="3 4" opacity=".6"/>
 							<text x="228.8" y="535" font-size="10" fill="var(--viz-ink-3)">2% noise floor</text>
-							<text x="0" y="53" font-size="11" font-weight="600" fill="var(--viz-ink-1)">closure capture — FAIL: same answer to both</text>
+							<text x="0" y="53" font-size="11" font-weight="600" fill="var(--viz-ink-1)">closure capture, FAIL: same answer to both</text>
 							<text x="204" y="75" text-anchor="end" font-size="11" font-family="ui-monospace, Menlo, monospace" fill="var(--viz-ink-1)">closure-late-binding</text>
-							<g><title>P('2' — the correct continuation) = 0.88%</title><rect x="216.0" y="59" width="3.9" height="9" rx="4" fill="var(--viz-s1)"/></g>
-							<g><title>P('0' — the natural misreading) = 79.30%</title><rect x="216.0" y="71" width="348.9" height="9" rx="4" fill="var(--viz-s2)"/></g>
+							<g><title>P('2', the correct continuation) = 0.88%</title><rect x="216.0" y="59" width="3.9" height="9" rx="4" fill="var(--viz-s1)"/></g>
+							<g><title>P('0', the natural misreading) = 79.30%</title><rect x="216.0" y="71" width="348.9" height="9" rx="4" fill="var(--viz-s2)"/></g>
 							<text x="572.9" y="75" font-size="11" font-weight="700" fill="var(--viz-ink-1)">MISS</text>
 							<text x="204" y="110" text-anchor="end" font-size="11" font-family="ui-monospace, Menlo, monospace" fill="var(--viz-ink-1)">closure-default-arg-fix</text>
-							<g><title>P('0' — the correct continuation) = 66.80%</title><rect x="216.0" y="94" width="293.9" height="9" rx="4" fill="var(--viz-s1)"/></g>
-							<g><title>P('2' — the natural misreading) = 1.39%</title><rect x="216.0" y="106" width="6.1" height="9" rx="4" fill="var(--viz-s2)"/></g>
+							<g><title>P('0', the correct continuation) = 66.80%</title><rect x="216.0" y="94" width="293.9" height="9" rx="4" fill="var(--viz-s1)"/></g>
+							<g><title>P('2', the natural misreading) = 1.39%</title><rect x="216.0" y="106" width="6.1" height="9" rx="4" fill="var(--viz-s2)"/></g>
 							<text x="517.9" y="110" font-size="11" font-weight="400" fill="var(--viz-ink-2)">ok</text>
-							<text x="0" y="152" font-size="11" font-weight="600" fill="var(--viz-ink-1)">default argument — FAIL: same answer to both</text>
+							<text x="0" y="152" font-size="11" font-weight="600" fill="var(--viz-ink-1)">default argument, FAIL: same answer to both</text>
 							<text x="204" y="174" text-anchor="end" font-size="11" font-family="ui-monospace, Menlo, monospace" fill="var(--viz-ink-1)">mutable-default</text>
-							<g><title>P('1' — the correct continuation) = 89.06%</title><rect x="216.0" y="158" width="391.9" height="9" rx="4" fill="var(--viz-s1)"/></g>
-							<g><title>P('2' — the natural misreading) = 10.64%</title><rect x="216.0" y="170" width="46.8" height="9" rx="4" fill="var(--viz-s2)"/></g>
+							<g><title>P('1', the correct continuation) = 89.06%</title><rect x="216.0" y="158" width="391.9" height="9" rx="4" fill="var(--viz-s1)"/></g>
+							<g><title>P('2', the natural misreading) = 10.64%</title><rect x="216.0" y="170" width="46.8" height="9" rx="4" fill="var(--viz-s2)"/></g>
 							<text x="615.9" y="174" font-size="11" font-weight="400" fill="var(--viz-ink-2)">ok</text>
 							<text x="204" y="209" text-anchor="end" font-size="11" font-family="ui-monospace, Menlo, monospace" fill="var(--viz-ink-1)">mutable-default-fix</text>
-							<g><title>P('2' — the correct continuation) = 6.74%</title><rect x="216.0" y="193" width="29.7" height="9" rx="4" fill="var(--viz-s1)"/></g>
-							<g><title>P('1' — the natural misreading) = 93.36%</title><rect x="216.0" y="205" width="410.8" height="9" rx="4" fill="var(--viz-s2)"/></g>
+							<g><title>P('2', the correct continuation) = 6.74%</title><rect x="216.0" y="193" width="29.7" height="9" rx="4" fill="var(--viz-s1)"/></g>
+							<g><title>P('1', the natural misreading) = 93.36%</title><rect x="216.0" y="205" width="410.8" height="9" rx="4" fill="var(--viz-s2)"/></g>
 							<text x="634.8" y="209" font-size="11" font-weight="700" fill="var(--viz-ink-1)">MISS</text>
-							<text x="0" y="251" font-size="11" font-weight="600" fill="var(--viz-ink-1)">does the loop var leak — FAIL: exactly inverted</text>
+							<text x="0" y="251" font-size="11" font-weight="600" fill="var(--viz-ink-1)">does the loop var leak, FAIL: exactly inverted</text>
 							<text x="204" y="273" text-anchor="end" font-size="11" font-family="ui-monospace, Menlo, monospace" fill="var(--viz-ink-1)">for-var-leaks</text>
-							<g><title>P('2' — the correct continuation) = 1.56%</title><rect x="216.0" y="257" width="6.9" height="9" rx="4" fill="var(--viz-s1)"/></g>
-							<g><title>P('Traceback' — the natural misreading) = 35.55%</title><rect x="216.0" y="269" width="156.4" height="9" rx="4" fill="var(--viz-s2)"/></g>
+							<g><title>P('2', the correct continuation) = 1.56%</title><rect x="216.0" y="257" width="6.9" height="9" rx="4" fill="var(--viz-s1)"/></g>
+							<g><title>P('Traceback', the natural misreading) = 35.55%</title><rect x="216.0" y="269" width="156.4" height="9" rx="4" fill="var(--viz-s2)"/></g>
 							<text x="380.4" y="273" font-size="11" font-weight="700" fill="var(--viz-ink-1)">MISS</text>
 							<text x="204" y="308" text-anchor="end" font-size="11" font-family="ui-monospace, Menlo, monospace" fill="var(--viz-ink-1)">comprehension-no-leak</text>
-							<g><title>P('Traceback' — the correct continuation) = 5.15%</title><rect x="216.0" y="292" width="22.7" height="9" rx="4" fill="var(--viz-s1)"/></g>
-							<g><title>P('2' — the natural misreading) = 33.59%</title><rect x="216.0" y="304" width="147.8" height="9" rx="4" fill="var(--viz-s2)"/></g>
+							<g><title>P('Traceback', the correct continuation) = 5.15%</title><rect x="216.0" y="292" width="22.7" height="9" rx="4" fill="var(--viz-s1)"/></g>
+							<g><title>P('2', the natural misreading) = 33.59%</title><rect x="216.0" y="304" width="147.8" height="9" rx="4" fill="var(--viz-s2)"/></g>
 							<text x="371.8" y="308" font-size="11" font-weight="700" fill="var(--viz-ink-1)">MISS</text>
-							<text x="0" y="350" font-size="11" font-weight="600" fill="var(--viz-ink-1)">class-body comprehension — FAIL: illegal one at noise</text>
+							<text x="0" y="350" font-size="11" font-weight="600" fill="var(--viz-ink-1)">class-body comprehension, FAIL: illegal one at noise</text>
 							<text x="204" y="372" text-anchor="end" font-size="11" font-family="ui-monospace, Menlo, monospace" fill="var(--viz-ink-1)">class-body-scope</text>
-							<g><title>P('Traceback' — the correct continuation) = 0.54%</title><rect x="216.0" y="356" width="2.4" height="9" rx="4" fill="var(--viz-s1)"/></g>
-							<g><title>P('&gt;' — the natural misreading) = 0.07%</title><rect x="216.0" y="368" width="1.5" height="9" rx="4" fill="var(--viz-s2)"/></g>
+							<g><title>P('Traceback', the correct continuation) = 0.54%</title><rect x="216.0" y="356" width="2.4" height="9" rx="4" fill="var(--viz-s1)"/></g>
+							<g><title>P('&gt;', the natural misreading) = 0.07%</title><rect x="216.0" y="368" width="1.5" height="9" rx="4" fill="var(--viz-s2)"/></g>
 							<text x="226.4" y="372" font-size="11" font-weight="400" fill="var(--viz-ink-3)">noise</text>
 							<text x="204" y="407" text-anchor="end" font-size="11" font-family="ui-monospace, Menlo, monospace" fill="var(--viz-ink-1)">class-body-ok</text>
-							<g><title>P('2' — the correct continuation) = 93.75%</title><rect x="216.0" y="391" width="412.5" height="9" rx="4" fill="var(--viz-s1)"/></g>
-							<g><title>P('Traceback' — the natural misreading) = 0.00%</title><rect x="216.0" y="403" width="1.5" height="9" rx="4" fill="var(--viz-s2)"/></g>
+							<g><title>P('2', the correct continuation) = 93.75%</title><rect x="216.0" y="391" width="412.5" height="9" rx="4" fill="var(--viz-s1)"/></g>
+							<g><title>P('Traceback', the natural misreading) = 0.00%</title><rect x="216.0" y="403" width="1.5" height="9" rx="4" fill="var(--viz-s2)"/></g>
 							<text x="636.5" y="407" font-size="11" font-weight="400" fill="var(--viz-ink-2)">ok</text>
 							<text x="0" y="449" font-size="11" font-weight="600" fill="var(--viz-ink-2)">unpaired</text>
 							<text x="204" y="471" text-anchor="end" font-size="11" font-family="ui-monospace, Menlo, monospace" fill="var(--viz-ink-1)">tuple-augmented-assign</text>
-							<g><title>P(',' — the correct continuation) = 32.81%</title><rect x="216.0" y="455" width="144.4" height="9" rx="4" fill="var(--viz-s1)"/></g>
-							<g><title>P(']' — the natural misreading) = 0.60%</title><rect x="216.0" y="467" width="2.6" height="9" rx="4" fill="var(--viz-s2)"/></g>
+							<g><title>P(',', the correct continuation) = 32.81%</title><rect x="216.0" y="455" width="144.4" height="9" rx="4" fill="var(--viz-s1)"/></g>
+							<g><title>P(']', the natural misreading) = 0.60%</title><rect x="216.0" y="467" width="2.6" height="9" rx="4" fill="var(--viz-s2)"/></g>
 							<text x="368.4" y="471" font-size="11" font-weight="400" fill="var(--viz-ink-2)">ok</text>
 							<text x="204" y="506" text-anchor="end" font-size="11" font-family="ui-monospace, Menlo, monospace" fill="var(--viz-ink-1)">chained-comparison</text>
-							<g><title>P('False' — the correct continuation) = 5.30%</title><rect x="216.0" y="490" width="23.3" height="9" rx="4" fill="var(--viz-s1)"/></g>
-							<g><title>P('True' — the natural misreading) = 11.23%</title><rect x="216.0" y="502" width="49.4" height="9" rx="4" fill="var(--viz-s2)"/></g>
+							<g><title>P('False', the correct continuation) = 5.30%</title><rect x="216.0" y="490" width="23.3" height="9" rx="4" fill="var(--viz-s1)"/></g>
+							<g><title>P('True', the natural misreading) = 11.23%</title><rect x="216.0" y="502" width="49.4" height="9" rx="4" fill="var(--viz-s2)"/></g>
 							<text x="273.4" y="506" font-size="11" font-weight="700" fill="var(--viz-ink-1)">MISS</text>
 						</svg>
 						<figcaption>
@@ -436,8 +436,8 @@
 					<p>
 						The top-1 column is worth reading on its own. In two cases
 						(<code>class-body-scope</code>, <code>chained-comparison</code>) the model's actual
-						answer is a REPL prompt marker — it is not choosing either semantics, it is
-						continuing the transcript's <em>shape</em>. That is what the noise floor exists to
+						answer is a REPL prompt marker. It is continuing the transcript's <em>shape</em>
+						rather than choosing either semantics. That is what the noise floor exists to
 						catch.
 					</p>
 				</div>
@@ -448,17 +448,17 @@
 				<div class="wrap">
 					<h2>The four pairs</h2>
 
-					<h3 style="font-size:1rem;margin:0 0 .6rem;">Closure capture — same answer to both</h3>
+					<h3 style="font-size:1rem;margin:0 0 .6rem;">Closure capture: same answer to both</h3>
 
 					<div class="pairgrid">
 						<div>
-							<p class="panel-label"><strong><code>closure-late-binding</code></strong> — <code>lambda: i</code> captures the <strong>variable</strong>; Python prints <code>[2, 2, 2]</code></p>
+							<p class="panel-label"><strong><code>closure-late-binding</code></strong>: <code>lambda: i</code> captures the <strong>variable</strong>; Python prints <code>[2, 2, 2]</code></p>
 <pre><code>&gt;&gt;&gt; fs = [lambda: i for i in range(3)]
 &gt;&gt;&gt; print([f() for f in fs])
 [&#9608;   &larr; model: '0' at 79.3%   (wrong)</code></pre>
 						</div>
 						<div>
-							<p class="panel-label"><strong><code>closure-default-arg-fix</code></strong> — <code>lambda i=i: i</code> binds <strong>now</strong>; Python prints <code>[0, 1, 2]</code></p>
+							<p class="panel-label"><strong><code>closure-default-arg-fix</code></strong>: <code>lambda i=i: i</code> binds <strong>now</strong>; Python prints <code>[0, 1, 2]</code></p>
 <pre><code>&gt;&gt;&gt; fs = [lambda i=i: i for i in range(3)]
 &gt;&gt;&gt; print([f() for f in fs])
 [&#9608;   &larr; model: '0' at 66.8%   (right)</code></pre>
@@ -468,16 +468,16 @@
 					<p>
 						The <code>i=i</code> is the whole difference between the two prompts, and the model's
 						answer does not move: <code>0</code> at 79.3%, <code>0</code> at 66.8%. It has
-						learned that this <em>shape</em> of snippet prints <code>[0, 1, 2]</code> — which is
+						learned that this <em>shape</em> of snippet prints <code>[0, 1, 2]</code>. That is
 						the famous <em>expectation</em> the first trap exists to break. One of the two scores
 						"correct". It should get no credit.
 					</p>
 
-					<h3 style="font-size:1rem;margin:2rem 0 .6rem;">Mutable default — same answer to both</h3>
+					<h3 style="font-size:1rem;margin:2rem 0 .6rem;">Mutable default: same answer to both</h3>
 
 					<div class="pairgrid">
 						<div>
-							<p class="panel-label"><strong><code>mutable-default</code></strong> — <code>acc=[]</code> is created once and <strong>persists</strong>; second call prints <code>[1, 2]</code></p>
+							<p class="panel-label"><strong><code>mutable-default</code></strong>: <code>acc=[]</code> is created once and <strong>persists</strong>; second call prints <code>[1, 2]</code></p>
 <pre><code>&gt;&gt;&gt; def add(x, acc=[]):
 ...     acc.append(x)
 ...     return acc
@@ -488,7 +488,7 @@
 [&#9608;   &larr; model: '1' at 89.1%   (right)</code></pre>
 						</div>
 						<div>
-							<p class="panel-label"><strong><code>mutable-default-fix</code></strong> — <code>acc=None</code> makes a <strong>fresh</strong> list; second call prints <code>[2]</code></p>
+							<p class="panel-label"><strong><code>mutable-default-fix</code></strong>: <code>acc=None</code> makes a <strong>fresh</strong> list; second call prints <code>[2]</code></p>
 <pre><code>&gt;&gt;&gt; def add(x, acc=None):
 ...     acc = acc or []
 ...     acc.append(x)
@@ -503,16 +503,16 @@
 
 					<p>
 						Here the model's fixed answer happens to match the trap side, so the <em>famous</em>
-						case scores "correct" — and the fixed version, the one every Python tutorial tells
+						case scores "correct". The fixed version, the one every Python tutorial tells
 						you to write, is answered as if the fix did nothing. Its confidence is
 						<em>higher</em> on the wrong member (93.4%) than on the right one (89.1%).
 					</p>
 
-					<h3 style="font-size:1rem;margin:2rem 0 .6rem;">Loop-variable leak — exactly inverted</h3>
+					<h3 style="font-size:1rem;margin:2rem 0 .6rem;">Loop-variable leak: exactly inverted</h3>
 
 					<div class="pairgrid">
 						<div>
-							<p class="panel-label"><strong><code>for-var-leaks</code></strong> — the <code>for</code> variable <strong>does leak</strong>; Python prints <code>2</code></p>
+							<p class="panel-label"><strong><code>for-var-leaks</code></strong>: the <code>for</code> variable <strong>does leak</strong>; Python prints <code>2</code></p>
 <pre><code>&gt;&gt;&gt; for i in range(3):
 ...     pass
 ...
@@ -520,7 +520,7 @@
 &#9608;   &larr; model: 'Traceback' at 35.6%   (wrong)</code></pre>
 						</div>
 						<div>
-							<p class="panel-label"><strong><code>comprehension-no-leak</code></strong> — a comprehension variable <strong>does not</strong>; Python raises <code>NameError</code></p>
+							<p class="panel-label"><strong><code>comprehension-no-leak</code></strong>: a comprehension variable <strong>does not</strong>; Python raises <code>NameError</code></p>
 <pre><code>&gt;&gt;&gt; [j for j in range(3)]
 [0, 1, 2]
 &gt;&gt;&gt; print(j)
@@ -529,17 +529,17 @@
 					</div>
 
 					<p>
-						The sharpest result in the set. This is not ignorance — ignorance would look like
-						noise. The model holds a definite rule for each construct, both rules are wrong, and
+						The sharpest result in the set. This is not ignorance; ignorance would look like
+						noise. The model holds a definite rule for each construct. Both rules are wrong, and
 						they are wrong <em>in opposite directions</em>, at matching confidence. It has the
 						two scoping behaviours swapped.
 					</p>
 
-					<h3 style="font-size:1rem;margin:2rem 0 .6rem;">Class-body comprehension — the illegal one vanishes</h3>
+					<h3 style="font-size:1rem;margin:2rem 0 .6rem;">Class-body comprehension: the illegal one vanishes</h3>
 
 					<div class="pairgrid">
 						<div>
-							<p class="panel-label"><strong><code>class-body-scope</code></strong> — the comprehension <strong>cannot see</strong> <code>xs</code>; Python raises <code>NameError</code></p>
+							<p class="panel-label"><strong><code>class-body-scope</code></strong>: the comprehension <strong>cannot see</strong> <code>xs</code>; Python raises <code>NameError</code></p>
 <pre><code>&gt;&gt;&gt; class C:
 ...     xs = [1, 2, 3]
 ...     ys = [x for x in range(5) if x in xs]
@@ -547,7 +547,7 @@
 &#9608;   &larr; model: '&gt;&gt;&gt;' at 70.7%   (neither)</code></pre>
 						</div>
 						<div>
-							<p class="panel-label"><strong><code>class-body-ok</code></strong> — the <strong>outermost iterable</strong> is evaluated in class scope; this one is legal</p>
+							<p class="panel-label"><strong><code>class-body-ok</code></strong>: the <strong>outermost iterable</strong> is evaluated in class scope; this one is legal</p>
 <pre><code>&gt;&gt;&gt; class C:
 ...     xs = [1, 2, 3]
 ...     ys = [x * 2 for x in xs]
@@ -559,17 +559,17 @@
 
 					<p>
 						The legal member is answered confidently and correctly. The illegal member gets a
-						fresh REPL prompt at 70.7% — the model continues the session as if the class defined
+						fresh REPL prompt at 70.7%. The model continues the session as if the class defined
 						cleanly, with <code>Traceback</code> at 0.54%. Both candidates are under the noise
-						floor, so this scores <em>noise</em>, not a hit for either side: the model was not
-						weighing the two semantics at all.
+						floor, so this scores <em>noise</em> rather than a hit for either side. The model was
+						not weighing the two semantics at all.
 					</p>
 
 					<h3 style="font-size:1rem;margin:2rem 0 .6rem;">The two unpaired cases</h3>
 
 					<div class="pairgrid">
 						<div>
-							<p class="panel-label"><strong><code>tuple-augmented-assign</code></strong> — <code>t[0] += [2]</code> raises <strong>and still mutates</strong> the list; Python prints <code>([1, 2],)</code></p>
+							<p class="panel-label"><strong><code>tuple-augmented-assign</code></strong>: <code>t[0] += [2]</code> raises <strong>and still mutates</strong> the list; Python prints <code>([1, 2],)</code></p>
 <pre><code>&gt;&gt;&gt; t = ([1],)
 &gt;&gt;&gt; t[0] += [2]
 Traceback (most recent call last):
@@ -579,7 +579,7 @@ TypeError: 'tuple' object does not support item assignment
 ([1&#9608;   &larr; model: ',' at 32.8%   (right; top-1 was '],' at 37.1%)</code></pre>
 						</div>
 						<div>
-							<p class="panel-label"><strong><code>chained-comparison</code></strong> — <code>1 in [1, 2] == True</code> chains as <code>(1 in [1, 2]) and ([1, 2] == True)</code>; Python prints <code>False</code></p>
+							<p class="panel-label"><strong><code>chained-comparison</code></strong>: <code>1 in [1, 2] == True</code> chains as <code>(1 in [1, 2]) and ([1, 2] == True)</code>; Python prints <code>False</code></p>
 <pre><code>&gt;&gt;&gt; 1 in [1, 2] == True
 &#9608;   &larr; model: 'True' 11.2% vs 'False' 5.3%   (wrong; top-1 was '&gt;&gt;&gt;' at 64.5%)</code></pre>
 						</div>
@@ -610,16 +610,16 @@ TypeError: 'tuple' object does not support item assignment
 					<p>
 						This is a measurement point as much as a model point. A benchmark reporting
 						"gemma-2-2b: 40% on Python binding traps" would be technically true and completely
-						misleading — the paired design shows the number is not 40% of the <em>semantics</em>,
-						it is one shape-prior scoring lucky hits. The two scoring rules that make the result
-						honest, <strong>only pairs count</strong> and <strong>sub-noise comparisons score
-						nothing</strong>, both exist to take away points the model did not earn.
+						misleading. The paired design shows the number does not measure the <em>semantics</em>.
+						It measures one shape-prior scoring lucky hits. Two scoring rules make the result
+						honest: <strong>only pairs count</strong>, and <strong>sub-noise comparisons score
+						nothing</strong>. Both exist to take away points the model did not earn.
 					</p>
 
 					<p>
-						The unpaired cases carry the same warning in miniature: <code>tuple-augmented-assign</code>
-						scores "ok", but the model's actual top choice was <code>],</code> — a token that
-						starts the right answer for a plausibly different reason. And
+						The unpaired cases carry the same warning in miniature. <code>tuple-augmented-assign</code>
+						scores "ok", but the model's actual top choice was <code>],</code> (a token that
+						starts the right answer for a plausibly different reason). And
 						<code>chained-comparison</code>'s miss comes with the model mostly answering
 						<code>&gt;&gt;&gt;</code>: it would rather end the transcript than evaluate the
 						expression.
@@ -633,22 +633,22 @@ TypeError: 'tuple' object does not support item assignment
 					<h2>What this bounds</h2>
 
 					<p>
-						The <a href="../">main page</a> shows a mechanism — per-name pathways, volume set by
-						binding, winner-take-all at the logit layer — that reliably returns the right
-						variable in accumulator functions: 71 of 72 name-and-shape combinations. This page is
-						the boundary of that result. The mechanism tracks <em>which name carries how much
-						drive</em>; it is not backed by the rules of Python binding. Step outside the prompt
-						family, into cases where the question is <em>when a name is resolved</em> rather than
-						<em>which name is strongest</em>, and the model answers from surface shape.
+						The <a href="../">main page</a> shows a mechanism that reliably returns the right
+						variable in accumulator functions: 71 of 72 name-and-shape combinations. That mechanism
+						is per-name pathways, volume set by binding, winner-take-all at the logit layer. This
+						page is the boundary of that result. The mechanism tracks <em>which name carries how
+						much drive</em>; it is not backed by the rules of Python binding. Step outside the
+						prompt family, into cases where the question is <em>when a name is resolved</em> rather
+						than <em>which name is strongest</em>. There the model answers from surface shape.
 					</p>
 
 					<p>
 						Both facts matter for the same audience. An AI coding tool built on a model this size
-						can name the right variable essentially always — and will confidently misjudge
-						closure capture, mutable defaults and comprehension scope, the exact places where
-						human intuition also fails and where a debugger is most needed. The failure is not
-						"the model is weak": it holds <em>definite, confident, wrong</em> rules, which is
-						worse than noise, and per-case benchmarks will score much of it as competence.
+						can name the right variable essentially always. It will also confidently misjudge
+						closure capture, mutable defaults and comprehension scope. Those are the exact places
+						where human intuition also fails and where a debugger is most needed. The failure is
+						not "the model is weak". It holds <em>definite, confident, wrong</em> rules, which is
+						worse than noise. Per-case benchmarks will score much of it as competence.
 					</p>
 
 					<p style="margin-bottom:1.4rem;">
@@ -663,11 +663,11 @@ TypeError: 'tuple' object does not support item assignment
 					<h2>Reproducing this</h2>
 
 					<p>
-						This probe needs no transcoders and no attribution run — it is plain
+						This probe needs no transcoders and no attribution run. It is plain
 						<code>transformers</code> forward passes on <code>google/gemma-2-2b</code> in
 						bfloat16, one per case. The script (<code>probe_binding_traps.py</code>, in the same
 						currently-private fork as the <a href="../">main experiment's</a> code) carries each
-						case's runnable source and expected output, executes every snippet first, and refuses
+						case's runnable source and expected output. It executes every snippet first and refuses
 						to start if Python's actual behaviour disagrees with the recorded ground truth. The
 						full output behind every number on this page is published here as
 						<a href="probe_binding_traps_gemma-2-2b.txt">probe_binding_traps_gemma-2-2b.txt</a>.
@@ -675,10 +675,10 @@ TypeError: 'tuple' object does not support item assignment
 
 					<p>
 						Related, in the same spirit and now with its
-						<a href="../gotchas/">own page</a>: on generator-expression late binding (PEP 289)
-						the model handles a no-reassignment control at 98.4% but gives the correct
+						<a href="../gotchas/">own page</a>: generator-expression late binding (PEP 289).
+						There the model handles a no-reassignment control at 98.4% but gives the correct
 						continuation <strong>0.00%</strong> on the one cut that separates eager from lazy
-						capture — and it is <em>worse</em> on the generator expression than on the desugared
+						capture. It is <em>worse</em> on the generator expression than on the desugared
 						function PEP&nbsp;289 defines it to mean. Four further chapters (floats,
 						set order, bound-method identity, interpreter versions) pass
 						<strong>1 of 13 pairs</strong>.
@@ -692,7 +692,7 @@ TypeError: 'tuple' object does not support item assignment
 					<h2>Credits</h2>
 					<p>
 						Companion page to
-						<a href="../">Which variable does the model return?</a> — model
+						<a href="../">Which variable does the model return?</a>. Model
 						<code>google/gemma-2-2b</code>, probed with plain
 						<a href="https://github.com/huggingface/transformers" target="_blank" rel="noopener">transformers</a>.
 						The trap cases are the community's classics; ground truth is re-executed on every

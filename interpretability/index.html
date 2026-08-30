@@ -3,8 +3,8 @@
 	<head>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
-		<title>Which Variable Does the Model Return? — Chia-chun Liang (Anna)</title>
-		<meta name="description" content="An attribution-graph study of gemma-2-2b completing a Python function: each variable name has its own orthogonal pathway to its own logit, binding sets how much drive that pathway carries, and turning one pathway down flips the answer." />
+		<title>Which Variable Does the Model Return? &middot; Chia-chun Liang (Anna)</title>
+		<meta name="description" content="An attribution-graph study of gemma-2-2b completing a Python function. Each variable name has its own orthogonal pathway to its own logit. Binding sets how much drive that pathway carries, and turning one pathway down flips the answer." />
 		<meta name="author" content="Chia-chun Liang" />
 		<link rel="stylesheet" href="../style.css" />
 		<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90' font-family='Georgia,serif'>A</text></svg>" />
@@ -193,24 +193,24 @@
 				<div class="wrap">
 					<h2>In one paragraph</h2>
 					<p class="lead">
-						Give <code>gemma-2-2b</code> a Python function that accumulates into a local variable
+						Give <code>gemma-2-2b</code> a Python function that accumulates into a local variable,
 						and cut the prompt off right after <code>return</code>. The model predicts
-						<code>&nbsp;result</code> — the accumulator it bound four lines earlier — with
-						<strong>95.3%</strong> probability. Using
+						<code>&nbsp;result</code>, the accumulator it bound four lines earlier, with
+						<strong>95.3%</strong> probability. I used
 						<a href="https://github.com/safety-research/circuit-tracer" target="_blank" rel="noopener">circuit-tracer</a>
-						to build an attribution graph over that prediction, the answer turns out not to be a
-						frequency prior over common variable names: a specific mid-layer feature fires on the
+						to build an attribution graph over that prediction. The answer is not a
+						frequency prior over common variable names. A specific mid-layer feature fires on the
 						<code>result</code> tokens, and a band of late-layer features on <code>return</code>
 						adds to the same logit.
 					</p>
 
 					<p>
 						One graph cannot say whether that feature tracks <em>the variable being bound</em> or
-						simply <em>the name <code>result</code></em>; in this prompt they coincide.
+						simply <em>the name <code>result</code></em>. In this prompt they coincide.
 						<a href="#controls">Control prompts</a> that move the binding around separate the two,
 						and the answer is the name. <strong>Each variable name has its own pathway, and the
 						pathways are orthogonal.</strong> The nodes sitting on <code>result</code> drive the
-						<code>&nbsp;result</code> logit and essentially nothing else; the nodes sitting on a
+						<code>&nbsp;result</code> logit and essentially nothing else. The nodes sitting on a
 						second name, <code>ans</code>, drive <code>&nbsp;ans</code> and essentially nothing
 						else. Binding does not switch a pathway on or off. It sets <em>how much drive</em>
 						that name accumulates, and the model takes the winner at the logit layer.
@@ -221,7 +221,7 @@
 						by more than 2.0 while pushing its own by 17 to 39. The effect
 						<a href="#generalise">is not about the word <code>result</code></a>: 18 accumulator
 						names behave the same way over four prompt shapes, including runnable Python.
-						And it <a href="#causal">is causal</a> — scale the winning name's feature down and
+						And it <a href="#causal">is causal</a>: scale the winning name's feature down and
 						the probabilities cross over, so the model returns the other variable.
 					</p>
 				</div>
@@ -234,10 +234,10 @@
 
 					<p>
 						The prompt is a complete, unambiguous function whose body binds one local variable.
-						Everything the model needs to answer correctly is in scope; nothing about the
-						surrounding text hints at the name. This is the first of four prompts, <strong>P1</strong>;
-						the other three are <a href="#controls">controls</a> (P2&#8211;P4) that move the
-						binding around, and they are what the interpretation ultimately rests on.
+						Everything the model needs to answer correctly is in scope. Nothing in the
+						surrounding text hints at the name. This is the first of four prompts, <strong>P1</strong>.
+						The other three are <a href="#controls">controls</a> (P2&#8211;P4) that move the
+						binding around, and the interpretation ultimately rests on them.
 					</p>
 
 					<p><strong>P1 &middot; return-variable.</strong> <code>result</code> is bound twice.</p>
@@ -250,8 +250,8 @@
 
 					<p>
 						That is 31 tokens including <code>&lt;bos&gt;</code>. The two writes to
-						<code>result</code> land at positions <strong>10</strong> and <strong>23</strong>;
-						the final <code>return</code> is position <strong>30</strong>, and that is where the
+						<code>result</code> land at positions <strong>10</strong> and <strong>23</strong>.
+						The final <code>return</code> is position <strong>30</strong>, and that is where the
 						next-token prediction is made.
 					</p>
 
@@ -272,8 +272,8 @@
 					</table>
 
 					<p>
-						Note the sixth entry: <code>&nbsp;price</code>, the loop variable, is the plausible
-						wrong answer — a model that merely knew "a variable name goes here" could easily
+						Note the sixth entry. <code>&nbsp;price</code>, the loop variable, is the plausible
+						wrong answer. A model that merely knew "a variable name goes here" could easily
 						produce it. It gets 0.26%. Whatever the model is doing, it distinguishes the
 						accumulator from the iteration variable.
 					</p>
@@ -416,9 +416,9 @@
 						</svg>
 						<figcaption>
 							The attributed circuit, simplified. Edge thickness follows the direct effect on the
-							<code>&nbsp;result</code> logit — the only logit target in this graph, since the top
-							prediction cleared the 0.95 coverage threshold on its own. The full graph — 1,460
-							nodes and 56,975 edges — is <a href="graph/">explorable interactively</a>.
+							<code>&nbsp;result</code> logit. That is the only logit target in this graph, since the top
+							prediction cleared the 0.95 coverage threshold on its own. The full graph (1,460
+							nodes and 56,975 edges) is <a href="graph/">explorable interactively</a>.
 						</figcaption>
 					</figure>
 
@@ -441,7 +441,7 @@
 								<td class="node">24_15424_30</td>
 								<td class="num neg"><strong>&#8722;5.09</strong></td>
 								<td class="num">30</td>
-								<td class="wrap-cell">Layer-24 feature on <code>return</code> — the main suppressor</td>
+								<td class="wrap-cell">Layer-24 feature on <code>return</code>, the main suppressor</td>
 							</tr>
 							<tr>
 								<td class="node">18_4769_23</td>
@@ -495,20 +495,20 @@
 					<p>
 						<strong>One feature carries most of the positive effect, and it fires only on
 						<code>result</code>.</strong> Feature <code>18_4769</code> is the single largest
-						positive contributor, and it appears three times in the top nine — at both writes to
+						positive contributor. It appears three times in the top nine: at both writes to
 						<code>result</code> and at the newline that closes the first one. It never fires on
 						<code>price</code> or <code>prices</code>. Two readings fit this one graph equally
 						well: a feature for "the local variable being assigned here", or a feature for the
 						<em>name</em> <code>result</code>. The <a href="#controls">controls</a> decide between
-						them — <code>18_4769</code> is tied to the name, and it stays silent through a
+						them. <code>18_4769</code> is tied to the name, and it stays silent through a
 						perfectly good binding of a different name.
 					</p>
 
 					<p>
 						<strong>The raw embeddings contribute directly.</strong> <code>E_10</code> and
 						<code>E_23</code>, the plain token embeddings of the two <code>result</code>
-						occurrences, contribute +2.56 and +2.20 without passing through any feature — a copy
-						path straight from the input. In the <a href="#controls">controls</a> this path
+						occurrences, contribute +2.56 and +2.20 without passing through any feature. That is
+						a copy path straight from the input. In the <a href="#controls">controls</a> this path
 						carries a large share of each name's total, and it is name-specific in the same way
 						the features are.
 					</p>
@@ -521,7 +521,7 @@
 						suppressor. The <a href="#controls">controls</a> settle what this feature is:
 						<a href="#suppressors"><code>result</code>'s own dedicated suppressor</a>. It fires
 						against <code>&nbsp;result</code> just as hard when <code>&nbsp;result</code> is
-						<em>losing</em>, and when the accumulator is a different name, a <em>different</em>
+						<em>losing</em>. When the accumulator is a different name, a <em>different</em>
 						layer-24 feature takes its place.
 					</p>
 
@@ -529,7 +529,7 @@
 
 					<p>
 						Direct effect measures one row of the adjacency matrix. Ranking instead by
-						<em>total</em> influence — direct and indirect, the score the pruner uses — puts the
+						<em>total</em> influence (direct and indirect, the score the pruner uses) puts the
 						structural tokens first:
 					</p>
 
@@ -550,10 +550,10 @@
 					</table>
 
 					<p>
-						<code>def</code> and <code>&lt;bos&gt;</code> leading this ranking is expected — they
+						<code>def</code> and <code>&lt;bos&gt;</code> leading this ranking is expected. They
 						gate the whole "this is a Python function body" computation, so almost everything
-						routes through them. The informative entry is <code>18_4769_10</code> at rank 5:
-						the identifier feature is influential on both measures, which is what separates it
+						routes through them. The informative entry is <code>18_4769_10</code> at rank 5.
+						The identifier feature is influential on both measures, which is what separates it
 						from nodes that merely sit on a busy path.
 					</p>
 				</div>
@@ -567,7 +567,7 @@
 					<div class="callout">
 						<p>
 							<strong>One prompt is not enough to interpret.</strong> In the function above, the
-							name <code>result</code> and the variable that gets bound are the same thing, so a
+							name <code>result</code> and the variable that gets bound are the same thing. A
 							feature that fires on <code>result</code> could be tracking either. The controls
 							below pull the two apart, and they come down on the side of the name.
 						</p>
@@ -576,9 +576,9 @@
 					<p>
 						Each control keeps the function, the loop and the cut point identical, and changes only
 						which name is bound where. Two of them are <strong>deliberately invalid Python</strong>
-						— a name is read before it is ever assigned — because making <em>binding</em> and
+						because a name is read before it is ever assigned. Making <em>binding</em> and
 						<em>mere occurrence</em> disagree is the only way to tell which one the model follows.
-						The third is ordinary runnable code, and it is the one to check first if the invalid
+						The third is ordinary runnable code. It is the one to check first if the invalid
 						ones bother you.
 					</p>
 
@@ -619,20 +619,20 @@
 					<h3 style="font-size:1rem;margin:1.8rem 0 .6rem;">How a prompt is scored</h3>
 
 					<p>
-						The same conventions as the two companion pages, with one difference: there are no
-						pairs and no verdicts here, because the question is not whether the model is right
-						but <em>which</em> name it picks and <em>by how much</em>. Four layers, each with its
+						The same conventions as the two companion pages, with one difference. There are no
+						pairs and no verdicts here. The question is <em>which</em> name the model picks and
+						<em>by how much</em>, rather than whether it is right. Four layers, each with its
 						own measurement:
 					</p>
 
 					<ul class="notes">
 						<li>
 							<strong>Behaviour (P1&#8211;P4).</strong> One forward pass per prompt, cut
-							immediately after <code>return</code>; the model sees the function and nothing
-							else — no primer, no examples. From the softmax at that position the table reports
+							immediately after <code>return</code>. The model sees the function and nothing
+							else: no primer, no examples. From the softmax at that position the table reports
 							P(<code>&nbsp;result</code>) and P(<code>&nbsp;ans</code>), the two candidate
-							names, each a single token with its leading space. The answer is the top-1 over
-							the <em>whole</em> vocabulary, not just the two candidates, which is why
+							names. Each is a single token with its leading space. The answer is the top-1 over
+							the <em>whole</em> vocabulary, not just the two candidates. That is why
 							<code>(</code>, <code>&nbsp;round</code> and <code>&nbsp;price</code> appear in the
 							P1 top-k above: the names compete inside a real next-token distribution.
 						</li>
@@ -641,15 +641,15 @@
 							the accumulator replaced by each of 18 single-token names and <code>ans</code>
 							kept as the distractor. A case is <code>ok</code> if the top-1 token is the name
 							the binding account predicts (the accumulator, or the distractor under
-							<code>never-bound</code>); an exact tie is counted a <code>MISS</code>, for the
-							same reason the companion pages score ties as neither — argmax would break it
+							<code>never-bound</code>). An exact tie is counted a <code>MISS</code>, for the
+							same reason the companion pages score ties as neither: argmax would break it
 							toward whichever candidate is listed first. The margin,
 							P(predicted)&nbsp;&minus;&nbsp;P(other), is reported, not thresholded.
 						</li>
 						<li>
-							<strong>Attribution (per-logit aggregates).</strong> Not a verdict but a magnitude.
+							<strong>Attribution (per-logit aggregates).</strong> A magnitude, not a verdict.
 							For each graph, every node sitting on a name's token positions is summed by its
-							direct effect on <em>one named logit</em>; the graph carries every logit whose
+							direct effect on <em>one named logit</em>. The graph carries every logit whose
 							cumulative probability is needed to reach 0.95, so P2&#8211;P4 have two or three
 							targets and P1 has one. A node's effect on the top logit and on the other logit
 							are two different numbers, and both are reported.
@@ -657,7 +657,7 @@
 						<li>
 							<strong>Intervention.</strong> The same forward pass with one feature clamped to a
 							fraction of its value at every position it fires, then the same two probabilities
-							read off. The harness reports its unmodified baseline first and it must reproduce
+							read off. The harness reports its unmodified baseline first. It must reproduce
 							the behaviour probe (95.31 / 69.14 / 6.45%) before any intervention number is
 							believed.
 						</li>
@@ -706,8 +706,8 @@
 						<p>
 							<strong>A direct effect is meaningless until you say which logit it is measured
 							against.</strong> The first prompt's graph has a single logit target, so there is
-							nothing there to get wrong. The controls each carry several — both names clear the
-							coverage threshold — and a node's effect on the <em>top</em> logit can be near zero
+							nothing there to get wrong. The controls each carry several, because both names clear the
+							coverage threshold. A node's effect on the <em>top</em> logit can be near zero
 							while its effect on the <em>other</em> logit is large. Every number below names its
 							target.
 						</p>
@@ -715,9 +715,9 @@
 
 					<p>
 						For each graph, take every node sitting on a name's tokens and sum its direct effect
-						on each logit separately. P2, P3 and P4 each have two candidate names; two more
+						on each logit separately. P2, P3 and P4 each have two candidate names. Two more
 						graphs, <code>split-total</code> and <code>total-never-bound</code>, repeat P2 and P3
-						with <code>total</code> as the accumulator, to check that nothing here is about the
+						with <code>total</code> as the accumulator. They check that nothing here is about the
 						word <code>result</code>:
 					</p>
 
@@ -841,12 +841,12 @@
 
 					<p style="font-size:.88rem;color:var(--text-muted);">
 						<sup>&#8224;</sup> The <code>total</code> pathway includes the <code>total</code> token
-						inside the function name <code>calculate_total</code>, which the <code>result</code>
-						prompts have no equivalent of. That occurrence is worth +7.50 of
+						inside the function name <code>calculate_total</code>. The <code>result</code>
+						prompts have no equivalent. That occurrence is worth +7.50 of
 						<code>split-total</code>'s +38.883 and +5.15 of <code>total-never-bound</code>'s
-						+20.838; drop it and they read +31.380 and +15.689. Either way the cross terms stay
-						near zero, which is what this table is about — but the two <code>total</code> rows are
-						not directly comparable to the three <code>result</code> rows, and the confound is
+						+20.838. Drop it and they read +31.380 and +15.689. Either way the cross terms stay
+						near zero, which is what this table is about. But the two <code>total</code> rows are
+						not directly comparable to the three <code>result</code> rows. The confound is
 						itself a small result: a name's pathway picks the name up wherever it occurs,
 						including in an identifier that merely contains it.
 					</p>
@@ -854,7 +854,7 @@
 					<div class="callout">
 						<p>
 							Each variable name has its own pathway to its own logit, and the pathways are
-							<strong>orthogonal</strong>. Binding does not switch a pathway on or off; it sets
+							<strong>orthogonal</strong>. Binding does not switch a pathway on or off. It sets
 							<strong>how much drive</strong> that name accumulates. The model then does a
 							winner-take-all comparison at the logit layer.
 						</p>
@@ -872,8 +872,8 @@
 						<li>
 							<strong>A losing pathway is still fully routed.</strong> In P3,
 							<code>18_4769</code> fires once (position 25,
-							activation 92.5) and is worth <strong>+8.50</strong> to <code>&nbsp;result</code>;
-							its largest firing in P2 (position 23, activation 91.0) is
+							activation 92.5) and is worth <strong>+8.50</strong> to <code>&nbsp;result</code>.
+							Its largest firing in P2 (position 23, activation 91.0) is
 							worth <strong>+8.94</strong>. Matched activation, matched effect, whether its name
 							wins or loses. Likewise <code>18_4732</code> at activation 39.0 gives
 							<code>&nbsp;ans</code> +1.555 in one graph and +1.305 in the other: the same
@@ -884,29 +884,29 @@
 							<strong>The ordering is consistent; the magnitude is not.</strong> The winning
 							pathway's total runs 26.96 / 26.96 / 37.30 / 38.88 / 28.04 across the five graphs,
 							a spread of 11.9. There is no fixed drive budget. What holds in every graph is that
-							the winner's own-logit drive exceeds the loser's, and that the winner recruits more
+							the winner's own-logit drive exceeds the loser's. The winner also recruits more
 							nodes (259&thinsp;&gt;&thinsp;238, 500&thinsp;&gt;&thinsp;102,
 							335&thinsp;&gt;&thinsp;188, 560&thinsp;&gt;&thinsp;183,
-							509&thinsp;&gt;&thinsp;313) — a trend, not a mechanism.
+							509&thinsp;&gt;&thinsp;313), a trend rather than a mechanism.
 						</li>
 						<li>
 							<strong>Part of the drive is name-agnostic.</strong> <code>24_12518_30</code>, on
 							the <code>return</code> token, gives +1.680 to <code>&nbsp;result</code> and
-							+1.781 to <code>&nbsp;ans</code> in P2 — a baseline "a
+							+1.781 to <code>&nbsp;ans</code> in P2. That is a baseline "a
 							local variable goes here" push that belongs to neither name's pathway.
 						</li>
 						<li>
 							<strong>Suppression is per-pathway, not global.</strong> <code>24_15424</code>
 							presses on <code>&nbsp;result</code> even where <code>&nbsp;result</code> has
-							already lost and sits at 6.5%, so it is not reacting to the outcome — and swapping
+							already lost and sits at 6.5%, so it is not reacting to the outcome. Swapping
 							the accumulator's name swaps the suppressing feature.
 							<a href="#suppressors">Its own subsection, below.</a>
 						</li>
 						<li>
 							<strong>Attribution and ablation agree, independently.</strong> Deleting
 							<code>18_4732</code> from P3 moves
-							<code>&nbsp;ans</code> only 89.06% &rarr; 86.72% — small, and exactly what the
-							graph predicts, because <code>ans</code>'s drive sits mostly in its raw
+							<code>&nbsp;ans</code> only 89.06% &rarr; 86.72%. That is small, and exactly what the
+							graph predicts: <code>ans</code>'s drive sits mostly in its raw
 							embeddings (+5.688 and +4.906) rather than in that feature (+1.305).
 						</li>
 					</ul>
@@ -915,8 +915,8 @@
 
 					<p>
 						The largest negative node in the first graph, <code>24_15424_30</code>, could be a
-						global calibrator that presses on whichever name is winning, or something specific to
-						<code>result</code>. Swapping the accumulator for <code>total</code> answers that:
+						global calibrator that presses on whichever name is winning. Or it could be something
+						specific to <code>result</code>. Swapping the accumulator for <code>total</code> answers that:
 						<strong>each name's pathway is opposed by its own dedicated layer-24 feature at the
 						<code>return</code> position</strong>. Rank the negative nodes into each pathway's own
 						logit, as a fraction of that pathway's drive:
@@ -954,7 +954,7 @@
 					</p>
 
 					<p>
-						The 0.24&#8211;0.29 band is an <em>observation</em>, not a law: six points across two
+						The 0.24&#8211;0.29 band is an <em>observation</em>, not a law. Six points across two
 						names is not enough to call a ratio fixed, so it is reported and not leaned on. The
 						claim rests on the feature indices, not on the ratio.
 					</p>
@@ -962,7 +962,7 @@
 					<p>
 						For <code>ans</code> the honest phrasing is <strong>"not captured"</strong>, not
 						"does not exist". Its drive sits in its raw embeddings (+7.375 in P4) rather than in
-						its feature (+1.727) — the transcoders
+						its feature (+1.727). The transcoders
 						cover that pathway poorly, so its partner is presumably just not represented in the
 						graph.
 					</p>
@@ -970,8 +970,8 @@
 					<p>
 						In P4 the pairing is at its most dramatic:
 						<code>18_4769_16</code> drives <code>&nbsp;result</code> at <strong>+10.562</strong>
-						while <code>24_15424_36</code> opposes it at <strong>&#8722;10.875</strong> — the
-						two largest-magnitude nodes anywhere in this project, very nearly cancelling.
+						while <code>24_15424_36</code> opposes it at <strong>&#8722;10.875</strong>. Those are the
+						two largest-magnitude nodes anywhere in this project, and they very nearly cancel.
 					</p>
 
 					<h3 style="font-size:1rem;margin:2rem 0 .6rem;">A trap in reading the subgraphs</h3>
@@ -980,7 +980,7 @@
 						<p>
 							<strong>In P3 the pinned subgraph says the opposite
 							of the outcome.</strong> The handful of pinned nodes give <code>result</code>
-							+12.8 against <code>ans</code> +11.9 — and yet the model answers
+							+12.8 against <code>ans</code> +11.9. Yet the model answers
 							<code>&nbsp;ans</code> at 89.1%. The true ordering appears only once
 							<em>every</em> node at those positions is summed: <strong>+26.957 against
 							+17.027</strong>. <code>ans</code> wins on <strong>breadth</strong>, not on peak:
@@ -989,7 +989,7 @@
 						<p>
 							So any subgraph figure has to carry the aggregate totals beside it, or a reader
 							will draw the opposite conclusion from the picture. That is the general lesson
-							rather than a quirk of this prompt: a pinned subgraph is a <em>hypothesis</em>
+							rather than a quirk of this prompt. A pinned subgraph is a <em>hypothesis</em>
 							about which nodes matter, and the aggregate is the check on it.
 						</p>
 					</div>
@@ -997,21 +997,21 @@
 					<p>
 						All four prompts' graphs are hosted on Neuronpedia with the relevant nodes pinned and
 						every logit target pinned beside them. Each supernode label names the logit its total
-						is measured against; the P2 and P3 labels give both the pinned total and the all-nodes
+						is measured against. The P2 and P3 labels give both the pinned total and the all-nodes
 						aggregate, so the P3 subgraph cannot be read as saying <code>result</code> wins. The
 						hosted copies are pruned harder than the graphs the table above is computed from, so
 						their totals run somewhat lower.
 					</p>
 
 					<p>
-						P4 is the one to start with: it is the valid
-						Python among them, it separates the two pathways most cleanly (the pinned pathway
+						P4 is the one to start with. It is the valid
+						Python among them. It separates the two pathways most cleanly (the pinned pathway
 						groups cross to the rival logit at just +0.29 and +0.24), and it holds the
 						near-cancelling pair described above. In
 						its pinned view the suppressor <code>24_15424_36</code> is deliberately left outside
-						every group, so it reads as what it is — the single dominant opposer, not part of a
+						every group, so it reads as what it is: the single dominant opposer, not part of a
 						distributed background. All three logit nodes are pinned, including
-						<code>(</code> at 1.3%: the two names are competing inside a real distribution, not
+						<code>(</code> at 1.3%. The two names are competing inside a real distribution, not
 						a two-way choice we constructed.
 					</p>
 
@@ -1023,8 +1023,8 @@
 					</ul>
 
 					<p style="margin-top:1.4rem;">
-						The behaviour table comes from a direct probe of the model; the attribution runs read
-						it in bfloat16 and report 95.3 / 69.1 / 89.1 / 82.4% for P1&#8211;P4, which is
+						The behaviour table comes from a direct probe of the model. The attribution runs read
+						it in bfloat16 and report 95.3 / 69.1 / 89.1 / 82.4% for P1&#8211;P4. That is
 						where the logit probabilities in the graphs come from. Raw reports:
 						<a href="py-return-variable_report.json">P1</a>,
 						<a href="py-split-binding_report.json">P2</a>,
@@ -1034,9 +1034,9 @@
 
 					<p>
 						One number is deliberately missing from the aggregate table: P1's.
-						Summed over its two <code>result</code> writes it is +17.709, but its top prediction
+						Summed over its two <code>result</code> writes it is +17.709. But its top prediction
 						cleared <code>--desired-logit-prob 0.95</code> on its own, so its graph has a single
-						logit target and a different node set. It is not comparable to the others, and putting
+						logit target and a different node set. It is not comparable to the others. Putting
 						it in the same column would invite exactly the apples-to-oranges reading this section
 						is about.
 					</p>
@@ -1159,8 +1159,8 @@
 							<g><title>tmp: P(acc) 61.72%, P(ans) 29.10%, margin +32.62</title><circle cx="401.8" cy="208" r="5" fill="var(--viz-s1)" opacity=".78" stroke="var(--viz-surface)" stroke-width="1.5"/></g>
 							<g><title>res: P(acc) 63.67%, P(ans) 30.08%, margin +33.59</title><circle cx="406.2" cy="208" r="5" fill="var(--viz-s1)" opacity=".78" stroke="var(--viz-surface)" stroke-width="1.5"/></g>
 							<g><title>agg: P(acc) 55.47%, P(ans) 33.79%, margin +21.68</title><circle cx="352.4" cy="208" r="5" fill="var(--viz-s1)" opacity=".78" stroke="var(--viz-surface)" stroke-width="1.5"/></g>
-							<g><title>score: P(acc) 44.92%, P(ans) 44.92% &#8212; exact tie, counted a miss</title><circle cx="254.6" cy="208" r="6.5" fill="var(--viz-surface)" stroke="var(--viz-ink-1)" stroke-width="2"/></g>
-							<text x="265.6" y="199" font-size="10.5" fill="var(--viz-ink-1)">score &#8212; exact tie, counted a miss</text>
+							<g><title>score: P(acc) 44.92%, P(ans) 44.92%: exact tie, counted a miss</title><circle cx="254.6" cy="208" r="6.5" fill="var(--viz-surface)" stroke="var(--viz-ink-1)" stroke-width="2"/></g>
+							<text x="265.6" y="199" font-size="10.5" fill="var(--viz-ink-1)">score: exact tie, counted a miss</text>
 							<g><title>data: P(acc) 53.12%, P(ans) 36.72%, margin +16.40</title><circle cx="328.6" cy="208" r="5" fill="var(--viz-s1)" opacity=".78" stroke="var(--viz-surface)" stroke-width="1.5"/></g>
 							<g><title>accum: P(acc) 51.95%, P(ans) 40.43%, margin +11.52</title><circle cx="306.6" cy="208" r="5" fill="var(--viz-s1)" opacity=".78" stroke="var(--viz-surface)" stroke-width="1.5"/></g>
 							<g><title>output: P(acc) 75.78%, P(ans) 19.14%, margin +56.64</title><circle cx="510.3" cy="208" r="5" fill="var(--viz-s1)" opacity=".78" stroke="var(--viz-surface)" stroke-width="1.5"/></g>
@@ -1173,7 +1173,7 @@
 						</svg>
 						<figcaption>
 							Each dot is one accumulator name. Position is the margin between the name the
-							binding account predicts and the other candidate; a dot to the right of the axis
+							binding account predicts and the other candidate. A dot to the right of the axis
 							means the account was right. The two upper shapes are ordinary runnable Python.
 						</figcaption>
 					</figure>
@@ -1193,8 +1193,8 @@
 					<div class="callout">
 						<p>
 							<strong>The one miss is reported as a miss.</strong> Under <code>split</code>,
-							<code>score</code> lands on 44.92% against 44.92% — an exact tie in bfloat16,
-							which the argmax breaks toward <code>&nbsp;ans</code>. A tie is not a win, so it
+							<code>score</code> lands on 44.92% against 44.92%, an exact tie in bfloat16.
+							The argmax breaks it toward <code>&nbsp;ans</code>. A tie is not a win, so it
 							is counted as a miss.
 						</p>
 						<p>
@@ -1209,7 +1209,7 @@
 						<strong>This is also the answer to the obvious objection.</strong> Two of the control
 						prompts are invalid Python, and a Python audience is right to be suspicious of
 						conclusions drawn from code that cannot run. But <code>two-valid</code> is ordinary
-						runnable code — both locals bound, one of them accumulated into — and it is 18/18
+						runnable code: both locals bound, one of them accumulated into. It is 18/18
 						with a mean margin of +59.6%. The effect does not depend on the prompt being broken.
 					</p>
 				</div>
@@ -1222,10 +1222,10 @@
 
 					<p>
 						Everything above is correlational: the attribution graph says which nodes are
-						associated with which logit. The direct test is to intervene. Clamping feature
-						<code>18_4769</code> — the <code>result</code> feature — to a fraction of its value at
-						every position it fires, and re-running the forward pass, moves the answer smoothly
-						and then flips it.
+						associated with which logit. The direct test is to intervene. Clamp feature
+						<code>18_4769</code> (the <code>result</code> feature) to a fraction of its value at
+						every position it fires, and re-run the forward pass. The answer moves smoothly
+						and then flips.
 					</p>
 
 					<figure class="figure viz">
@@ -1240,7 +1240,7 @@
 								Two panels. On the left, scaling the result feature from full strength down to
 								zero lowers the probability of result from 69% to 24% and raises ans from 25%
 								to 65%; the two cross near a gain of 0.35. On the right, amplifying the ans
-								feature up to 32 times does not raise ans at all — past about 6 times it
+								feature up to 32 times does not raise ans at all. Past about 6 times it
 								collapses to under 3%.
 							</desc>
 							<text x="46" y="10" font-size="11.5" fill="var(--viz-ink-1)" font-weight="600">Scale the &#8216;result&#8217; feature DOWN</text>
@@ -1345,7 +1345,7 @@
 						</svg>
 						<figcaption>
 							Left: the intervention that works. Right: the same experiment run in the other
-							direction, which does not — and is worth showing rather than dropping.
+							direction, which does not. It is worth showing rather than dropping.
 						</figcaption>
 					</figure>
 
@@ -1363,7 +1363,7 @@
 						The response is monotonic in <code>&nbsp;ans</code> throughout. The two candidates tie
 						exactly at gain 0.4 and again at 0.3, and from 0.2 down <code>&nbsp;ans</code> is
 						ahead. <strong>Turning one name's volume down changes which variable the model
-						returns</strong> — which is the claim, tested directly rather than inferred from the
+						returns</strong>. That is the claim, tested directly rather than inferred from the
 						graph.
 					</p>
 
@@ -1389,8 +1389,8 @@
 						<p>
 							This is not a property of the pathway. It is the residual stream being pushed off
 							the distribution the later layers were trained on, so the output falls back toward
-							the prior. Scaling <em>down</em> stays inside the feature's natural range and is the
-							intervention this page relies on; the amplification sweep is shown so the asymmetry
+							the prior. Scaling <em>down</em> stays inside the feature's natural range, and it is the
+							intervention this page relies on. The amplification sweep is shown so the asymmetry
 							is on record.
 						</p>
 					</div>
@@ -1404,17 +1404,17 @@
 
 					<ul class="notes">
 						<li>
-							<a href="traps/"><strong>Right name, wrong rules</strong></a> — ten classic binding
+							<a href="traps/"><strong>Right name, wrong rules</strong></a>: ten classic binding
 							traps (closure capture, mutable defaults, loop-variable leak, class-body scope), posed
-							as near-identical pairs with opposite answers: <strong>0 of 4 pairs</strong>, with the
+							as near-identical pairs with opposite answers. The score is <strong>0 of 4 pairs</strong>, with the
 							two scoping rules exactly swapped in one pair.
 						</li>
 						<li>
-							<a href="gotchas/"><strong>The expression is not enough</strong></a> — PEP 289
+							<a href="gotchas/"><strong>The expression is not enough</strong></a>: PEP 289
 							generator-expression late binding, where the model is worse on the sugared form of
-							the identical program, plus four chapters (float width, set order, bound-method
+							the identical program. Plus four chapters (float width, set order, bound-method
 							identity, interpreter version) where the printed expression underdetermines the
-							answer: <strong>1 of 13 pairs</strong>.
+							answer. The score is <strong>1 of 13 pairs</strong>.
 						</li>
 					</ul>
 				</div>
@@ -1440,14 +1440,14 @@
 						(29.5%): the model accepts <code>res</code> as a complete variable name. And because
 						<code>&nbsp;result</code> and <code>result</code> are each a <em>single</em> token in
 						Gemma's vocabulary, there is no high-probability <code>res</code>&nbsp;&rarr;&nbsp;<code>ult</code>
-						BPE split to observe at all — the top identifier continuations are junk like
+						BPE split to observe at all. The top identifier continuations are junk like
 						<code>ut</code> and <code>lut</code>.
 					</p>
 
 					<p>
-						The attribution graph for that variant says the same thing from the inside: its
+						The attribution graph for that variant says the same thing from the inside. Its
 						strongest direct effects are transcoder <em>error</em> nodes at the
-						<code>&nbsp;res</code> position (<code>E_23_31</code>, <code>E_19_31</code>) —
+						<code>&nbsp;res</code> position (<code>E_23_31</code>, <code>E_19_31</code>),
 						that is, behaviour the transcoders do not explain. High error-node attribution is a
 						warning sign that the graph is not describing a clean circuit.
 					</p>
@@ -1469,10 +1469,10 @@
 					<p>
 						The full attribution graph is hosted here, running Anthropic's attribution-graph
 						viewer against the pruned graph for this prompt. It opens with the circuit described
-						above already pinned into the Subgraph pane at the bottom: the three firings of
-						<code>18_4769</code> grouped as one supernode, the layer-21–25 features on
-						<code>return</code> grouped as another, and the suppressor, the two
-						<code>result</code> embeddings and the target logit alongside them.
+						above already pinned into the Subgraph pane at the bottom. The three firings of
+						<code>18_4769</code> are grouped as one supernode, and the layer-21–25 features on
+						<code>return</code> as another. The suppressor, the two
+						<code>result</code> embeddings and the target logit sit alongside them.
 					</p>
 
 					<p>
@@ -1493,24 +1493,24 @@
 						</p>
 						<p>
 							The feature-detail panel on the right stays empty. It fetches example activations
-							from Anthropic's own feature store, which hosts their scans and not GemmaScope, and
-							there is no public equivalent to point it at — generating those examples means a
+							from Anthropic's own feature store, which hosts their scans and not GemmaScope.
+							There is no public equivalent to point it at. Generating those examples means a
 							GPU pass over a corpus, which is outside this experiment. Feature identifiers
-							follow <code>{layer}_{feature}_{position}</code>; look a feature up on
+							follow <code>{layer}_{feature}_{position}</code>. Look a feature up on
 							<a href="https://www.neuronpedia.org/gemma-2-2b" target="_blank" rel="noopener">Neuronpedia</a>
 							to see what it responds to.
 						</p>
 						<p>
 							Finally, the node labels are mine, not the model's. GemmaScope transcoders ship
-							without auto-interpretation text, so every feature node in the published graph is
-							labelled with what is verifiable — its layer, feature index, the token it fires on
-							and its activation — and nothing about what the feature <em>means</em>. The
+							without auto-interpretation text. So every feature node in the published graph is
+							labelled with what is verifiable (its layer, feature index, the token it fires on
+							and its activation) and nothing about what the feature <em>means</em>. The
 							interpretive claims on this page come from the attribution numbers, not from the
 							labels.
 						</p>
 						<p>
 							The graph hosted here is the first prompt's. On its own it shows the circuit but
-							not what the circuit is tracking — that needs the <a href="#controls">controls</a>.
+							not what the circuit is tracking. That needs the <a href="#controls">controls</a>.
 							It does have one advantage: a single logit target, so a node's direct effect is
 							unambiguous here in a way it is not in the controls. Read it alongside the
 							<a href="#controls">Neuronpedia graphs</a> for those.
@@ -1526,19 +1526,19 @@
 
 					<p>
 						<strong>One model.</strong> Everything here is <code>gemma-2-2b</code>. That is a
-						constraint of the method before it is a choice: attribution graphs need a full set of
-						transcoders for the model, and GemmaScope's are the most complete public set — the
+						constraint of the method before it is a choice. Attribution graphs need a full set of
+						transcoders for the model, and GemmaScope's are the most complete public set. They are the
 						ones circuit-tracer was built and validated on, and the only ones Neuronpedia can host
 						graphs and run steering for. The alternatives are also much larger: the Llama-3.2 1B
 						CLTs are 25&nbsp;GB, Qwen-3 1.7B's 71&nbsp;GB, GPT-OSS 20B's 264&nbsp;GB, against
-						7.4&nbsp;GB here, on a single RTX&nbsp;3090. No cross-model claim is made; the result
+						7.4&nbsp;GB here, on a single RTX&nbsp;3090. No cross-model claim is made. The result
 						is a mechanism in one model, verified causally in that model.
 					</p>
 
 					<p>
 						<strong>Transcoder coverage is uneven.</strong> The <code>ans</code> pathway's drive
 						sits in raw embeddings rather than in a feature, and it has no suppressor above 0.15 of
-						its drive. "Not captured" is the honest reading; the transcoders explain that pathway
+						its drive. "Not captured" is the honest reading. The transcoders explain that pathway
 						less well than the <code>result</code> and <code>total</code> ones, and an
 						embedding-led pathway is harder to intervene on cleanly.
 					</p>
@@ -1554,8 +1554,8 @@
 					<p>
 						<strong>Single-token cuts and a pruned view.</strong> Every prompt is decided by one
 						next-token distribution, which probes recognition, not generation. The per-logit totals
-						are computed from graphs pruned at node&nbsp;0.8&nbsp;/ edge&nbsp;0.98 and the hosted
-						copies at 0.7&nbsp;/&nbsp;0.9, so absolute magnitudes shift with the threshold; the
+						are computed from graphs pruned at node&nbsp;0.8&nbsp;/ edge&nbsp;0.98, and the hosted
+						copies at 0.7&nbsp;/&nbsp;0.9, so absolute magnitudes shift with the threshold. The
 						orderings and the near-zero cross terms are what is stable. The self-hosted viewer's
 						feature-detail panel is empty, so what each feature responds to elsewhere has to be
 						looked up on Neuronpedia.
@@ -1565,10 +1565,10 @@
 						<strong>Next.</strong> The obvious second model is Llama-3.2 1B: its CLTs exist, the
 						model fits the same GPU without offload, and the attribution driver runs unchanged on
 						the same backend. The behavioural probes (the four prompts, the 18-name sweep, the
-						interventions' baseline) need no transcoders and are the first thing to run — starting
+						interventions' baseline) need no transcoders and are the first thing to run. Start
 						with whether <code>&nbsp;result</code> and <code>&nbsp;ans</code> are single tokens in
 						that vocabulary, which the whole design depends on. Beyond that: attribution on the
-						<code>total</code> graphs' suppressor to see whether per-name suppression is a
+						<code>total</code> graphs' suppressor, to see whether per-name suppression is a
 						general pattern or a feature of a few names, and a proper feature-detail panel for the
 						hosted viewer.
 					</p>
@@ -1583,8 +1583,8 @@
 					<p>
 						Everything below runs against the public
 						<a href="https://github.com/safety-research/circuit-tracer" target="_blank" rel="noopener">safety-research/circuit-tracer</a>
-						release — no private code is needed to get the same graph. You will need a GPU with
-						roughly 10&nbsp;GB free in bfloat16 (18&nbsp;GB in float32), and a Hugging Face
+						release. No private code is needed to get the same graph. You will need a GPU with
+						roughly 10&nbsp;GB free in bfloat16 (18&nbsp;GB in float32). You also need a Hugging Face
 						account that has accepted the Gemma licence, since the first run downloads about
 						18&nbsp;GB of weights and transcoders.
 					</p>
@@ -1635,35 +1635,35 @@ uv pip install .
 
 					<p>
 						<strong>Do not use float16.</strong> <code>gemma-2</code>'s activation magnitudes
-						overflow in fp16; use bfloat16 on Ampere or newer, and float32 on older cards.
+						overflow in fp16. Use bfloat16 on Ampere or newer, and float32 on older cards.
 						This is why the run above pins <code>--dtype bfloat16</code> rather than letting a
 						generic half-precision default apply.
 					</p>
 
 					<p>
-						The <a href="#controls">control prompts</a> run through the same command; only
+						The <a href="#controls">control prompts</a> run through the same command. Only
 						<code>-p</code> and <code>--slug</code> change. Their per-logit numbers are read
 						straight out of the graph JSON: for <em>each</em> node whose
 						<code>feature_type</code> is <code>logit</code>, sum the <code>links</code> whose
-						<code>target</code> is that node. Take <em>every</em> logit node, not just the first:
-						on the first prompt there is only one, so reading the top logit alone happens to be
+						<code>target</code> is that node. Take <em>every</em> logit node, not just the first.
+						On the first prompt there is only one, so reading the top logit alone happens to be
 						correct there and silently wrong on the controls.
 					</p>
 
 					<p>
 						The <a href="#generalise">18-name sweep</a> and the
-						<a href="#causal">interventions</a> need no transcoders and no attribution run — they
+						<a href="#causal">interventions</a> need no transcoders and no attribution run. They
 						are plain <code>transformers</code> forward passes, which is why they were used to
 						check the graph rather than the other way round. The intervention harness clamps a
-						feature through the transcoder at every position it fires and re-runs the model,
-						reporting its unmodified baseline first so a broken hook cannot pass silently.
+						feature through the transcoder at every position it fires and re-runs the model.
+						It reports its unmodified baseline first, so a broken hook cannot pass silently.
 					</p>
 
 					<p>
-						The scripts that produced the exact numbers on this page — the prompt probe, the name
-						sweep, the intervention harness, the attribution driver, the per-position feature
-						comparison and the re-pruning helper — live in a fork of circuit-tracer,
-						<code>circuit-tracer-python</code>, which is currently private. The raw attribution
+						The scripts that produced the exact numbers on this page live in a fork of circuit-tracer,
+						<code>circuit-tracer-python</code>, which is currently private. They are the prompt probe,
+						the name sweep, the intervention harness, the attribution driver, the per-position feature
+						comparison and the re-pruning helper. The raw attribution
 						reports behind the tables above are published here:
 						<a href="py-return-variable_report.json">py-return-variable_report.json</a>,
 						<a href="py-two-valid-locals_report.json">py-two-valid-locals_report.json</a>,
