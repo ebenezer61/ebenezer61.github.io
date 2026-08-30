@@ -205,9 +205,11 @@
 					</p>
 
 					<p>
-						<a href="#controls">Control prompts</a> then showed that the obvious reading of that
-						one graph is wrong. <strong>Each variable name has its own pathway, and the pathways
-						are orthogonal.</strong> The nodes sitting on <code>result</code> drive the
+						One graph cannot say whether that feature tracks <em>the variable being bound</em> or
+						simply <em>the name <code>result</code></em>; in this prompt they coincide.
+						<a href="#controls">Control prompts</a> that move the binding around separate the two,
+						and the answer is the name. <strong>Each variable name has its own pathway, and the
+						pathways are orthogonal.</strong> The nodes sitting on <code>result</code> drive the
 						<code>&nbsp;result</code> logit and essentially nothing else; the nodes sitting on a
 						second name, <code>ans</code>, drive <code>&nbsp;ans</code> and essentially nothing
 						else. Binding does not switch a pathway on or off. It sets <em>how much drive</em>
@@ -493,11 +495,11 @@
 						<code>result</code>.</strong> Feature <code>18_4769</code> is the single largest
 						positive contributor, and it appears three times in the top nine — at both writes to
 						<code>result</code> and at the newline that closes the first one. It never fires on
-						<code>price</code> or <code>prices</code>. The tempting reading is a feature that
-						tracks "the local variable being assigned here."
-						<a href="#controls">That reading is wrong</a>: <code>18_4769</code> is tied to the
-						<em>name</em> <code>result</code>, and it stays silent through a perfectly good
-						binding of a different name.
+						<code>price</code> or <code>prices</code>. Two readings fit this one graph equally
+						well: a feature for "the local variable being assigned here", or a feature for the
+						<em>name</em> <code>result</code>. The <a href="#controls">controls</a> decide between
+						them — <code>18_4769</code> is tied to the name, and it stays silent through a
+						perfectly good binding of a different name.
 					</p>
 
 					<p>
@@ -558,15 +560,14 @@
 			<!-- ======================= Controls ======================= -->
 			<section id="controls">
 				<div class="wrap">
-					<h2>The controls that broke the first explanation</h2>
+					<h2>The controls</h2>
 
 					<div class="callout">
 						<p>
-							<strong>The claim this page used to make was wrong.</strong> It said feature
-							<code>18_4769</code> tracks <em>the bound identifier</em>. One prompt cannot tell
-							"the model tracks what it bound" apart from "the model tracks the name
-							<code>result</code>", because in that prompt the two are the same thing. The
-							controls separate them, and they come down on the side of the name.
+							<strong>One prompt is not enough to interpret.</strong> In the function above, the
+							name <code>result</code> and the variable that gets bound are the same thing, so a
+							feature that fires on <code>result</code> could be tracking either. The controls
+							below pull the two apart, and they come down on the side of the name.
 						</p>
 					</div>
 
@@ -656,9 +657,10 @@
 						<p>
 							<strong>A direct effect is meaningless until you say which logit it is measured
 							against.</strong> The first prompt's graph has a single logit target, so there is
-							nothing there to get wrong. The controls each carry several, and quietly reading
-							only the top one is what produced two successive wrong claims on this page —
-							including the first attempt at correcting it. Every number below names its target.
+							nothing there to get wrong. The controls each carry several — both names clear the
+							coverage threshold — and a node's effect on the <em>top</em> logit can be near zero
+							while its effect on the <em>other</em> logit is large. Every number below names its
+							target.
 						</p>
 					</div>
 
@@ -807,51 +809,34 @@
 						</p>
 					</div>
 
-					<h3 style="font-size:1rem;margin:2rem 0 .6rem;">What is retracted</h3>
-
-					<p>
-						Three claims are withdrawn. Two were artefacts of comparing numbers measured against
-						different logits; the third was mine, and it was a case of reading a law off two
-						data points.
-					</p>
-
-					<ul class="notes">
-						<li>
-							<strong><code>18_4769</code> "fires but is not routed".</strong> Its
-							<code>+0.028</code> in <code>result-never-bound</code> was its effect on that
-							graph's <code>&nbsp;ans</code> logit — the wrong target. Its one firing there
-							(position 25, activation 92.5) is worth <strong>+8.50</strong> to
-							<code>&nbsp;result</code>; its largest firing in <code>split-binding</code>
-							(position 23, activation 91.0) is worth <strong>+8.94</strong>. Matched
-							activation, matched effect: it is routed perfectly well, to its own name, which
-							loses.
-						</li>
-						<li>
-							<strong><code>18_4732</code> shows "identical activation, opposite routing".</strong>
-							The <code>&#8722;0.131</code> was its effect on one graph's
-							<code>&nbsp;result</code> logit and the <code>+1.305</code> its effect on
-							another's <code>&nbsp;ans</code> logit — two different targets. Measured against
-							<code>&nbsp;ans</code> in both, it is +1.555 and +1.305: the same feature, at the
-							same activation of 39.0, doing the same job.
-						</li>
-						<li>
-							<strong>"The winner's drive is conserved at about +26.7."</strong> An earlier
-							version of this page said the winning pathway lands on the same total whichever
-							name wins, and pointed at +26.963 and +26.957 as evidence. That was two points.
-							Five graphs give 26.96 / 26.96 / 37.30 / 38.88 / 28.04 — a spread of 11.9. There
-							is no conservation law here. It was an observation, and it did not survive being
-							checked.
-						</li>
-					</ul>
-
-					<h3 style="font-size:1rem;margin:2rem 0 .6rem;">What survives</h3>
+					<h3 style="font-size:1rem;margin:2rem 0 .6rem;">What the graphs show</h3>
 
 					<ul class="notes">
 						<li>
 							<strong>The features are tied to the name, not to the act of binding.</strong>
 							<code>18_4769</code> does not respond to <code>ans = 0</code> at all, and that is
 							a perfectly good binding. A different feature, <code>18_4732</code>, is the one
-							that fires there. This is what rules out the original claim.
+							that fires there.
+						</li>
+						<li>
+							<strong>A losing pathway is still fully routed.</strong> In
+							<code>result-never-bound</code>, <code>18_4769</code> fires once (position 25,
+							activation 92.5) and is worth <strong>+8.50</strong> to <code>&nbsp;result</code>;
+							its largest firing in <code>split-binding</code> (position 23, activation 91.0) is
+							worth <strong>+8.94</strong>. Matched activation, matched effect, whether its name
+							wins or loses. Likewise <code>18_4732</code> at activation 39.0 gives
+							<code>&nbsp;ans</code> +1.555 in one graph and +1.305 in the other: the same
+							feature doing the same job. What changes between the graphs is how much total drive
+							each name accumulates, not what any one feature does.
+						</li>
+						<li>
+							<strong>The ordering is consistent; the magnitude is not.</strong> The winning
+							pathway's total runs 26.96 / 26.96 / 37.30 / 38.88 / 28.04 across the five graphs,
+							a spread of 11.9. There is no fixed drive budget. What holds in every graph is that
+							the winner's own-logit drive exceeds the loser's, and that the winner recruits more
+							nodes (259&thinsp;&gt;&thinsp;238, 500&thinsp;&gt;&thinsp;102,
+							335&thinsp;&gt;&thinsp;188, 560&thinsp;&gt;&thinsp;183,
+							509&thinsp;&gt;&thinsp;313) — a trend, not a mechanism.
 						</li>
 						<li>
 							<strong>Part of the drive is name-agnostic.</strong> <code>24_12518_30</code>, on
@@ -878,12 +863,12 @@
 					<h3 id="suppressors" style="font-size:1rem;margin:2rem 0 .6rem;">Each pathway has its own suppressor</h3>
 
 					<p>
-						An earlier version of this page guessed that the big negative feature was
-						"calibration rather than opposition", and a later one called it "specific to one
-						name". The <code>total</code> graphs settle it, and the answer is sharper than
-						either guess: <strong>each name's pathway is opposed by its own dedicated layer-24
-						feature at the <code>return</code> position</strong>. Rank the negative nodes into
-						each pathway's own logit, as a fraction of that pathway's drive:
+						The largest negative node in the first graph, <code>24_15424_30</code>, could be a
+						global calibrator that presses on whichever name is winning, or something specific to
+						<code>result</code>. Swapping the accumulator for <code>total</code> answers that:
+						<strong>each name's pathway is opposed by its own dedicated layer-24 feature at the
+						<code>return</code> position</strong>. Rank the negative nodes into each pathway's own
+						logit, as a fraction of that pathway's drive:
 					</p>
 
 					<table>
@@ -918,10 +903,9 @@
 					</p>
 
 					<p>
-						The 0.24&#8211;0.29 band is an <em>observation</em>, not a law. Six points across
-						two names is better footing than the two points behind the retracted conservation
-						claim — but that is exactly the reasoning that already failed once on this page, so
-						the band gets reported and not leaned on.
+						The 0.24&#8211;0.29 band is an <em>observation</em>, not a law: six points across two
+						names is not enough to call a ratio fixed, so it is reported and not leaned on. The
+						claim rests on the feature indices, not on the ratio.
 					</p>
 
 					<p>
@@ -1158,8 +1142,8 @@
 						<p>
 							<strong>The one miss is reported as a miss.</strong> Under <code>split</code>,
 							<code>score</code> lands on 44.92% against 44.92% — an exact tie in bfloat16,
-							which the argmax breaks toward <code>&nbsp;ans</code>. Rounding that to a win
-							would be the easiest possible way to lie with this table, so it stays a miss.
+							which the argmax breaks toward <code>&nbsp;ans</code>. A tie is not a win, so it
+							is counted as a miss.
 						</p>
 						<p>
 							Note also which shape is hardest. <code>split</code> has the smallest margins
@@ -1340,7 +1324,7 @@
 						<code>&nbsp;ans</code>.
 					</p>
 
-					<h3 style="font-size:1rem;margin:2rem 0 .6rem;">The intervention that fools you</h3>
+					<h3 style="font-size:1rem;margin:2rem 0 .6rem;">Why only scaling down counts</h3>
 
 					<div class="callout">
 						<p>
@@ -1353,10 +1337,9 @@
 						<p>
 							This is not a property of the pathway. It is the residual stream being pushed off
 							the distribution the later layers were trained on, so the output falls back toward
-							the prior. The asymmetry is the lesson: <strong>scaling down is evidence, scaling
-							up is an artefact</strong>. Had only the amplification sweep been run, the honest
-							reading of it would have been "the <code>ans</code> pathway suppresses
-							<code>&nbsp;ans</code>", which is nonsense.
+							the prior. Scaling <em>down</em> stays inside the feature's natural range and is the
+							intervention this page relies on; the amplification sweep is shown so the asymmetry
+							is on record.
 						</p>
 					</div>
 
@@ -1375,14 +1358,15 @@
 			<!-- ======================= Negative result ======================= -->
 			<section id="negative">
 				<div class="wrap">
-					<h2>The experiment this replaced</h2>
+					<h2>A prompt design that does not work here</h2>
 
 					<div class="callout">
 						<p>
-							<strong>The original design failed, and the failure was informative.</strong>
-							The plan was to cut the prompt mid-identifier — <code>return res</code> — and
-							watch the model complete <code>res</code> &rarr; <code>ult</code>. That premise
-							does not hold on <code>gemma-2-2b</code>.
+							<strong>Cutting mid-identifier is not a usable probe on this model.</strong>
+							A natural first design is to cut the prompt at <code>return res</code> and watch
+							the model complete <code>res</code> &rarr; <code>ult</code>. That premise does
+							not hold on <code>gemma-2-2b</code>, which is why the prompts above all cut at
+							<code>return</code> instead.
 						</p>
 					</div>
 
@@ -1460,11 +1444,11 @@
 							labels.
 						</p>
 						<p>
-							The graph hosted here is the original prompt's, and that prompt on its own is
-							precisely what the <a href="#controls">controls</a> showed is not enough to
-							interpret. It does have one advantage: a single logit target, so a node's direct
-							effect is unambiguous here in a way it is not in the controls. Read it alongside
-							the <a href="#controls">Neuronpedia graphs</a> for those.
+							The graph hosted here is the first prompt's. On its own it shows the circuit but
+							not what the circuit is tracking — that needs the <a href="#controls">controls</a>.
+							It does have one advantage: a single logit target, so a node's direct effect is
+							unambiguous here in a way it is not in the controls. Read it alongside the
+							<a href="#controls">Neuronpedia graphs</a> for those.
 						</p>
 					</div>
 				</div>
@@ -1540,9 +1524,9 @@ uv pip install .
 						<code>-p</code> and <code>--slug</code> change. Their per-logit numbers are read
 						straight out of the graph JSON: for <em>each</em> node whose
 						<code>feature_type</code> is <code>logit</code>, sum the <code>links</code> whose
-						<code>target</code> is that node. Taking only the first such node is the mistake
-						described <a href="#controls">above</a>, and it is an easy one to make, because on
-						the original prompt it happens to give the right answer.
+						<code>target</code> is that node. Take <em>every</em> logit node, not just the first:
+						on the first prompt there is only one, so reading the top logit alone happens to be
+						correct there and silently wrong on the controls.
 					</p>
 
 					<p>
