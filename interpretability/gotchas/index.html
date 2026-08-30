@@ -281,89 +281,108 @@
 
 					<p>
 						Every case is a REPL transcript cut just before a single token that the correct
-						semantics and the natural misreading predict differently. "Rebound" means the
-						snippet reassigns <code>lst</code> after <code>g</code> is created — the line
-						<code>lst = [0, 1, 2]</code> in the two forms above — so the eager and lazy parts of
-						the expression see different lists. The three controls have no such line; the nested
-						case uses a third snippet:
+						semantics and the natural misreading predict differently; the model sees exactly
+						the text above the cursor and nothing else. Nine cuts, shown in full.
 					</p>
 
-<pre><code>&gt;&gt;&gt; lst = [1, 2, 3]                            # nested: outer loop eager, inner lazy
+					<h4 style="font-size:.95rem;margin:1.4rem 0 .5rem;">Controls — no reassignment, so nothing is captured early or late</h4>
+
+					<div class="pairgrid">
+						<div>
+							<p class="panel-label"><strong><code>ctrl-no-reassign</code></strong> — Python prints <code>[1, 2, 3]</code>; the next token is <code>,</code></p>
+<pre><code>&gt;&gt;&gt; lst = [1, 2, 3]
+&gt;&gt;&gt; g = (a for a in lst)
+&gt;&gt;&gt; print(list(g))
+[1, 2&#9608;   &larr; model: ',' at 98.44%   (right)</code></pre>
+						</div>
+						<div>
+							<p class="panel-label"><strong><code>ctrl-plain-five</code></strong> — same at length five, so stopping early is not a taste for short lists</p>
+<pre><code>&gt;&gt;&gt; lst = [1, 2, 3, 4, 5]
+&gt;&gt;&gt; g = (n for n in lst)
+&gt;&gt;&gt; print(list(g))
+[1, 2&#9608;   &larr; model: ',' at 99.61%   (right)</code></pre>
+						</div>
+						<div>
+							<p class="panel-label"><strong><code>ctrl-filter-no-reassign</code></strong> — the vacuous filter alone costs 10&nbsp;pp before any rebinding</p>
+<pre><code>&gt;&gt;&gt; lst = [1, 2, 3, 4, 5]
+&gt;&gt;&gt; g = (n for n in lst if n in lst)
+&gt;&gt;&gt; print(list(g))
+[1, 2&#9608;   &larr; model: ',' at 89.45%   (right)</code></pre>
+						</div>
+					</div>
+
+					<h4 style="font-size:.95rem;margin:1.4rem 0 .5rem;">Which list is iterated — the outermost iterable is captured <em>eagerly</em>, so the first element is <code>1</code></h4>
+
+					<div class="pairgrid">
+						<div>
+							<p class="panel-label"><strong><code>genexp-first-element</code></strong> — generator expression; correct <code>1</code>, misreading <code>0</code> (iterable also lazy)</p>
+<pre><code>&gt;&gt;&gt; lst = [1, 2, 3, 4, 5]
+&gt;&gt;&gt; g = (n for n in lst if n in lst)
+&gt;&gt;&gt; lst = [0, 1, 2]
+&gt;&gt;&gt; print(list(g))
+[&#9608;   &larr; model: '0' at 55.08%, '1' at 37.70%   (wrong)</code></pre>
+						</div>
+						<div>
+							<p class="panel-label"><strong><code>test2-first-element</code></strong> — the same program, desugared as PEP&nbsp;289 defines it</p>
+<pre><code>&gt;&gt;&gt; lst = [1, 2, 3, 4, 5]
+&gt;&gt;&gt; def __g(it):
+...     for n in it:
+...         if n in lst:
+...             yield n
+...
+&gt;&gt;&gt; g = __g(iter(lst))
+&gt;&gt;&gt; lst = [0, 1, 2]
+&gt;&gt;&gt; print(list(g))
+[&#9608;   &larr; model: '1' 40.43%, '0' 40.43%   (exact tie)</code></pre>
+						</div>
+					</div>
+
+					<h4 style="font-size:.95rem;margin:1.4rem 0 .5rem;">Which list the filter uses — <code>n in lst</code> is resolved <em>lazily</em> against the new list, so the output stops at <code>[1, 2]</code></h4>
+
+					<div class="pairgrid">
+						<div>
+							<p class="panel-label"><strong><code>genexp-where-stop</code></strong> — generator expression; correct <code>]</code>, misreading <code>,</code> (filter still sees the old list, drops nothing)</p>
+<pre><code>&gt;&gt;&gt; lst = [1, 2, 3, 4, 5]
+&gt;&gt;&gt; g = (n for n in lst if n in lst)
+&gt;&gt;&gt; lst = [0, 1, 2]
+&gt;&gt;&gt; print(list(g))
+[1, 2&#9608;   &larr; model: ']' at 53.12%, ',' at 46.88%   (right, by 6.25 pp)</code></pre>
+						</div>
+						<div>
+							<p class="panel-label"><strong><code>test2-where-stop</code></strong> — the same program, desugared</p>
+<pre><code>&gt;&gt;&gt; lst = [1, 2, 3, 4, 5]
+&gt;&gt;&gt; def __g(it):
+...     for n in it:
+...         if n in lst:
+...             yield n
+...
+&gt;&gt;&gt; g = __g(iter(lst))
+&gt;&gt;&gt; lst = [0, 1, 2]
+&gt;&gt;&gt; print(list(g))
+[1, 2&#9608;   &larr; model: ']' at 73.05%, ',' at 26.95%   (right, by 46.09 pp)</code></pre>
+						</div>
+					</div>
+
+					<h4 style="font-size:.95rem;margin:1.4rem 0 .5rem;">Nested loops — outer <code>for a in lst</code> is eager (old <code>[1, 2, 3]</code>), inner <code>for b in lst</code> is lazy (new <code>[1, 2]</code>); Python prints <code>[(1, 1), (1, 2), (2, 1), (2, 2), (3, 1), (3, 2)]</code></h4>
+
+					<div class="pairgrid">
+						<div>
+							<p class="panel-label"><strong><code>test1-third-pair</code></strong> — after <code>(1, 2)</code> the inner loop is exhausted at 2, so the next pair starts <code>(2</code></p>
+<pre><code>&gt;&gt;&gt; lst = [1, 2, 3]
 &gt;&gt;&gt; g = ((a, b) for a in lst for b in lst)
 &gt;&gt;&gt; lst = [1, 2]
 &gt;&gt;&gt; print(list(g))
-[(1, 1), (1, 2), (2, 1), (2, 2), (3, 1), (3, 2)]</code></pre>
-
-					<table>
-						<thead>
-							<tr><th>Case</th><th>Snippet</th><th>Prompt ends at</th><th>Correct / wrong</th><th>Model</th><th>Verdict</th></tr>
-						</thead>
-						<tbody>
-							<tr>
-								<td class="node">ctrl-no-reassign</td>
-								<td class="node">lst = [1, 2, 3]; g = (a for a in lst)</td>
-								<td class="node">[1, 2</td>
-								<td class="node">, / ]</td>
-								<td class="num">, at 98.44%</td><td>ok</td>
-							</tr>
-							<tr>
-								<td class="node">ctrl-plain-five</td>
-								<td class="node">lst = [1, 2, 3, 4, 5]; g = (n for n in lst)</td>
-								<td class="node">[1, 2</td>
-								<td class="node">, / ]</td>
-								<td class="num">, at 99.61%</td><td>ok</td>
-							</tr>
-							<tr>
-								<td class="node">ctrl-filter-no-reassign</td>
-								<td class="node">lst = [1, 2, 3, 4, 5]; g = (n for n in lst if n in lst)</td>
-								<td class="node">[1, 2</td>
-								<td class="node">, / ]</td>
-								<td class="num">, at 89.45%</td><td>ok</td>
-							</tr>
-							<tr>
-								<td class="node">genexp-first-element</td>
-								<td class="node">g = (n for n in lst if n in lst); lst = [0, 1, 2]</td>
-								<td class="node">[</td>
-								<td class="node">1 / 0</td>
-								<td class="num neg">0 at 55.08%, 1 at 37.70%</td><td>MISS</td>
-							</tr>
-							<tr>
-								<td class="node">test2-first-element</td>
-								<td class="node">g = __g(iter(lst)); lst = [0, 1, 2]</td>
-								<td class="node">[</td>
-								<td class="node">1 / 0</td>
-								<td class="num">40.43% / 40.43%</td><td>tie</td>
-							</tr>
-							<tr>
-								<td class="node">genexp-where-stop</td>
-								<td class="node">g = (n for n in lst if n in lst); lst = [0, 1, 2]</td>
-								<td class="node">[1, 2</td>
-								<td class="node">] / ,</td>
-								<td class="num">] at 53.12%</td><td>ok</td>
-							</tr>
-							<tr>
-								<td class="node">test2-where-stop</td>
-								<td class="node">g = __g(iter(lst)); lst = [0, 1, 2]</td>
-								<td class="node">[1, 2</td>
-								<td class="node">] / ,</td>
-								<td class="num pos">] at 73.05%</td><td>ok</td>
-							</tr>
-							<tr>
-								<td class="node">test1-third-pair</td>
-								<td class="node">g = ((a, b) for a in lst for b in lst); lst = [1, 2]</td>
-								<td class="node">[(1, 1), (1, 2), (</td>
-								<td class="node">2 / 1</td>
-								<td class="num pos">2 at 99.22%</td><td>ok</td>
-							</tr>
-							<tr>
-								<td class="node">test1-does-3-appear</td>
-								<td class="node">g = ((a, b) for a in lst for b in lst); lst = [1, 2]</td>
-								<td class="node">…(2, 1), (2, 2)</td>
-								<td class="node">, / ]</td>
-								<td class="num neg">both 0.00%</td><td>noise</td>
-							</tr>
-						</tbody>
-					</table>
+[(1, 1), (1, 2), (&#9608;   &larr; model: '2' at 99.22%   (right — but recency predicts it too)</code></pre>
+						</div>
+						<div>
+							<p class="panel-label"><strong><code>test1-does-3-appear</code></strong> — after <code>(2, 2)</code>: <code>,</code> means the outer loop still reaches 3 (eager); <code>]</code> means it used the new list</p>
+<pre><code>&gt;&gt;&gt; lst = [1, 2, 3]
+&gt;&gt;&gt; g = ((a, b) for a in lst for b in lst)
+&gt;&gt;&gt; lst = [1, 2]
+&gt;&gt;&gt; print(list(g))
+[(1, 1), (1, 2), (2, 1), (2, 2)&#9608;   &larr; model: ',' 0.00%, ']' 0.00%; top-1 is a newline 53.9%   (noise)</code></pre>
+						</div>
+					</div>
 
 					<p>
 						<code>test1-third-pair</code> passes because the inner loop being exhausted at 2 is
