@@ -235,10 +235,12 @@
 					<p>
 						The prompt is a complete, unambiguous function whose body binds one local variable.
 						Everything the model needs to answer correctly is in scope; nothing about the
-						surrounding text hints at the name. This is the first of three prompts; the other two
-						are <a href="#controls">controls</a> that move the binding around, and they are what
-						the interpretation ultimately rests on.
+						surrounding text hints at the name. This is the first of four prompts, <strong>P1</strong>;
+						the other three are <a href="#controls">controls</a> (P2&#8211;P4) that move the
+						binding around, and they are what the interpretation ultimately rests on.
 					</p>
+
+					<p><strong>P1 &middot; return-variable.</strong> <code>result</code> is bound twice.</p>
 
 <pre><code>def calculate_total(prices):
     result = 0
@@ -581,7 +583,7 @@
 					</p>
 
 					<p>
-						<strong>split-binding.</strong> <code>ans</code> is bound; <code>result</code> is
+						<strong>P2 &middot; split-binding.</strong> <code>ans</code> is bound; <code>result</code> is
 						accumulated into but never initialised. Invalid Python.
 					</p>
 
@@ -592,7 +594,7 @@
     return</code></pre>
 
 					<p>
-						<strong>result-never-bound.</strong> <code>ans</code> is bound twice;
+						<strong>P3 &middot; result-never-bound.</strong> <code>ans</code> is bound twice;
 						<code>result</code> only ever appears on a right-hand side. Invalid Python.
 					</p>
 
@@ -603,7 +605,7 @@
     return</code></pre>
 
 					<p>
-						<strong>two-valid-locals.</strong> Both names are bound, and only <code>result</code>
+						<strong>P4 &middot; two-valid-locals.</strong> Both names are bound, and only <code>result</code>
 						is accumulated into. This one runs.
 					</p>
 
@@ -617,30 +619,30 @@
 					<table>
 						<thead>
 							<tr>
-								<th>Prompt</th><th>Binding</th>
+								<th>P</th><th>Prompt</th><th>Binding</th><th>Runs?</th>
 								<th><code>&nbsp;result</code></th><th><code>&nbsp;ans</code></th>
 							</tr>
 						</thead>
 						<tbody>
 							<tr>
-								<td>return-variable</td>
-								<td class="wrap-cell"><code>result</code> bound twice</td>
+								<td>P1</td><td class="node">return-variable</td>
+								<td class="wrap-cell"><code>result</code> bound twice</td><td>yes</td>
 								<td class="num pos"><strong>95.70%</strong></td><td class="num">0.00%</td>
 							</tr>
 							<tr>
-								<td>two-valid-locals</td>
-								<td class="wrap-cell">both bound, only <code>result</code> grows</td>
-								<td class="num pos"><strong>82.42%</strong></td><td class="num">11.18%</td>
-							</tr>
-							<tr>
-								<td>split-binding</td>
-								<td class="wrap-cell"><code>ans</code> bound at line 2, <code>result</code> in the loop</td>
+								<td>P2</td><td class="node">split-binding</td>
+								<td class="wrap-cell"><code>ans</code> bound at line 2, <code>result</code> in the loop</td><td>no</td>
 								<td class="num pos"><strong>68.75%</strong></td><td class="num">25.20%</td>
 							</tr>
 							<tr>
-								<td>result-never-bound</td>
-								<td class="wrap-cell"><code>ans</code> bound twice, <code>result</code> read only</td>
+								<td>P3</td><td class="node">result-never-bound</td>
+								<td class="wrap-cell"><code>ans</code> bound twice, <code>result</code> read only</td><td>no</td>
 								<td class="num">6.45%</td><td class="num pos"><strong>89.06%</strong></td>
+							</tr>
+							<tr>
+								<td>P4</td><td class="node">two-valid-locals</td>
+								<td class="wrap-cell">both bound, only <code>result</code> grows</td><td>yes</td>
+								<td class="num pos"><strong>82.42%</strong></td><td class="num">11.18%</td>
 							</tr>
 						</tbody>
 					</table>
@@ -666,8 +668,10 @@
 
 					<p>
 						For each graph, take every node sitting on a name's tokens and sum its direct effect
-						on each logit separately. Two more graphs swap the accumulator for <code>total</code>,
-						to check that nothing here is about the word <code>result</code>:
+						on each logit separately. P2, P3 and P4 each have two candidate names; two more
+						graphs, <code>split-total</code> and <code>total-never-bound</code>, repeat P2 and P3
+						with <code>total</code> as the accumulator, to check that nothing here is about the
+						word <code>result</code>:
 					</p>
 
 					<figure class="figure viz">
@@ -696,7 +700,7 @@
 							<text x="678.1" y="26" text-anchor="middle" font-size="10.5" fill="var(--viz-ink-3)">40</text>
 							<line x1="240.8" y1="32" x2="240.8" y2="434" stroke="var(--viz-axis)" stroke-width="1.5"/>
 							<rect x="233.8" y="32" width="28.8" height="402" fill="var(--viz-s2)" opacity=".12"/>
-							<text x="196" y="56" text-anchor="end" font-size="11.5" font-family="ui-monospace, Menlo, monospace" fill="var(--viz-ink-1)">split-binding</text>
+							<text x="196" y="56" text-anchor="end" font-size="11.5" font-family="ui-monospace, Menlo, monospace" fill="var(--viz-ink-1)">P2 split-binding</text>
 							<text x="196" y="71" text-anchor="end" font-size="11" fill="var(--viz-ink-2)">result &#9733;</text>
 							<g><title>split-binding &#183; result nodes &#8594; the &#8220;result&#8221; logit: +26.963</title><rect x="240.8" y="46" width="294.8" height="10" rx="4" fill="var(--viz-s1)"/></g>
 							<text x="542.6" y="55" font-size="11" font-variant-numeric="tabular-nums" fill="var(--viz-ink-1)">+26.96</text>
@@ -705,7 +709,7 @@
 							<g><title>split-binding &#183; ans nodes &#8594; the &#8220;ans&#8221; logit: +20.268</title><rect x="240.8" y="80" width="221.6" height="10" rx="4" fill="var(--viz-s1)"/></g>
 							<text x="469.4" y="89" font-size="11" font-variant-numeric="tabular-nums" fill="var(--viz-ink-1)">+20.27</text>
 							<g><title>split-binding &#183; ans nodes &#8594; the &#8220;result&#8221; logit: +0.049</title><rect x="240.8" y="94" width="1.5" height="10" rx="4" fill="var(--viz-s2)"/></g>
-							<text x="196" y="136" text-anchor="end" font-size="11.5" font-family="ui-monospace, Menlo, monospace" fill="var(--viz-ink-1)">result-never-bound</text>
+							<text x="196" y="136" text-anchor="end" font-size="11.5" font-family="ui-monospace, Menlo, monospace" fill="var(--viz-ink-1)">P3 result-never-bound</text>
 							<text x="196" y="151" text-anchor="end" font-size="11" fill="var(--viz-ink-2)">ans &#9733;</text>
 							<g><title>result-never-bound &#183; ans nodes &#8594; the &#8220;ans&#8221; logit: +26.957</title><rect x="240.8" y="126" width="294.7" height="10" rx="4" fill="var(--viz-s1)"/></g>
 							<text x="542.5" y="135" font-size="11" font-variant-numeric="tabular-nums" fill="var(--viz-ink-1)">+26.96</text>
@@ -714,7 +718,7 @@
 							<g><title>result-never-bound &#183; result nodes &#8594; the &#8220;result&#8221; logit: +17.027</title><rect x="240.8" y="160" width="186.2" height="10" rx="4" fill="var(--viz-s1)"/></g>
 							<text x="434.0" y="169" font-size="11" font-variant-numeric="tabular-nums" fill="var(--viz-ink-1)">+17.03</text>
 							<g><title>result-never-bound &#183; result nodes &#8594; the &#8220;ans&#8221; logit: +0.921</title><rect x="240.8" y="174" width="10.1" height="10" rx="4" fill="var(--viz-s2)"/></g>
-							<text x="196" y="216" text-anchor="end" font-size="11.5" font-family="ui-monospace, Menlo, monospace" fill="var(--viz-ink-1)">two-valid-locals</text>
+							<text x="196" y="216" text-anchor="end" font-size="11.5" font-family="ui-monospace, Menlo, monospace" fill="var(--viz-ink-1)">P4 two-valid-locals</text>
 							<text x="196" y="231" text-anchor="end" font-size="11" fill="var(--viz-ink-2)">result &#9733;</text>
 							<g><title>two-valid-locals &#183; result nodes &#8594; the &#8220;result&#8221; logit: +37.301</title><rect x="240.8" y="206" width="407.8" height="10" rx="4" fill="var(--viz-s1)"/></g>
 							<text x="655.6" y="215" font-size="11" font-variant-numeric="tabular-nums" fill="var(--viz-ink-1)">+37.30</text>
@@ -761,27 +765,27 @@
 						</thead>
 						<tbody>
 							<tr>
-								<td class="node">split-binding</td><td><code>result</code></td>
+								<td class="node">P2 split-binding</td><td><code>result</code></td>
 								<td class="num pos"><strong>+26.963</strong></td><td class="num">+1.389</td>
 								<td><code>ans</code></td><td class="num">+20.268</td><td class="num">+0.049</td>
 							</tr>
 							<tr>
-								<td class="node">result-never-bound</td><td><code>ans</code></td>
+								<td class="node">P3 result-never-bound</td><td><code>ans</code></td>
 								<td class="num pos"><strong>+26.957</strong></td><td class="num">+0.700</td>
 								<td><code>result</code></td><td class="num">+17.027</td><td class="num">+0.921</td>
 							</tr>
 							<tr>
-								<td class="node">two-valid-locals</td><td><code>result</code></td>
+								<td class="node">P4 two-valid-locals</td><td><code>result</code></td>
 								<td class="num pos"><strong>+37.301</strong></td><td class="num">+1.996</td>
 								<td><code>ans</code></td><td class="num">+21.295</td><td class="num">&#8722;0.206</td>
 							</tr>
 							<tr>
-								<td class="node">split-total</td><td><code>total</code>&#8202;<sup>&#8224;</sup></td>
+								<td class="node">split-total (P2, <code>total</code>)</td><td><code>total</code>&#8202;<sup>&#8224;</sup></td>
 								<td class="num pos"><strong>+38.883</strong></td><td class="num">&#8722;0.641</td>
 								<td><code>ans</code></td><td class="num">+19.000</td><td class="num">+0.060</td>
 							</tr>
 							<tr>
-								<td class="node">total-never-bound</td><td><code>ans</code></td>
+								<td class="node">total-never-bound (P3, <code>total</code>)</td><td><code>ans</code></td>
 								<td class="num pos"><strong>+28.040</strong></td><td class="num">+0.657</td>
 								<td><code>total</code>&#8202;<sup>&#8224;</sup></td><td class="num">+20.838</td><td class="num">&#8722;0.277</td>
 							</tr>
@@ -819,10 +823,10 @@
 							that fires there.
 						</li>
 						<li>
-							<strong>A losing pathway is still fully routed.</strong> In
-							<code>result-never-bound</code>, <code>18_4769</code> fires once (position 25,
+							<strong>A losing pathway is still fully routed.</strong> In P3,
+							<code>18_4769</code> fires once (position 25,
 							activation 92.5) and is worth <strong>+8.50</strong> to <code>&nbsp;result</code>;
-							its largest firing in <code>split-binding</code> (position 23, activation 91.0) is
+							its largest firing in P2 (position 23, activation 91.0) is
 							worth <strong>+8.94</strong>. Matched activation, matched effect, whether its name
 							wins or loses. Likewise <code>18_4732</code> at activation 39.0 gives
 							<code>&nbsp;ans</code> +1.555 in one graph and +1.305 in the other: the same
@@ -841,7 +845,7 @@
 						<li>
 							<strong>Part of the drive is name-agnostic.</strong> <code>24_12518_30</code>, on
 							the <code>return</code> token, gives +1.680 to <code>&nbsp;result</code> and
-							+1.781 to <code>&nbsp;ans</code> in <code>split-binding</code> — a baseline "a
+							+1.781 to <code>&nbsp;ans</code> in P2 — a baseline "a
 							local variable goes here" push that belongs to neither name's pathway.
 						</li>
 						<li>
@@ -853,7 +857,7 @@
 						</li>
 						<li>
 							<strong>Attribution and ablation agree, independently.</strong> Deleting
-							<code>18_4732</code> from <code>result-never-bound</code> moves
+							<code>18_4732</code> from P3 moves
 							<code>&nbsp;ans</code> only 89.06% &rarr; 86.72% — small, and exactly what the
 							graph predicts, because <code>ans</code>'s drive sits mostly in its raw
 							embeddings (+5.688 and +4.906) rather than in that feature (+1.305).
@@ -910,14 +914,14 @@
 
 					<p>
 						For <code>ans</code> the honest phrasing is <strong>"not captured"</strong>, not
-						"does not exist". Its drive sits in its raw embeddings (+7.375 in
-						<code>two-valid-locals</code>) rather than in its feature (+1.727) — the transcoders
+						"does not exist". Its drive sits in its raw embeddings (+7.375 in P4) rather than in
+						its feature (+1.727) — the transcoders
 						cover that pathway poorly, so its partner is presumably just not represented in the
 						graph.
 					</p>
 
 					<p>
-						In <code>two-valid-locals</code> the pairing is at its most dramatic:
+						In P4 the pairing is at its most dramatic:
 						<code>18_4769_16</code> drives <code>&nbsp;result</code> at <strong>+10.562</strong>
 						while <code>24_15424_36</code> opposes it at <strong>&#8722;10.875</strong> — the
 						two largest-magnitude nodes anywhere in this project, very nearly cancelling.
@@ -927,7 +931,7 @@
 
 					<div class="callout">
 						<p>
-							<strong>In <code>result-never-bound</code> the pinned subgraph says the opposite
+							<strong>In P3 the pinned subgraph says the opposite
 							of the outcome.</strong> The handful of pinned nodes give <code>result</code>
 							+12.8 against <code>ans</code> +11.9 — and yet the model answers
 							<code>&nbsp;ans</code> at 89.1%. The true ordering appears only once
@@ -944,16 +948,16 @@
 					</div>
 
 					<p>
-						Four graphs are hosted on Neuronpedia with the relevant nodes pinned and every logit
-						target pinned beside them. Each supernode label names the logit its total is measured
-						against; the P2 and P3 labels give both the pinned total and the all-nodes aggregate,
-						so the <code>result-never-bound</code> subgraph cannot be read as saying
-						<code>result</code> wins. The hosted copies are pruned harder than the graphs the
-						table above is computed from, so their totals run somewhat lower.
+						All four prompts' graphs are hosted on Neuronpedia with the relevant nodes pinned and
+						every logit target pinned beside them. Each supernode label names the logit its total
+						is measured against; the P2 and P3 labels give both the pinned total and the all-nodes
+						aggregate, so the P3 subgraph cannot be read as saying <code>result</code> wins. The
+						hosted copies are pruned harder than the graphs the table above is computed from, so
+						their totals run somewhat lower.
 					</p>
 
 					<p>
-						The <code>two-valid-locals</code> graph is the one to start with: it is the valid
+						P4 is the one to start with: it is the valid
 						Python among them, it separates the two pathways most cleanly (the pinned pathway
 						groups cross to the rival logit at just +0.29 and +0.24), and it holds the
 						near-cancelling pair described above. In
@@ -968,20 +972,21 @@
 						<li><a href="https://www.neuronpedia.org/gemma-2-2b/graph?slug=py-return-variable&amp;pinnedIds=27_2196_30%2C18_4769_10%2C18_4769_23%2CE_2667_10%2CE_2667_23%2C24_15424_30%2C24_12518_30%2C19_-1_30%2C25_-1_30%2CE_1293_1%2C22_2657_30&amp;supernodes=%5B%5B%22%27result%27%20nodes%20%40%2010%2C23%20-%3E%20%27%20result%27%3A%20%2B12.8%22%2C%2218_4769_10%22%2C%2218_4769_23%22%2C%22E_2667_10%22%2C%22E_2667_23%22%5D%2C%5B%22minor%20suppressors%20%40%2030%20-%3E%20%27%20result%27%3A%20-2.0%22%2C%2219_-1_30%22%2C%2225_-1_30%22%2C%22E_1293_1%22%2C%2222_2657_30%22%5D%5D" target="_blank" rel="noopener">P1 &middot; py-return-variable &rarr;</a></li>
 						<li><a href="https://www.neuronpedia.org/gemma-2-2b/graph?slug=py-split-binding&amp;pruningThreshold=0.7&amp;densityThreshold=0.99&amp;pinnedIds=27_2196_30%2C27_4811_30%2C18_4769_23%2CE_2667_23%2C18_4769_25%2CE_779_10%2C18_4732_10%2C24_12518_30%2CE_773_30%2C22_4719_30&amp;supernodes=%5B%5B%22result%20pathway%20-%3E%20%27%20result%27%3A%20pinned%20%2B17.5%2C%20ALL%20nodes%20%2B26.7%20%28wins%29%22%2C%2218_4769_23%22%2C%22E_2667_23%22%2C%2218_4769_25%22%5D%2C%5B%22ans%20pathway%20-%3E%20%27%20ans%27%3A%20pinned%20%2B7.9%2C%20ALL%20nodes%20%2B19.1%20%28loses%29%22%2C%22E_779_10%22%2C%2218_4732_10%22%5D%2C%5B%22return%20posn%2C%20name-agnostic%3A%20%2B2.8%20-%3E%20%27%20result%27%2C%20%2B2.5%20-%3E%20%27%20ans%27%22%2C%2224_12518_30%22%2C%22E_773_30%22%2C%2222_4719_30%22%5D%5D" target="_blank" rel="noopener">P2 &middot; py-split-binding &rarr;</a></li>
 						<li><a href="https://www.neuronpedia.org/gemma-2-2b/graph?slug=py-result-never-bound&amp;pruningThreshold=0.7&amp;densityThreshold=0.99&amp;pinnedIds=27_4811_30%2C27_2196_30%2CE_779_10%2CE_779_23%2C18_4732_10%2C18_4769_25%2CE_2196_25%2C24_13277_30%2C23_-1_30%2C24_-1_30&amp;supernodes=%5B%5B%22ans%20pathway%20-%3E%20%27%20ans%27%3A%20pinned%20%2B11.9%2C%20ALL%20nodes%20%2B26.6%20%28wins%29%22%2C%22E_779_10%22%2C%22E_779_23%22%2C%2218_4732_10%22%5D%2C%5B%22result%20pathway%20-%3E%20%27%20result%27%3A%20pinned%20%2B12.8%2C%20ALL%20nodes%20%2B16.6%20%28loses%29%22%2C%2218_4769_25%22%2C%22E_2196_25%22%5D%2C%5B%22return%20posn%2C%20name-agnostic%3A%20%2B0.7%20-%3E%20%27%20ans%27%2C%20%2B2.9%20-%3E%20%27%20result%27%22%2C%2224_13277_30%22%2C%2223_-1_30%22%2C%2224_-1_30%22%5D%5D" target="_blank" rel="noopener">P3 &middot; py-result-never-bound &rarr;</a></li>
-						<li><a href="https://www.neuronpedia.org/gemma-2-2b/graph?slug=py-two-valid-locals&amp;pruningThreshold=0.7&amp;densityThreshold=0.99&amp;pinnedIds=27_2196_36%2C27_4811_36%2C27_235278_36%2C18_4769_16%2CE_2667_16%2C18_4769_29%2CE_2667_29%2C18_4769_20%2CE_779_10%2C18_4732_10%2C16_3061_10%2C15_12477_10%2C24_15424_36%2C24_12518_36%2CE_773_36&amp;supernodes=%5B%5B%22%2B29.2%20result%20pathway%20-%3E%20%5C%22%20result%5C%22%22%2C%2218_4769_16%22%2C%22E_2667_16%22%2C%2218_4769_29%22%2C%22E_2667_29%22%2C%2218_4769_20%22%5D%2C%5B%22%2B11.8%20ans%20pathway%20-%3E%20%5C%22%20ans%5C%22%22%2C%22E_779_10%22%2C%2218_4732_10%22%2C%2216_3061_10%22%2C%2215_12477_10%22%5D%2C%5B%22return%20position%2C%20name-agnostic%3A%20%2B3.2%20%2F%20%2B2.6%22%2C%2224_12518_36%22%2C%22E_773_36%22%5D%5D" target="_blank" rel="noopener">two-valid-locals &middot; valid Python &rarr;</a></li>
+						<li><a href="https://www.neuronpedia.org/gemma-2-2b/graph?slug=py-two-valid-locals&amp;pruningThreshold=0.7&amp;densityThreshold=0.99&amp;pinnedIds=27_2196_36%2C27_4811_36%2C27_235278_36%2C18_4769_16%2CE_2667_16%2C18_4769_29%2CE_2667_29%2C18_4769_20%2CE_779_10%2C18_4732_10%2C16_3061_10%2C15_12477_10%2C24_15424_36%2C24_12518_36%2CE_773_36&amp;supernodes=%5B%5B%22%2B29.2%20result%20pathway%20-%3E%20%5C%22%20result%5C%22%22%2C%2218_4769_16%22%2C%22E_2667_16%22%2C%2218_4769_29%22%2C%22E_2667_29%22%2C%2218_4769_20%22%5D%2C%5B%22%2B11.8%20ans%20pathway%20-%3E%20%5C%22%20ans%5C%22%22%2C%22E_779_10%22%2C%2218_4732_10%22%2C%2216_3061_10%22%2C%2215_12477_10%22%5D%2C%5B%22return%20position%2C%20name-agnostic%3A%20%2B3.2%20%2F%20%2B2.6%22%2C%2224_12518_36%22%2C%22E_773_36%22%5D%5D" target="_blank" rel="noopener">P4 &middot; py-two-valid-locals &middot; valid Python &rarr;</a></li>
 					</ul>
 
 					<p style="margin-top:1.4rem;">
 						The behaviour table comes from a direct probe of the model; the attribution runs read
-						it in bfloat16 and report 95.3 / 82.4 / 69.1 / 89.1% on the same prompts, which is
+						it in bfloat16 and report 95.3 / 69.1 / 89.1 / 82.4% for P1&#8211;P4, which is
 						where the logit probabilities in the graphs come from. Raw reports:
-						<a href="py-split-binding_report.json">split-binding</a>,
-						<a href="py-result-never-bound_report.json">result-never-bound</a>,
-						<a href="py-two-valid-locals_report.json">two-valid-locals</a>.
+						<a href="py-return-variable_report.json">P1</a>,
+						<a href="py-split-binding_report.json">P2</a>,
+						<a href="py-result-never-bound_report.json">P3</a>,
+						<a href="py-two-valid-locals_report.json">P4</a>.
 					</p>
 
 					<p>
-						One number is deliberately missing from the aggregate table: the original prompt's.
+						One number is deliberately missing from the aggregate table: P1's.
 						Summed over its two <code>result</code> writes it is +17.709, but its top prediction
 						cleared <code>--desired-logit-prob 0.95</code> on its own, so its graph has a single
 						logit target and a different node set. It is not comparable to the others, and putting
@@ -1180,7 +1185,7 @@
 						<div class="viz-legend">
 							<span><i style="background:var(--viz-s1)"></i>P(<code>&nbsp;result</code>)</span>
 							<span><i style="background:var(--viz-s2)"></i>P(<code>&nbsp;ans</code>)</span>
-							<span>prompt: <code>split-binding</code>, attention frozen</span>
+							<span>prompt: P2 <code>split-binding</code>, attention frozen</span>
 						</div>
 						<svg viewBox="0 0 760 300" role="img" aria-labelledby="dose-t dose-d">
 							<title id="dose-t">Scaling one name's feature down flips the prediction; amplifying the other backfires</title>
@@ -1319,7 +1324,7 @@
 						The baseline forward pass in this harness reproduces the probe exactly
 						(95.31 / 69.14 / 6.45%), so the pipeline was verified before any of the intervention
 						numbers were believed. Ablating outright, rather than scaling, does the same thing:
-						removing <code>18_4769</code> from <code>split-binding</code> takes
+						removing <code>18_4769</code> from P2 takes
 						<code>&nbsp;result</code> from 69.14% to 24.02% and hands the argmax to
 						<code>&nbsp;ans</code>.
 					</p>
@@ -1345,13 +1350,26 @@
 
 					<p>
 						A mechanism this reliable invites a stronger reading than it has earned: that the
-						model knows Python's binding rules. It does not. Ten classic binding traps, posed as
-						near-identical pairs with opposite answers, score <strong>0 of 4 pairs</strong> —
-						including a pair where the model holds the two scoping rules exactly swapped. The
-						pathways track <em>which name carries how much drive</em>, not <em>when a name is
-						resolved</em>. That boundary has
-						<a href="traps/">its own page</a>.
+						model knows Python's binding rules. It does not. The pathways track <em>which name
+						carries how much drive</em>, not <em>when a name is resolved</em>. Two companion pages
+						probe that boundary with executed ground truth and paired prompts:
 					</p>
+
+					<ul class="notes">
+						<li>
+							<a href="traps/"><strong>Right name, wrong rules</strong></a> — ten classic binding
+							traps (closure capture, mutable defaults, loop-variable leak, class-body scope), posed
+							as near-identical pairs with opposite answers: <strong>0 of 4 pairs</strong>, with the
+							two scoping rules exactly swapped in one pair.
+						</li>
+						<li>
+							<a href="gotchas/"><strong>The expression is not enough</strong></a> — PEP 289
+							generator-expression late binding, where the model is worse on the sugared form of
+							the identical program, plus four chapters (float width, set order, bound-method
+							identity, interpreter version) where the printed expression underdetermines the
+							answer: <strong>1 of 13 pairs</strong>.
+						</li>
+					</ul>
 				</div>
 			</section>
 
