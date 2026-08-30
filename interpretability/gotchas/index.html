@@ -416,17 +416,39 @@
 					</p>
 
 					<p>
-						Every prompt in this chapter is one bare expression, preceded by two worked
-						exchanges so the model answers instead of emitting another prompt. The primer is run
-						in both orders and each block reports both answers:
+						Every prompt in this chapter is one bare expression. On its own the model tends to
+						answer with another <code>&gt;&gt;&gt;</code> rather than a value, so two worked
+						exchanges are placed in front of it. Because the last exchange might bias the answer,
+						each case is run twice, once under each order — <strong>False-first</strong> and
+						<strong>True-first</strong> are the names of those two prompts — and a case only
+						counts if both runs agree:
 					</p>
 
+					<div class="pairgrid">
+						<div>
+							<p class="panel-label"><strong>False-first</strong> — the <code>False</code> exchange comes first</p>
 <pre><code>&gt;&gt;&gt; 1 == 2
 False
 &gt;&gt;&gt; 1 == 1
 True
-&gt;&gt;&gt; &lt;expr&gt;          # "False-first"        (True-first swaps the two exchanges)
+&gt;&gt;&gt; &lt;expr&gt;
 &#9608;</code></pre>
+						</div>
+						<div>
+							<p class="panel-label"><strong>True-first</strong> — the same two exchanges, swapped</p>
+<pre><code>&gt;&gt;&gt; 1 == 1
+True
+&gt;&gt;&gt; 1 == 2
+False
+&gt;&gt;&gt; &lt;expr&gt;
+&#9608;</code></pre>
+						</div>
+					</div>
+
+					<p>
+						Each block below reports the answer under both. <code>prime-dep</code> means the two
+						runs gave different verdicts, so the verdict belongs to the primer, not the model.
+					</p>
 
 					<h4 style="font-size:.95rem;margin:1.4rem 0 .5rem;">a + b == c — inexact vs exact</h4>
 					<div class="pairgrid">
