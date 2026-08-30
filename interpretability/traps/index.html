@@ -415,13 +415,13 @@
 
 					<div class="pairgrid">
 						<div>
-							<p class="panel-label"><code>lambda: i</code> captures the <strong>variable</strong>; Python prints <code>[2, 2, 2]</code></p>
+							<p class="panel-label"><strong><code>closure-late-binding</code></strong> — <code>lambda: i</code> captures the <strong>variable</strong>; Python prints <code>[2, 2, 2]</code></p>
 <pre><code>&gt;&gt;&gt; fs = [lambda: i for i in range(3)]
 &gt;&gt;&gt; print([f() for f in fs])
 [&#9608;   &larr; model: '0' at 79.3%   (wrong)</code></pre>
 						</div>
 						<div>
-							<p class="panel-label"><code>lambda i=i: i</code> binds <strong>now</strong>; Python prints <code>[0, 1, 2]</code></p>
+							<p class="panel-label"><strong><code>closure-default-arg-fix</code></strong> — <code>lambda i=i: i</code> binds <strong>now</strong>; Python prints <code>[0, 1, 2]</code></p>
 <pre><code>&gt;&gt;&gt; fs = [lambda i=i: i for i in range(3)]
 &gt;&gt;&gt; print([f() for f in fs])
 [&#9608;   &larr; model: '0' at 66.8%   (right)</code></pre>
@@ -440,7 +440,7 @@
 
 					<div class="pairgrid">
 						<div>
-							<p class="panel-label"><code>acc=[]</code> is created once and <strong>persists</strong>; second call prints <code>[1, 2]</code></p>
+							<p class="panel-label"><strong><code>mutable-default</code></strong> — <code>acc=[]</code> is created once and <strong>persists</strong>; second call prints <code>[1, 2]</code></p>
 <pre><code>&gt;&gt;&gt; def add(x, acc=[]):
 ...     acc.append(x)
 ...     return acc
@@ -451,7 +451,7 @@
 [&#9608;   &larr; model: '1' at 89.1%   (right)</code></pre>
 						</div>
 						<div>
-							<p class="panel-label"><code>acc=None</code> makes a <strong>fresh</strong> list; second call prints <code>[2]</code></p>
+							<p class="panel-label"><strong><code>mutable-default-fix</code></strong> — <code>acc=None</code> makes a <strong>fresh</strong> list; second call prints <code>[2]</code></p>
 <pre><code>&gt;&gt;&gt; def add(x, acc=None):
 ...     acc = acc or []
 ...     acc.append(x)
@@ -475,7 +475,7 @@
 
 					<div class="pairgrid">
 						<div>
-							<p class="panel-label">The <code>for</code> variable <strong>does leak</strong>; Python prints <code>2</code></p>
+							<p class="panel-label"><strong><code>for-var-leaks</code></strong> — the <code>for</code> variable <strong>does leak</strong>; Python prints <code>2</code></p>
 <pre><code>&gt;&gt;&gt; for i in range(3):
 ...     pass
 ...
@@ -483,7 +483,7 @@
 &#9608;   &larr; model: 'Traceback' at 35.6%   (wrong)</code></pre>
 						</div>
 						<div>
-							<p class="panel-label">A comprehension variable <strong>does not</strong>; Python raises <code>NameError</code></p>
+							<p class="panel-label"><strong><code>comprehension-no-leak</code></strong> — a comprehension variable <strong>does not</strong>; Python raises <code>NameError</code></p>
 <pre><code>&gt;&gt;&gt; [j for j in range(3)]
 [0, 1, 2]
 &gt;&gt;&gt; print(j)
@@ -502,7 +502,7 @@
 
 					<div class="pairgrid">
 						<div>
-							<p class="panel-label">The comprehension <strong>cannot see</strong> <code>xs</code>; Python raises <code>NameError</code></p>
+							<p class="panel-label"><strong><code>class-body-scope</code></strong> — the comprehension <strong>cannot see</strong> <code>xs</code>; Python raises <code>NameError</code></p>
 <pre><code>&gt;&gt;&gt; class C:
 ...     xs = [1, 2, 3]
 ...     ys = [x for x in range(5) if x in xs]
@@ -510,7 +510,7 @@
 &#9608;   &larr; model: '&gt;&gt;&gt;' at 70.7%   (neither)</code></pre>
 						</div>
 						<div>
-							<p class="panel-label">The <strong>outermost iterable</strong> is evaluated in class scope; this one is legal</p>
+							<p class="panel-label"><strong><code>class-body-ok</code></strong> — the <strong>outermost iterable</strong> is evaluated in class scope; this one is legal</p>
 <pre><code>&gt;&gt;&gt; class C:
 ...     xs = [1, 2, 3]
 ...     ys = [x * 2 for x in xs]
@@ -532,7 +532,7 @@
 
 					<div class="pairgrid">
 						<div>
-							<p class="panel-label"><code>t[0] += [2]</code> raises <strong>and still mutates</strong> the list; Python prints <code>([1, 2],)</code></p>
+							<p class="panel-label"><strong><code>tuple-augmented-assign</code></strong> — <code>t[0] += [2]</code> raises <strong>and still mutates</strong> the list; Python prints <code>([1, 2],)</code></p>
 <pre><code>&gt;&gt;&gt; t = ([1],)
 &gt;&gt;&gt; t[0] += [2]
 Traceback (most recent call last):
@@ -542,7 +542,7 @@ TypeError: 'tuple' object does not support item assignment
 ([1&#9608;   &larr; model: ',' at 32.8%   (right; top-1 was '],' at 37.1%)</code></pre>
 						</div>
 						<div>
-							<p class="panel-label"><code>1 in [1, 2] == True</code> chains as <code>(1 in [1, 2]) and ([1, 2] == True)</code>; Python prints <code>False</code></p>
+							<p class="panel-label"><strong><code>chained-comparison</code></strong> — <code>1 in [1, 2] == True</code> chains as <code>(1 in [1, 2]) and ([1, 2] == True)</code>; Python prints <code>False</code></p>
 <pre><code>&gt;&gt;&gt; 1 in [1, 2] == True
 &#9608;   &larr; model: 'True' 11.2% vs 'False' 5.3%   (wrong; top-1 was '&gt;&gt;&gt;' at 64.5%)</code></pre>
 						</div>
