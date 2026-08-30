@@ -193,6 +193,62 @@
 							is always listed first, so every such coin flip would have been recorded as a hit.
 						</li>
 					</ul>
+
+					<h3 style="font-size:1rem;margin:1.8rem 0 .6rem;">How a case is scored</h3>
+
+					<p>
+						One forward pass per prompt. From the softmax at the cut the probe reads two numbers
+						— P(correct) and P(wrong), the probability of the correct continuation and of the
+						natural misreading — and ignores every other token. From those two numbers:
+					</p>
+
+					<ul class="notes" style="margin:0 0 1.1rem;padding-left:1.15rem;">
+						<li style="margin:0 0 .7rem;">
+							<strong>coverage</strong> = P(correct)&nbsp;+&nbsp;P(wrong). How much of the
+							model's answer the two candidates account for. It is printed for every case and is
+							not a verdict, but it says how much the verdict is worth: at 97% the model chose
+							between the two tokens; at 19% (<code>dict-reversed-keeps-order</code>) it mostly
+							predicted something else and the verdict rests on scraps.
+						</li>
+						<li style="margin:0 0 .7rem;">
+							<strong>margin</strong> = |P(correct)&nbsp;&minus;&nbsp;P(wrong)|. Reported, not
+							thresholded: no cutoff below which a win stops counting is claimed.
+						</li>
+						<li style="margin:0 0 .7rem;">
+							<strong><code>noise</code></strong> — the larger of the two candidates is below 2%.
+							The answer is neither token; the case scores nothing.
+						</li>
+						<li style="margin:0 0 .7rem;">
+							<strong><code>tie</code></strong> — margin is exactly 0. The two candidates have
+							identical probability, which in bfloat16 happens often. Scored as neither ok nor
+							MISS, and it fails its pair.
+						</li>
+						<li style="margin:0 0 .7rem;">
+							<strong><code>ok</code></strong> — P(correct) &gt; P(wrong), by any margin.
+						</li>
+						<li style="margin:0 0 .7rem;">
+							<strong><code>MISS</code></strong> — P(wrong) &gt; P(correct).
+						</li>
+						<li style="margin:0;">
+							<strong><code>prime-dep</code></strong> — ch.1 only, where each case runs under two
+							primer orders. If the two runs give different verdicts, the case is
+							<code>prime-dep</code> regardless of what they were; only two matching verdicts
+							carry through. The two primers are shown at the top of ch.1.
+						</li>
+					</ul>
+
+					<h3 style="font-size:1rem;margin:1.8rem 0 .6rem;">How a pair is scored</h3>
+
+					<p>
+						Same rule as the <a href="../traps/#design">trap probe</a>: a pair passes only if
+						<strong>both</strong> members are <code>ok</code>. A <code>tie</code>,
+						<code>noise</code> or <code>prime-dep</code> on either side fails it just as a
+						<code>MISS</code> does. Pairs are counted per chapter and never pooled across
+						chapters, because ch.1 is float arithmetic and ch.4 is a fact about interpreter
+						releases — one number over both measures nothing. Cases marked unscored
+						(the unseeded string set, whose output changes with the process) are executed and
+						shown but never put to the model; the seeded string set is scored but unpaired.
+					</p>
 				</div>
 			</section>
 
