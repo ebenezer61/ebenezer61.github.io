@@ -1472,6 +1472,62 @@
 				</div>
 			</section>
 
+			<!-- ======================= Limitations ======================= -->
+			<section id="limitations">
+				<div class="wrap">
+					<h2>Limitations and future work</h2>
+
+					<p>
+						<strong>One model.</strong> Everything here is <code>gemma-2-2b</code>. That is a
+						constraint of the method before it is a choice: attribution graphs need a full set of
+						transcoders for the model, and GemmaScope's are the most complete public set — the
+						ones circuit-tracer was built and validated on, and the only ones Neuronpedia can host
+						graphs and run steering for. The alternatives are also much larger: the Llama-3.2 1B
+						CLTs are 25&nbsp;GB, Qwen-3 1.7B's 71&nbsp;GB, GPT-OSS 20B's 264&nbsp;GB, against
+						7.4&nbsp;GB here, on a single RTX&nbsp;3090. No cross-model claim is made; the result
+						is a mechanism in one model, verified causally in that model.
+					</p>
+
+					<p>
+						<strong>Transcoder coverage is uneven.</strong> The <code>ans</code> pathway's drive
+						sits in raw embeddings rather than in a feature, and it has no suppressor above 0.15 of
+						its drive. "Not captured" is the honest reading; the transcoders explain that pathway
+						less well than the <code>result</code> and <code>total</code> ones, and an
+						embedding-led pathway is harder to intervene on cleanly.
+					</p>
+
+					<p>
+						<strong>Two of the four prompts are invalid Python.</strong> P2 and P3 read a name
+						before it is bound, because that is the only way to make binding and occurrence
+						disagree. P4 and the <code>two-valid</code> sweep (18/18) show the effect does not
+						depend on it, but the attribution numbers for P2 and P3 are numbers about code that
+						cannot run.
+					</p>
+
+					<p>
+						<strong>Single-token cuts and a pruned view.</strong> Every prompt is decided by one
+						next-token distribution, which probes recognition, not generation. The per-logit totals
+						are computed from graphs pruned at node&nbsp;0.8&nbsp;/ edge&nbsp;0.98 and the hosted
+						copies at 0.7&nbsp;/&nbsp;0.9, so absolute magnitudes shift with the threshold; the
+						orderings and the near-zero cross terms are what is stable. The self-hosted viewer's
+						feature-detail panel is empty, so what each feature responds to elsewhere has to be
+						looked up on Neuronpedia.
+					</p>
+
+					<p>
+						<strong>Next.</strong> The obvious second model is Llama-3.2 1B: its CLTs exist, the
+						model fits the same GPU without offload, and the attribution driver runs unchanged on
+						the same backend. The behavioural probes (the four prompts, the 18-name sweep, the
+						interventions' baseline) need no transcoders and are the first thing to run — starting
+						with whether <code>&nbsp;result</code> and <code>&nbsp;ans</code> are single tokens in
+						that vocabulary, which the whole design depends on. Beyond that: attribution on the
+						<code>total</code> graphs' suppressor to see whether per-name suppression is a
+						general pattern or a feature of a few names, and a proper feature-detail panel for the
+						hosted viewer.
+					</p>
+				</div>
+			</section>
+
 			<!-- ======================= Reproducing ======================= -->
 			<section id="reproduce">
 				<div class="wrap">

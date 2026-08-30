@@ -527,6 +527,32 @@
 						floor, so this scores <em>noise</em>, not a hit for either side: the model was not
 						weighing the two semantics at all.
 					</p>
+
+					<h3 style="font-size:1rem;margin:2rem 0 .6rem;">The two unpaired cases</h3>
+
+					<div class="pairgrid">
+						<div>
+							<p class="panel-label"><code>t[0] += [2]</code> raises <strong>and still mutates</strong> the list; Python prints <code>([1, 2],)</code></p>
+<pre><code>&gt;&gt;&gt; t = ([1],)
+&gt;&gt;&gt; t[0] += [2]
+Traceback (most recent call last):
+  File "&lt;stdin&gt;", line 1, in &lt;module&gt;
+TypeError: 'tuple' object does not support item assignment
+&gt;&gt;&gt; t
+([1&#9608;   &larr; model: ',' at 32.8%   (right; top-1 was '],' at 37.1%)</code></pre>
+						</div>
+						<div>
+							<p class="panel-label"><code>1 in [1, 2] == True</code> chains as <code>(1 in [1, 2]) and ([1, 2] == True)</code>; Python prints <code>False</code></p>
+<pre><code>&gt;&gt;&gt; 1 in [1, 2] == True
+&#9608;   &larr; model: 'True' 11.2% vs 'False' 5.3%   (wrong; top-1 was '&gt;&gt;&gt;' at 64.5%)</code></pre>
+						</div>
+					</div>
+
+					<p>
+						Neither has a natural twin, so they are scored on their own and carry no weight in the
+						pair count. The augmented-assignment case is the one "ok" outside the pairs; the
+						chained comparison is mostly not answered at all.
+					</p>
 				</div>
 			</section>
 

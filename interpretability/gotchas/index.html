@@ -217,10 +217,25 @@
 						resolves the global <em>lazily</em> (new <code>[0,1,2]</code>); the output is their
 						intersection — neither list on the page. PEP&nbsp;289 <em>defines</em> this
 						expression to mean its desugaring: an explicit generator function taking
-						<code>iter(lst)</code> as an argument and filtering on the global. The probe cuts
-						both spellings at the same two points. A disagreement between them rules out reading
-						of the semantics outright; agreement proves little, since two matching wrong answers
-						also agree.
+						<code>iter(lst)</code> as an argument and filtering on the global. That desugared
+						form is the second spelling the probe uses:
+					</p>
+
+<pre><code>&gt;&gt;&gt; lst = [1, 2, 3, 4, 5]
+&gt;&gt;&gt; def __g(it):
+...     for n in it:
+...         if n in lst:
+...             yield n
+...
+&gt;&gt;&gt; g = __g(iter(lst))
+&gt;&gt;&gt; lst = [0, 1, 2]
+&gt;&gt;&gt; print(list(g))
+[1, 2]</code></pre>
+
+					<p>
+						The probe cuts both spellings at the same two points. A disagreement between them
+						rules out reading of the semantics outright; agreement proves little, since two
+						matching wrong answers also agree.
 					</p>
 
 					<table>
@@ -261,6 +276,99 @@
 							not get one — an exact tie has no answer to contradict.
 						</p>
 					</div>
+
+					<h3 style="font-size:1rem;margin:2rem 0 .6rem;">All nine cuts</h3>
+
+					<p>
+						Every case is a REPL transcript cut just before a single token that the correct
+						semantics and the natural misreading predict differently. The three controls have no
+						reassignment; the nested case uses a third snippet, shown last.
+					</p>
+
+<pre><code>&gt;&gt;&gt; lst = [1, 2, 3]                            # nested: outer loop eager, inner lazy
+&gt;&gt;&gt; g = ((a, b) for a in lst for b in lst)
+&gt;&gt;&gt; lst = [1, 2]
+&gt;&gt;&gt; print(list(g))
+[(1, 1), (1, 2), (2, 1), (2, 2), (3, 1), (3, 2)]</code></pre>
+
+					<table>
+						<thead>
+							<tr><th>Case</th><th>Snippet</th><th>Prompt ends at</th><th>Correct / wrong</th><th>Model</th><th>Verdict</th></tr>
+						</thead>
+						<tbody>
+							<tr>
+								<td class="node">ctrl-no-reassign</td>
+								<td class="node">lst = [1, 2, 3]; g = (a for a in lst)</td>
+								<td class="node">[1, 2</td>
+								<td class="node">, / ]</td>
+								<td class="num">, at 98.44%</td><td>ok</td>
+							</tr>
+							<tr>
+								<td class="node">ctrl-plain-five</td>
+								<td class="node">lst = [1, 2, 3, 4, 5]; g = (n for n in lst)</td>
+								<td class="node">[1, 2</td>
+								<td class="node">, / ]</td>
+								<td class="num">, at 99.61%</td><td>ok</td>
+							</tr>
+							<tr>
+								<td class="node">ctrl-filter-no-reassign</td>
+								<td class="node">lst = [1, 2, 3, 4, 5]; g = (n for n in lst if n in lst)</td>
+								<td class="node">[1, 2</td>
+								<td class="node">, / ]</td>
+								<td class="num">, at 89.45%</td><td>ok</td>
+							</tr>
+							<tr>
+								<td class="node">genexp-first-element</td>
+								<td class="node">genexp form, lst rebound</td>
+								<td class="node">[</td>
+								<td class="node">1 / 0</td>
+								<td class="num neg">0 at 55.08%, 1 at 37.70%</td><td>MISS</td>
+							</tr>
+							<tr>
+								<td class="node">test2-first-element</td>
+								<td class="node">desugared form, lst rebound</td>
+								<td class="node">[</td>
+								<td class="node">1 / 0</td>
+								<td class="num">40.43% / 40.43%</td><td>tie</td>
+							</tr>
+							<tr>
+								<td class="node">genexp-where-stop</td>
+								<td class="node">genexp form, lst rebound</td>
+								<td class="node">[1, 2</td>
+								<td class="node">] / ,</td>
+								<td class="num">] at 53.12%</td><td>ok</td>
+							</tr>
+							<tr>
+								<td class="node">test2-where-stop</td>
+								<td class="node">desugared form, lst rebound</td>
+								<td class="node">[1, 2</td>
+								<td class="node">] / ,</td>
+								<td class="num pos">] at 73.05%</td><td>ok</td>
+							</tr>
+							<tr>
+								<td class="node">test1-third-pair</td>
+								<td class="node">nested, lst rebound</td>
+								<td class="node">[(1, 1), (1, 2), (</td>
+								<td class="node">2 / 1</td>
+								<td class="num pos">2 at 99.22%</td><td>ok</td>
+							</tr>
+							<tr>
+								<td class="node">test1-does-3-appear</td>
+								<td class="node">nested, lst rebound</td>
+								<td class="node">…(2, 1), (2, 2)</td>
+								<td class="node">, / ]</td>
+								<td class="num neg">both 0.00%</td><td>noise</td>
+							</tr>
+						</tbody>
+					</table>
+
+					<p>
+						<code>test1-third-pair</code> passes because the inner loop being exhausted at 2 is
+						also what a recency heuristic predicts; <code>test1-does-3-appear</code> is the only
+						cut where eager and lazy capture of the <em>outer</em> iterable give different tokens,
+						and there the model's top prediction is a newline — it thinks the output ends at
+						<code>(2, 2)</code>.
+					</p>
 				</div>
 			</section>
 
@@ -285,42 +393,108 @@
 						twice &rarr; True, different literals &rarr; False</em>.
 					</p>
 
+					<p>
+						Each prompt is <code>&gt;&gt;&gt; expr</code> preceded by two worked exchanges
+						(<code>&gt;&gt;&gt; 1 == 2</code> → <code>False</code>, <code>&gt;&gt;&gt; 1 == 1</code>
+						→ <code>True</code>), run in both orders; the model column shows the answer under
+						each order.
+					</p>
+
 					<table>
 						<thead>
-							<tr><th>Case</th><th>Truth</th><th>Model</th><th>Verdict</th></tr>
+							<tr><th>Pair</th><th>Case</th><th>Expression</th><th>Truth</th><th>Model (False-first / True-first)</th><th>Verdict</th></tr>
 						</thead>
 						<tbody>
 							<tr>
-								<td class="node">1e500 == 1e500</td>
-								<td class="node">True (inf == inf)</td>
-								<td class="num">True at 78.91%</td><td>ok</td>
-							</tr>
-							<tr>
-								<td class="node">1e500/1e500 == 1e500/1e500</td>
-								<td class="node">False (nan != nan)</td>
-								<td class="num neg">True at 83.20%</td><td>MISS</td>
-							</tr>
-							<tr>
-								<td class="node">1e50 == 1e60</td>
+								<td rowspan="2" class="wrap-cell">a + b == c</td>
+								<td class="node">float-sum</td>
+								<td class="node">0.1 + 0.2 == 0.3</td>
 								<td class="node">False</td>
-								<td class="num">False at 69.14%</td><td>ok</td>
+								<td class="num">48.83/48.83 tie / True 74.22%</td><td>prime-dep</td>
 							</tr>
 							<tr>
+								<td class="node">float-sum-exact</td>
+								<td class="node">0.25 + 0.5 == 0.75</td>
+								<td class="node">True</td>
+								<td class="num">True 60.55% / 85.16%</td><td>ok</td>
+							</tr>
+							<tr>
+								<td rowspan="2" class="wrap-cell">float == int</td>
+								<td class="node">float-int-exact</td>
+								<td class="node">1e50 == 10 ** 50</td>
+								<td class="node">False</td>
+								<td class="num">46.09/46.09 tie / True 58.59%</td><td>prime-dep</td>
+							</tr>
+							<tr>
+								<td class="node">float-int-pow2</td>
+								<td class="node">2.0 ** 50 == 2 ** 50</td>
+								<td class="node">True</td>
+								<td class="num">True 57.81% / 80.86%</td><td>ok</td>
+							</tr>
+							<tr>
+								<td rowspan="2" class="wrap-cell">1eX == 1eY</td>
+								<td class="node">inf-equals-other-inf</td>
 								<td class="node">1e500 == 1e600</td>
 								<td class="node">True (both inf)</td>
-								<td class="num neg">False at 67.58%</td><td>MISS</td>
+								<td class="num neg">False 66.41% / 67.58%</td><td>MISS</td>
+							</tr>
+							<tr>
+								<td class="node">floats-differ</td>
+								<td class="node">1e50 == 1e60</td>
+								<td class="node">False</td>
+								<td class="num">False 69.14% / 74.61%</td><td>ok</td>
+							</tr>
+							<tr>
+								<td rowspan="2" class="wrap-cell">float &gt; 10**1000</td>
+								<td class="node">inf-beats-bigint</td>
+								<td class="node">1e500 &gt; 10 ** 1000</td>
+								<td class="node">True (inf)</td>
+								<td class="num">47.66/47.66 tie / True 62.50%</td><td>prime-dep</td>
+							</tr>
+							<tr>
+								<td class="node">finite-loses-bigint</td>
+								<td class="node">1e300 &gt; 10 ** 1000</td>
+								<td class="node">False</td>
+								<td class="num neg">True 50.78% / 62.89%</td><td>MISS</td>
+							</tr>
+							<tr>
+								<td rowspan="2" class="wrap-cell">x == x</td>
+								<td class="node">inf-equals-itself</td>
+								<td class="node">1e500 == 1e500</td>
+								<td class="node">True (inf == inf)</td>
+								<td class="num">True 78.91% / 91.41%</td><td>ok</td>
+							</tr>
+							<tr>
+								<td class="node">nan-not-itself</td>
+								<td class="node">1e500 / 1e500 == 1e500 / 1e500</td>
+								<td class="node">False (nan != nan)</td>
+								<td class="num neg">True 83.20% / 91.02%</td><td>MISS</td>
+							</tr>
+							<tr>
+								<td rowspan="2" class="wrap-cell">&gt; 0 after an inf op</td>
+								<td class="node">inf-times-inf</td>
+								<td class="node">1e500 * 1e500 &gt; 0</td>
+								<td class="node">True (inf)</td>
+								<td class="num">True 58.20% / 64.06%</td><td>ok</td>
+							</tr>
+							<tr>
+								<td class="node">nan-not-positive</td>
+								<td class="node">1e500 / 1e500 &gt; 0</td>
+								<td class="node">False (nan)</td>
+								<td class="num neg">True 58.98% / 72.27%</td><td>MISS</td>
 							</tr>
 						</tbody>
 					</table>
 
 					<p>
-						The four identity-shaped cases, side by side, are the tell: the verdict tracks
-						whether the two sides are the same <em>string</em>, never what they evaluate to.
-						Nothing was computed. (<code>0.1 + 0.2 == 0.3</code> and two others scored
-						<code>prime-dep</code> — see the design section — and the exact/inexact pairs
-						<code>0.25 + 0.5 == 0.75</code> and <code>2.0**50 == 2**50</code> were answered
-						<code>True</code>, consistent with a general lean toward <code>True</code> on
-						arithmetic that is not an identity comparison.)
+						The four identity-shaped cases (<code>1e500 == 1e500</code>,
+						<code>1e500/1e500 == 1e500/1e500</code>, <code>1e50 == 1e60</code>,
+						<code>1e500 == 1e600</code>) are the tell: the verdict tracks whether the two sides
+						are the same <em>string</em>, never what they evaluate to. Nothing was computed. The
+						three <code>prime-dep</code> cases are exact ties under one primer and a confident
+						answer under the other, so the verdict belongs to the primer; the exact/inexact
+						pairs were answered <code>True</code> both ways, consistent with a general lean toward
+						<code>True</code> on arithmetic that is not an identity comparison.
 					</p>
 
 					<h3 style="font-size:1rem;margin:2rem 0 .6rem;">ch.2 — sets: the order you see is the hash table (1/3 pairs)</h3>
@@ -333,37 +507,62 @@
 
 					<table>
 						<thead>
-							<tr><th>Case</th><th>Truth</th><th>Model</th><th>Verdict</th></tr>
+							<tr><th>Case</th><th>Expression</th><th>Python prints</th><th>Prompt ends at</th><th>Model</th><th>Verdict</th></tr>
 						</thead>
 						<tbody>
 							<tr>
-								<td class="node">list(reversed([0..4]))</td>
+								<td class="node">list-reversed-keeps-order</td>
+								<td class="node">list(reversed([x for x in range(5)]))</td>
 								<td class="node">[4, 3, 2, 1, 0]</td>
-								<td class="num">4-first at 48.24%</td><td>ok</td>
+								<td class="node">[</td>
+								<td class="num">4 at 48.24%</td><td>ok</td>
 							</tr>
 							<tr>
-								<td class="node">set(reversed([0..4]))</td>
+								<td class="node">dict-reversed-keeps-order</td>
+								<td class="node">{k: None for k in reversed(range(5))}</td>
+								<td class="node">{4: None, 3: None, …}</td>
+								<td class="node">{</td>
+								<td class="num neg">0 at 11.47%, 4 at 7.91% (coverage 19%)</td><td>MISS</td>
+							</tr>
+							<tr>
+								<td class="node">set-reversed-loses-order</td>
+								<td class="node">set(reversed([x for x in range(5)]))</td>
 								<td class="node">{0, 1, 2, 3, 4}</td>
-								<td class="num">0-first at 35.16%</td><td>ok — the one passing pair</td>
+								<td class="node">{</td>
+								<td class="num">0 at 35.16%</td><td>ok</td>
 							</tr>
 							<tr>
+								<td class="node">dict-int-no-wrap</td>
 								<td class="node">{x: None for x in range(1022, 1027)}</td>
-								<td class="node">1022 first (insertion)</td>
-								<td class="num">1022-first at 81.64%</td><td>ok</td>
+								<td class="node">{1022: None, …}</td>
+								<td class="node">{102</td>
+								<td class="num">2 at 81.64%</td><td>ok</td>
 							</tr>
 							<tr>
-								<td class="node">set(range(1022, 1027))</td>
-								<td class="node">1024 first (table wraps)</td>
-								<td class="num neg">1022-first at <strong>97.27%</strong></td><td>MISS</td>
+								<td class="node">set-int-table-wrap</td>
+								<td class="node">set([x for x in range(1022, 1027)])</td>
+								<td class="node">{1024, 1025, 1026, 1022, 1023}</td>
+								<td class="node">{102</td>
+								<td class="num neg">2 at <strong>97.27%</strong></td><td>MISS</td>
+							</tr>
+							<tr>
+								<td class="node">set-str-seeded</td>
+								<td class="node">PYTHONHASHSEED=0 · set([str(x) for x in range(5)])</td>
+								<td class="node">{'2', …} on this build</td>
+								<td class="node">{'</td>
+								<td class="num neg">0 at 80.08%</td><td>MISS (floor, unpaired)</td>
 							</tr>
 						</tbody>
 					</table>
 
 					<p>
-						The wrap case is the most confident wrong answer in this study: the model assumes
-						sets keep insertion order the way dicts do. A string-set case under
-						<code>PYTHONHASHSEED=0</code> is included only as a floor (deterministic but
-						underivable — passing it would mean having memorised CPython's siphash) and the
+						Pairs: <code>dict-reversed</code>/<code>set-reversed</code> (fail on the dict side,
+						where the model mostly predicted neither candidate), <code>dict-int</code>/<code>set-int</code>
+						(fail — the wrap case is the most confident wrong answer in this study: the model
+						assumes sets keep insertion order the way dicts do), and
+						<code>list-reversed</code>/<code>set-reversed</code> (the one pass). The string-set
+						case under <code>PYTHONHASHSEED=0</code> is included only as a floor (deterministic
+						but underivable — passing it would mean having memorised CPython's siphash); the
 						unseeded variant is executed under two seeds to prove its output differs, then
 						<em>never shown to the model</em>: there is no correct token to score.
 					</p>
@@ -381,33 +580,53 @@
 						evidence about "Python".
 					</p>
 
+					<p>Every prompt in this chapter starts from the same prelude:</p>
+
+<pre><code>&gt;&gt;&gt; class C:
+...     def f(self):
+...         pass
+...
+&gt;&gt;&gt; o = C()</code></pre>
+
 					<table>
 						<thead>
-							<tr><th>Case</th><th>Truth (this build)</th><th>Model</th><th>Verdict</th></tr>
+							<tr><th>Case</th><th>Then</th><th>Truth (this build)</th><th>Model</th><th>Verdict</th></tr>
 						</thead>
 						<tbody>
 							<tr>
+								<td class="node">classfunc-is-itself</td>
 								<td class="node">C.f is C.f</td><td class="node">True</td>
 								<td class="num">True at 52.73%</td><td>ok</td>
 							</tr>
 							<tr>
+								<td class="node">method-is-fresh-object</td>
 								<td class="node">o.f is o.f</td><td class="node">False</td>
 								<td class="num neg">True at 53.52%</td><td>MISS</td>
 							</tr>
 							<tr>
+								<td class="node">method-compares-equal</td>
 								<td class="node">o.f == o.f</td><td class="node">True</td>
 								<td class="num">44.14% / 44.14%</td><td>exact tie</td>
 							</tr>
 							<tr>
+								<td class="node">id-reuses-freed-address</td>
 								<td class="node">id(o.f) == id(o.f)</td><td class="node">True (address reuse)</td>
 								<td class="num">True at 55.47%</td><td>ok — for the wrong reason</td>
 							</tr>
 							<tr>
-								<td class="node">…with one allocation between</td><td class="node">False</td>
+								<td class="node">id-differs-after-alloc</td>
+								<td class="node">a = id(o.f); junk = str(a); a == id(o.f)</td><td class="node">False</td>
 								<td class="num neg">True at 48.83%</td><td>MISS</td>
 							</tr>
 						</tbody>
 					</table>
+
+					<p>
+						Pairs: <code>method-is-fresh-object</code>/<code>method-compares-equal</code>
+						(<code>is</code> vs <code>==</code>), <code>classfunc-is-itself</code>/<code>method-is-fresh-object</code>
+						(<code>C.f</code> vs <code>o.f</code> under <code>is</code>), and the two
+						<code>id()</code> cases one allocation apart.
+					</p>
 
 					<p>
 						Read the last three rows together: the model says <code>True</code> to every
@@ -424,6 +643,13 @@
 						truth was executed on all three interpreters; the prompt is a shell transcript naming
 						the interpreter, and only that token differs between cases.
 					</p>
+
+<pre><code>$ python3.11 -c "def f():
+    lambda: k
+    k = 1
+    print([locals() for k in [0]])
+f()"
+[{'&#9608;   &larr; 3.11 prints [{'.0': &lt;range_iterator …&gt;, 'k': 0}]; 3.12 and 3.13 print [{'k': 0}]</code></pre>
 
 					<table>
 						<thead>
