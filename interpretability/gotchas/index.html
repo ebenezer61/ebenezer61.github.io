@@ -281,8 +281,11 @@
 
 					<p>
 						Every case is a REPL transcript cut just before a single token that the correct
-						semantics and the natural misreading predict differently. The three controls have no
-						reassignment; the nested case uses a third snippet, shown last.
+						semantics and the natural misreading predict differently. "Rebound" means the
+						snippet reassigns <code>lst</code> after <code>g</code> is created — the line
+						<code>lst = [0, 1, 2]</code> in the two forms above — so the eager and lazy parts of
+						the expression see different lists. The three controls have no such line; the nested
+						case uses a third snippet:
 					</p>
 
 <pre><code>&gt;&gt;&gt; lst = [1, 2, 3]                            # nested: outer loop eager, inner lazy
@@ -319,42 +322,42 @@
 							</tr>
 							<tr>
 								<td class="node">genexp-first-element</td>
-								<td class="node">genexp form, lst rebound</td>
+								<td class="node">g = (n for n in lst if n in lst); lst = [0, 1, 2]</td>
 								<td class="node">[</td>
 								<td class="node">1 / 0</td>
 								<td class="num neg">0 at 55.08%, 1 at 37.70%</td><td>MISS</td>
 							</tr>
 							<tr>
 								<td class="node">test2-first-element</td>
-								<td class="node">desugared form, lst rebound</td>
+								<td class="node">g = __g(iter(lst)); lst = [0, 1, 2]</td>
 								<td class="node">[</td>
 								<td class="node">1 / 0</td>
 								<td class="num">40.43% / 40.43%</td><td>tie</td>
 							</tr>
 							<tr>
 								<td class="node">genexp-where-stop</td>
-								<td class="node">genexp form, lst rebound</td>
+								<td class="node">g = (n for n in lst if n in lst); lst = [0, 1, 2]</td>
 								<td class="node">[1, 2</td>
 								<td class="node">] / ,</td>
 								<td class="num">] at 53.12%</td><td>ok</td>
 							</tr>
 							<tr>
 								<td class="node">test2-where-stop</td>
-								<td class="node">desugared form, lst rebound</td>
+								<td class="node">g = __g(iter(lst)); lst = [0, 1, 2]</td>
 								<td class="node">[1, 2</td>
 								<td class="node">] / ,</td>
 								<td class="num pos">] at 73.05%</td><td>ok</td>
 							</tr>
 							<tr>
 								<td class="node">test1-third-pair</td>
-								<td class="node">nested, lst rebound</td>
+								<td class="node">g = ((a, b) for a in lst for b in lst); lst = [1, 2]</td>
 								<td class="node">[(1, 1), (1, 2), (</td>
 								<td class="node">2 / 1</td>
 								<td class="num pos">2 at 99.22%</td><td>ok</td>
 							</tr>
 							<tr>
 								<td class="node">test1-does-3-appear</td>
-								<td class="node">nested, lst rebound</td>
+								<td class="node">g = ((a, b) for a in lst for b in lst); lst = [1, 2]</td>
 								<td class="node">…(2, 1), (2, 2)</td>
 								<td class="node">, / ]</td>
 								<td class="num neg">both 0.00%</td><td>noise</td>
