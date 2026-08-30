@@ -416,97 +416,108 @@
 					</p>
 
 					<p>
-						Each prompt is <code>&gt;&gt;&gt; expr</code> preceded by two worked exchanges
-						(<code>&gt;&gt;&gt; 1 == 2</code> → <code>False</code>, <code>&gt;&gt;&gt; 1 == 1</code>
-						→ <code>True</code>), run in both orders; the model column shows the answer under
-						each order.
+						Every prompt in this chapter is one bare expression, preceded by two worked
+						exchanges so the model answers instead of emitting another prompt. The primer is run
+						in both orders and each block reports both answers:
 					</p>
 
-					<table>
-						<thead>
-							<tr><th>Pair</th><th>Case</th><th>Expression</th><th>Truth</th><th>Model (False-first / True-first)</th><th>Verdict</th></tr>
-						</thead>
-						<tbody>
-							<tr>
-								<td rowspan="2" class="wrap-cell">a + b == c</td>
-								<td class="node">float-sum</td>
-								<td class="node">0.1 + 0.2 == 0.3</td>
-								<td class="node">False</td>
-								<td class="num">48.83/48.83 tie / True 74.22%</td><td>prime-dep</td>
-							</tr>
-							<tr>
-								<td class="node">float-sum-exact</td>
-								<td class="node">0.25 + 0.5 == 0.75</td>
-								<td class="node">True</td>
-								<td class="num">True 60.55% / 85.16%</td><td>ok</td>
-							</tr>
-							<tr>
-								<td rowspan="2" class="wrap-cell">float == int</td>
-								<td class="node">float-int-exact</td>
-								<td class="node">1e50 == 10 ** 50</td>
-								<td class="node">False</td>
-								<td class="num">46.09/46.09 tie / True 58.59%</td><td>prime-dep</td>
-							</tr>
-							<tr>
-								<td class="node">float-int-pow2</td>
-								<td class="node">2.0 ** 50 == 2 ** 50</td>
-								<td class="node">True</td>
-								<td class="num">True 57.81% / 80.86%</td><td>ok</td>
-							</tr>
-							<tr>
-								<td rowspan="2" class="wrap-cell">1eX == 1eY</td>
-								<td class="node">inf-equals-other-inf</td>
-								<td class="node">1e500 == 1e600</td>
-								<td class="node">True (both inf)</td>
-								<td class="num neg">False 66.41% / 67.58%</td><td>MISS</td>
-							</tr>
-							<tr>
-								<td class="node">floats-differ</td>
-								<td class="node">1e50 == 1e60</td>
-								<td class="node">False</td>
-								<td class="num">False 69.14% / 74.61%</td><td>ok</td>
-							</tr>
-							<tr>
-								<td rowspan="2" class="wrap-cell">float &gt; 10**1000</td>
-								<td class="node">inf-beats-bigint</td>
-								<td class="node">1e500 &gt; 10 ** 1000</td>
-								<td class="node">True (inf)</td>
-								<td class="num">47.66/47.66 tie / True 62.50%</td><td>prime-dep</td>
-							</tr>
-							<tr>
-								<td class="node">finite-loses-bigint</td>
-								<td class="node">1e300 &gt; 10 ** 1000</td>
-								<td class="node">False</td>
-								<td class="num neg">True 50.78% / 62.89%</td><td>MISS</td>
-							</tr>
-							<tr>
-								<td rowspan="2" class="wrap-cell">x == x</td>
-								<td class="node">inf-equals-itself</td>
-								<td class="node">1e500 == 1e500</td>
-								<td class="node">True (inf == inf)</td>
-								<td class="num">True 78.91% / 91.41%</td><td>ok</td>
-							</tr>
-							<tr>
-								<td class="node">nan-not-itself</td>
-								<td class="node">1e500 / 1e500 == 1e500 / 1e500</td>
-								<td class="node">False (nan != nan)</td>
-								<td class="num neg">True 83.20% / 91.02%</td><td>MISS</td>
-							</tr>
-							<tr>
-								<td rowspan="2" class="wrap-cell">&gt; 0 after an inf op</td>
-								<td class="node">inf-times-inf</td>
-								<td class="node">1e500 * 1e500 &gt; 0</td>
-								<td class="node">True (inf)</td>
-								<td class="num">True 58.20% / 64.06%</td><td>ok</td>
-							</tr>
-							<tr>
-								<td class="node">nan-not-positive</td>
-								<td class="node">1e500 / 1e500 &gt; 0</td>
-								<td class="node">False (nan)</td>
-								<td class="num neg">True 58.98% / 72.27%</td><td>MISS</td>
-							</tr>
-						</tbody>
-					</table>
+<pre><code>&gt;&gt;&gt; 1 == 2
+False
+&gt;&gt;&gt; 1 == 1
+True
+&gt;&gt;&gt; &lt;expr&gt;          # "False-first"        (True-first swaps the two exchanges)
+&#9608;</code></pre>
+
+					<h4 style="font-size:.95rem;margin:1.4rem 0 .5rem;">a + b == c — inexact vs exact</h4>
+					<div class="pairgrid">
+						<div>
+							<p class="panel-label"><strong><code>float-sum</code></strong> — Python prints <code>False</code> (0.1 and 0.2 are not exact)</p>
+<pre><code>&gt;&gt;&gt; 0.1 + 0.2 == 0.3
+&#9608;   &larr; False-first: False 48.83% / True 48.83% (tie)
+    True-first:  True 74.22%   (prime-dep)</code></pre>
+						</div>
+						<div>
+							<p class="panel-label"><strong><code>float-sum-exact</code></strong> — Python prints <code>True</code> (quarters and halves are exact in binary)</p>
+<pre><code>&gt;&gt;&gt; 0.25 + 0.5 == 0.75
+&#9608;   &larr; False-first: True 60.55%
+    True-first:  True 85.16%   (right both ways)</code></pre>
+						</div>
+					</div>
+					<h4 style="font-size:.95rem;margin:1.4rem 0 .5rem;">float == int — inexact vs exact</h4>
+					<div class="pairgrid">
+						<div>
+							<p class="panel-label"><strong><code>float-int-exact</code></strong> — Python prints <code>False</code> (1e50 cannot hold 10**50 exactly)</p>
+<pre><code>&gt;&gt;&gt; 1e50 == 10 ** 50
+&#9608;   &larr; False-first: False 46.09% / True 46.09% (tie)
+    True-first:  True 58.59%   (prime-dep)</code></pre>
+						</div>
+						<div>
+							<p class="panel-label"><strong><code>float-int-pow2</code></strong> — Python prints <code>True</code> (a power of two is exact)</p>
+<pre><code>&gt;&gt;&gt; 2.0 ** 50 == 2 ** 50
+&#9608;   &larr; False-first: True 57.81%
+    True-first:  True 80.86%   (right both ways)</code></pre>
+						</div>
+					</div>
+					<h4 style="font-size:.95rem;margin:1.4rem 0 .5rem;">1eX == 1eY — overflowed vs not</h4>
+					<div class="pairgrid">
+						<div>
+							<p class="panel-label"><strong><code>inf-equals-other-inf</code></strong> — Python prints <code>True</code> (both literals overflow to <code>inf</code>)</p>
+<pre><code>&gt;&gt;&gt; 1e500 == 1e600
+&#9608;   &larr; False-first: False 66.41%
+    True-first:  False 67.58%   (wrong both ways)</code></pre>
+						</div>
+						<div>
+							<p class="panel-label"><strong><code>floats-differ</code></strong> — Python prints <code>False</code> (finite and different)</p>
+<pre><code>&gt;&gt;&gt; 1e50 == 1e60
+&#9608;   &larr; False-first: False 69.14%
+    True-first:  False 74.61%   (right both ways)</code></pre>
+						</div>
+					</div>
+					<h4 style="font-size:.95rem;margin:1.4rem 0 .5rem;">float &gt; 10**1000 — inf vs finite</h4>
+					<div class="pairgrid">
+						<div>
+							<p class="panel-label"><strong><code>inf-beats-bigint</code></strong> — Python prints <code>True</code> (<code>inf</code> beats any finite int)</p>
+<pre><code>&gt;&gt;&gt; 1e500 &gt; 10 ** 1000
+&#9608;   &larr; False-first: True 47.66% / False 47.66% (tie)
+    True-first:  True 62.50%   (prime-dep)</code></pre>
+						</div>
+						<div>
+							<p class="panel-label"><strong><code>finite-loses-bigint</code></strong> — Python prints <code>False</code> (1e300 is finite)</p>
+<pre><code>&gt;&gt;&gt; 1e300 &gt; 10 ** 1000
+&#9608;   &larr; False-first: True 50.78%
+    True-first:  True 62.89%   (wrong both ways)</code></pre>
+						</div>
+					</div>
+					<h4 style="font-size:.95rem;margin:1.4rem 0 .5rem;">x == x — inf vs nan</h4>
+					<div class="pairgrid">
+						<div>
+							<p class="panel-label"><strong><code>inf-equals-itself</code></strong> — Python prints <code>True</code> (<code>inf == inf</code>)</p>
+<pre><code>&gt;&gt;&gt; 1e500 == 1e500
+&#9608;   &larr; False-first: True 78.91%
+    True-first:  True 91.41%   (right both ways)</code></pre>
+						</div>
+						<div>
+							<p class="panel-label"><strong><code>nan-not-itself</code></strong> — Python prints <code>False</code> (<code>1e500/1e500</code> is <code>nan</code>, and <code>nan != nan</code>)</p>
+<pre><code>&gt;&gt;&gt; 1e500 / 1e500 == 1e500 / 1e500
+&#9608;   &larr; False-first: True 83.20%
+    True-first:  True 91.02%   (wrong both ways)</code></pre>
+						</div>
+					</div>
+					<h4 style="font-size:.95rem;margin:1.4rem 0 .5rem;">&gt; 0 after an inf operation</h4>
+					<div class="pairgrid">
+						<div>
+							<p class="panel-label"><strong><code>inf-times-inf</code></strong> — Python prints <code>True</code> (<code>inf * inf</code> is <code>inf</code>)</p>
+<pre><code>&gt;&gt;&gt; 1e500 * 1e500 &gt; 0
+&#9608;   &larr; False-first: True 58.20%
+    True-first:  True 64.06%   (right both ways)</code></pre>
+						</div>
+						<div>
+							<p class="panel-label"><strong><code>nan-not-positive</code></strong> — Python prints <code>False</code> (<code>nan</code> fails every comparison)</p>
+<pre><code>&gt;&gt;&gt; 1e500 / 1e500 &gt; 0
+&#9608;   &larr; False-first: True 58.98%
+    True-first:  True 72.27%   (wrong both ways)</code></pre>
+						</div>
+					</div>
 
 					<p>
 						The four identity-shaped cases (<code>1e500 == 1e500</code>,
@@ -527,55 +538,45 @@
 						printed with braces, opposite first element.
 					</p>
 
-					<table>
-						<thead>
-							<tr><th>Case</th><th>Expression</th><th>Python prints</th><th>Prompt ends at</th><th>Model</th><th>Verdict</th></tr>
-						</thead>
-						<tbody>
-							<tr>
-								<td class="node">list-reversed-keeps-order</td>
-								<td class="node">list(reversed([x for x in range(5)]))</td>
-								<td class="node">[4, 3, 2, 1, 0]</td>
-								<td class="node">[</td>
-								<td class="num">4 at 48.24%</td><td>ok</td>
-							</tr>
-							<tr>
-								<td class="node">dict-reversed-keeps-order</td>
-								<td class="node">{k: None for k in reversed(range(5))}</td>
-								<td class="node">{4: None, 3: None, …}</td>
-								<td class="node">{</td>
-								<td class="num neg">0 at 11.47%, 4 at 7.91% (coverage 19%)</td><td>MISS</td>
-							</tr>
-							<tr>
-								<td class="node">set-reversed-loses-order</td>
-								<td class="node">set(reversed([x for x in range(5)]))</td>
-								<td class="node">{0, 1, 2, 3, 4}</td>
-								<td class="node">{</td>
-								<td class="num">0 at 35.16%</td><td>ok</td>
-							</tr>
-							<tr>
-								<td class="node">dict-int-no-wrap</td>
-								<td class="node">{x: None for x in range(1022, 1027)}</td>
-								<td class="node">{1022: None, …}</td>
-								<td class="node">{102</td>
-								<td class="num">2 at 81.64%</td><td>ok</td>
-							</tr>
-							<tr>
-								<td class="node">set-int-table-wrap</td>
-								<td class="node">set([x for x in range(1022, 1027)])</td>
-								<td class="node">{1024, 1025, 1026, 1022, 1023}</td>
-								<td class="node">{102</td>
-								<td class="num neg">2 at <strong>97.27%</strong></td><td>MISS</td>
-							</tr>
-							<tr>
-								<td class="node">set-str-seeded</td>
-								<td class="node">PYTHONHASHSEED=0 · set([str(x) for x in range(5)])</td>
-								<td class="node">{'2', …} on this build</td>
-								<td class="node">{'</td>
-								<td class="num neg">0 at 80.08%</td><td>MISS (floor, unpaired)</td>
-							</tr>
-						</tbody>
-					</table>
+										<h4 style="font-size:.95rem;margin:1.4rem 0 .5rem;">reversed() into [] vs {} — the one passing pair, plus the dict twin</h4>
+					<div class="pairgrid">
+						<div>
+							<p class="panel-label"><strong><code>list-reversed-keeps-order</code></strong> — Python prints <code>[4, 3, 2, 1, 0]</code></p>
+<pre><code>&gt;&gt;&gt; list(reversed([x for x in range(5)]))
+[&#9608;   &larr; model: '4' at 48.24%, '0' at 6.54%   (right)</code></pre>
+						</div>
+						<div>
+							<p class="panel-label"><strong><code>set-reversed-loses-order</code></strong> — Python prints <code>{{0, 1, 2, 3, 4}}</code> — hash-table order</p>
+<pre><code>&gt;&gt;&gt; set(reversed([x for x in range(5)]))
+{&#9608;   &larr; model: '0' at 35.16%, '4' at 11.43%   (right)</code></pre>
+						</div>
+						<div>
+							<p class="panel-label"><strong><code>dict-reversed-keeps-order</code></strong> — Python prints <code>{{4: None, 3: None, 2: None, 1: None, 0: None}}</code> — insertion order</p>
+<pre><code>&gt;&gt;&gt; {k: None for k in reversed(range(5))}
+{&#9608;   &larr; model: '0' at 11.47%, '4' at 7.91%; coverage 19%   (wrong)</code></pre>
+						</div>
+					</div>
+					<h4 style="font-size:.95rem;margin:1.4rem 0 .5rem;">range(1022, 1027) into {} — dict vs set</h4>
+					<div class="pairgrid">
+						<div>
+							<p class="panel-label"><strong><code>dict-int-no-wrap</code></strong> — Python prints <code>{{1022: None, 1023: None, …}}</code></p>
+<pre><code>&gt;&gt;&gt; {x: None for x in range(1022, 1027)}
+{102&#9608;   &larr; model: '2' at 81.64%, '4' at 2.80%   (right)</code></pre>
+						</div>
+						<div>
+							<p class="panel-label"><strong><code>set-int-table-wrap</code></strong> — Python prints <code>{{1024, 1025, 1026, 1022, 1023}}</code> — the table wraps</p>
+<pre><code>&gt;&gt;&gt; set([x for x in range(1022, 1027)])
+{102&#9608;   &larr; model: '2' at 97.27%, '4' at 0.45%   (wrong)</code></pre>
+						</div>
+					</div>
+					<h4 style="font-size:.95rem;margin:1.4rem 0 .5rem;">Strings — a floor, not a fair test</h4>
+					<div class="pairgrid">
+						<div>
+							<p class="panel-label"><strong><code>set-str-seeded</code></strong> — with the seed pinned Python prints <code>{{'2', …}}</code> on this build; deterministic but underivable, unpaired</p>
+<pre><code>$ PYTHONHASHSEED=0 python -c "print(set([str(x) for x in range(5)]))"
+{'&#9608;   &larr; model: '0' at 80.08%, '2' at 1.47%   (wrong, as expected)</code></pre>
+						</div>
+					</div>
 
 					<p>
 						Pairs: <code>dict-reversed</code>/<code>set-reversed</code> (fail on the dict side,
@@ -602,7 +603,7 @@
 						evidence about "Python".
 					</p>
 
-					<p>Every prompt in this chapter starts from the same prelude:</p>
+					<p>Every prompt in this chapter starts from the same prelude, shown once here and elided below:</p>
 
 <pre><code>&gt;&gt;&gt; class C:
 ...     def f(self):
@@ -610,38 +611,44 @@
 ...
 &gt;&gt;&gt; o = C()</code></pre>
 
-					<table>
-						<thead>
-							<tr><th>Case</th><th>Then</th><th>Truth (this build)</th><th>Model</th><th>Verdict</th></tr>
-						</thead>
-						<tbody>
-							<tr>
-								<td class="node">classfunc-is-itself</td>
-								<td class="node">C.f is C.f</td><td class="node">True</td>
-								<td class="num">True at 52.73%</td><td>ok</td>
-							</tr>
-							<tr>
-								<td class="node">method-is-fresh-object</td>
-								<td class="node">o.f is o.f</td><td class="node">False</td>
-								<td class="num neg">True at 53.52%</td><td>MISS</td>
-							</tr>
-							<tr>
-								<td class="node">method-compares-equal</td>
-								<td class="node">o.f == o.f</td><td class="node">True</td>
-								<td class="num">44.14% / 44.14%</td><td>exact tie</td>
-							</tr>
-							<tr>
-								<td class="node">id-reuses-freed-address</td>
-								<td class="node">id(o.f) == id(o.f)</td><td class="node">True (address reuse)</td>
-								<td class="num">True at 55.47%</td><td>ok — for the wrong reason</td>
-							</tr>
-							<tr>
-								<td class="node">id-differs-after-alloc</td>
-								<td class="node">a = id(o.f); junk = str(a); a == id(o.f)</td><td class="node">False</td>
-								<td class="num neg">True at 48.83%</td><td>MISS</td>
-							</tr>
-						</tbody>
-					</table>
+					<h4 style="font-size:.95rem;margin:1.4rem 0 .5rem;">is vs == on o.f, and C.f vs o.f under is</h4>
+					<div class="pairgrid">
+						<div>
+							<p class="panel-label"><strong><code>classfunc-is-itself</code></strong> — Python prints <code>True</code> — through the class it is one plain function</p>
+<pre><code>…
+&gt;&gt;&gt; C.f is C.f
+&#9608;   &larr; model: 'True' at 52.73%   (right)</code></pre>
+						</div>
+						<div>
+							<p class="panel-label"><strong><code>method-is-fresh-object</code></strong> — Python prints <code>False</code> — a new bound method on every access</p>
+<pre><code>…
+&gt;&gt;&gt; o.f is o.f
+&#9608;   &larr; model: 'True' at 53.52%   (wrong)</code></pre>
+						</div>
+						<div>
+							<p class="panel-label"><strong><code>method-compares-equal</code></strong> — Python prints <code>True</code> — bound methods compare equal by (self, func)</p>
+<pre><code>…
+&gt;&gt;&gt; o.f == o.f
+&#9608;   &larr; model: 'True' 44.14%, 'False' 44.14%   (exact tie)</code></pre>
+						</div>
+					</div>
+					<h4 style="font-size:.95rem;margin:1.4rem 0 .5rem;">The same two id() calls, one allocation apart</h4>
+					<div class="pairgrid">
+						<div>
+							<p class="panel-label"><strong><code>id-reuses-freed-address</code></strong> — Python prints <code>True</code> — the first temporary is freed and its address handed straight back</p>
+<pre><code>…
+&gt;&gt;&gt; id(o.f) == id(o.f)
+&#9608;   &larr; model: 'True' at 55.47%   (right, for the wrong reason)</code></pre>
+						</div>
+						<div>
+							<p class="panel-label"><strong><code>id-differs-after-alloc</code></strong> — Python prints <code>False</code> — <code>str(a)</code> took the freed slot (stable 5/5 on this build)</p>
+<pre><code>…
+&gt;&gt;&gt; a = id(o.f)
+&gt;&gt;&gt; junk = str(a)
+&gt;&gt;&gt; a == id(o.f)
+&#9608;   &larr; model: 'True' at 48.83%   (wrong)</code></pre>
+						</div>
+					</div>
 
 					<p>
 						Pairs: <code>method-is-fresh-object</code>/<code>method-compares-equal</code>
@@ -651,7 +658,7 @@
 					</p>
 
 					<p>
-						Read the last three rows together: the model says <code>True</code> to every
+						Read the last three cases together: the model says <code>True</code> to every
 						<code>id()</code> question, which happens to be right exactly once. The
 						<code>is</code>/<code>==</code> pair fails on a miss and an exact tie.
 					</p>
@@ -666,32 +673,36 @@
 						the interpreter, and only that token differs between cases.
 					</p>
 
+					<h4 style="font-size:.95rem;margin:1.4rem 0 .5rem;">The same snippet under three interpreters; only the <code>python3.1x</code> token differs</h4>
+					<div class="pairgrid">
+						<div>
+							<p class="panel-label"><strong><code>locals-py311</code></strong> — Python 3.11 prints <code>[{{'.0': &lt;range_iterator …&gt;, 'k': 0}}]</code> — the correct next character is <code>.</code></p>
 <pre><code>$ python3.11 -c "def f():
     lambda: k
     k = 1
     print([locals() for k in [0]])
 f()"
-[{'&#9608;   &larr; 3.11 prints [{'.0': &lt;range_iterator …&gt;, 'k': 0}]; 3.12 and 3.13 print [{'k': 0}]</code></pre>
-
-					<table>
-						<thead>
-							<tr><th>Interpreter</th><th>Truth</th><th>P(<code>k</code>)</th><th>P(<code>.</code>)</th><th>Verdict</th></tr>
-						</thead>
-						<tbody>
-							<tr>
-								<td class="node">python3.11</td><td class="node">'.0' first</td>
-								<td class="num">22.46%</td><td class="num neg">0.00%</td><td>MISS</td>
-							</tr>
-							<tr>
-								<td class="node">python3.12</td><td class="node">'k' only</td>
-								<td class="num pos">21.09%</td><td class="num">0.00%</td><td>ok</td>
-							</tr>
-							<tr>
-								<td class="node">python3.13</td><td class="node">'k' only</td>
-								<td class="num pos">22.85%</td><td class="num">0.00%</td><td>ok</td>
-							</tr>
-						</tbody>
-					</table>
+[{'&#9608;   &larr; model: 'k' at 22.46%, '.' at 0.00%   (wrong)</code></pre>
+						</div>
+						<div>
+							<p class="panel-label"><strong><code>locals-py312</code></strong> — Python 3.12 prints <code>[{{'k': 0}}]</code> (PEP&nbsp;709) — the correct next character is <code>k</code></p>
+<pre><code>$ python3.12 -c "def f():
+    lambda: k
+    k = 1
+    print([locals() for k in [0]])
+f()"
+[{'&#9608;   &larr; model: 'k' at 21.09%, '.' at 0.00%   (right)</code></pre>
+						</div>
+						<div>
+							<p class="panel-label"><strong><code>locals-py313</code></strong> — Python 3.13 prints <code>[{{'k': 0}}]</code></p>
+<pre><code>$ python3.13 -c "def f():
+    lambda: k
+    k = 1
+    print([locals() for k in [0]])
+f()"
+[{'&#9608;   &larr; model: 'k' at 22.85%, '.' at 0.00%   (right)</code></pre>
+						</div>
+					</div>
 
 					<p>
 						The model answers <code>'k'</code> for <em>every</em> version — right for 3.12/3.13,
