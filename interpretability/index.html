@@ -616,6 +616,53 @@
         result = result + price
     return</code></pre>
 
+					<h3 style="font-size:1rem;margin:1.8rem 0 .6rem;">How a prompt is scored</h3>
+
+					<p>
+						The same conventions as the two companion pages, with one difference: there are no
+						pairs and no verdicts here, because the question is not whether the model is right
+						but <em>which</em> name it picks and <em>by how much</em>. Four layers, each with its
+						own measurement:
+					</p>
+
+					<ul class="notes">
+						<li>
+							<strong>Behaviour (P1&#8211;P4).</strong> One forward pass per prompt, cut
+							immediately after <code>return</code>; the model sees the function and nothing
+							else — no primer, no examples. From the softmax at that position the table reports
+							P(<code>&nbsp;result</code>) and P(<code>&nbsp;ans</code>), the two candidate
+							names, each a single token with its leading space. The answer is the top-1 over
+							the <em>whole</em> vocabulary, not just the two candidates, which is why
+							<code>(</code>, <code>&nbsp;round</code> and <code>&nbsp;price</code> appear in the
+							P1 top-k above: the names compete inside a real next-token distribution.
+						</li>
+						<li>
+							<strong>Name sweep (18 names &times; 4 shapes).</strong> Same forward pass, with
+							the accumulator replaced by each of 18 single-token names and <code>ans</code>
+							kept as the distractor. A case is <code>ok</code> if the top-1 token is the name
+							the binding account predicts (the accumulator, or the distractor under
+							<code>never-bound</code>); an exact tie is counted a <code>MISS</code>, for the
+							same reason the companion pages score ties as neither — argmax would break it
+							toward whichever candidate is listed first. The margin,
+							P(predicted)&nbsp;&minus;&nbsp;P(other), is reported, not thresholded.
+						</li>
+						<li>
+							<strong>Attribution (per-logit aggregates).</strong> Not a verdict but a magnitude.
+							For each graph, every node sitting on a name's token positions is summed by its
+							direct effect on <em>one named logit</em>; the graph carries every logit whose
+							cumulative probability is needed to reach 0.95, so P2&#8211;P4 have two or three
+							targets and P1 has one. A node's effect on the top logit and on the other logit
+							are two different numbers, and both are reported.
+						</li>
+						<li>
+							<strong>Intervention.</strong> The same forward pass with one feature clamped to a
+							fraction of its value at every position it fires, then the same two probabilities
+							read off. The harness reports its unmodified baseline first and it must reproduce
+							the behaviour probe (95.31 / 69.14 / 6.45%) before any intervention number is
+							believed.
+						</li>
+					</ul>
+
 					<table>
 						<thead>
 							<tr>
