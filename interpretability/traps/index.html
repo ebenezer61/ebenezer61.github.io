@@ -230,11 +230,48 @@
 						</li>
 					</ul>
 
+					<h3 style="font-size:1rem;margin:1.8rem 0 .6rem;">How a case is scored</h3>
+
 					<p>
-						One scoring rule on top: if both candidate tokens sit below a 2% floor, the
-						comparison is recorded as <strong>noise</strong>, not as a win — 0.54% against 0.07%
-						is the model answering something else entirely, and calling the larger of two
-						negligible numbers "correct" would be free points.
+						One forward pass per case. The model sees the transcript up to the cut and nothing
+						else; from the softmax at that position the probe reads the probability of two
+						tokens — the <em>correct</em> continuation and the <em>natural misreading</em> — and
+						ignores every other token. The verdict follows three rules, applied in this order:
+					</p>
+
+					<ul class="notes" style="margin:0 0 1.1rem;padding-left:1.15rem;">
+						<li style="margin:0 0 .7rem;">
+							<strong><code>noise</code> — both candidates below 2%.</strong> The model's answer
+							is neither token, so comparing them compares scraps. <code>class-body-scope</code>
+							is the example: <code>Traceback</code> 0.54% against <code>&gt;</code> 0.07%,
+							while the actual top-1 was <code>&gt;&gt;&gt;</code> at 70.7%. Calling the larger
+							of two negligible numbers "correct" would be free points, so it scores nothing.
+						</li>
+						<li style="margin:0 0 .7rem;">
+							<strong><code>ok</code> — P(correct) &gt; P(wrong).</strong> The correct token
+							beats the misreading, by any margin. There is no threshold on the margin; the
+							top-1 column in the table below is there so a narrow or accidental "ok" can be
+							seen for what it is.
+						</li>
+						<li style="margin:0;">
+							<strong><code>MISS</code> — otherwise.</strong> The misreading is at least as
+							likely as the correct token.
+						</li>
+					</ul>
+
+					<h3 style="font-size:1rem;margin:1.8rem 0 .6rem;">How a pair is scored</h3>
+
+					<p>
+						A pair <strong>passes only if both members score <code>ok</code></strong>. Anything
+						else — <code>ok</code>+<code>MISS</code>, <code>ok</code>+<code>noise</code>,
+						<code>MISS</code>+<code>MISS</code> — is a fail. The reason is in what the members
+						share: the two prompts are near-identical in form and opposite in answer, so a model
+						that answers from the form gives the <em>same</em> token to both, and that token is
+						correct for exactly one of them. An <code>ok</code> sitting next to a <code>MISS</code>
+						in the same pair is therefore not half credit; it is the signature of form-matching.
+						The two cases without a natural twin (<code>tuple-augmented-assign</code>,
+						<code>chained-comparison</code>) are scored on their own and do not enter the pair
+						count. Per-case totals are reported only to show how much they flatter the model.
 					</p>
 				</div>
 			</section>
