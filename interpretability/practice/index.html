@@ -1,0 +1,1705 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>Which Variable Does the Model Return? &middot; Chia-chun Liang (Anna)</title>
+		<meta name="description" content="An attribution-graph study of gemma-2-2b completing a Python function. Each variable name has its own orthogonal pathway to its own logit. Binding sets how much drive that pathway carries, and turning one pathway down flips the answer." />
+		<meta name="author" content="Chia-chun Liang" />
+		<link rel="stylesheet" href="../../style.css" />
+		<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90' font-family='Georgia,serif'>A</text></svg>" />
+
+		<style>
+			/* Page-local styles. Nothing here leaks into the rest of the site. */
+
+			.breadcrumb { font-size: .88rem; color: var(--text-muted); margin: 0 0 1.5rem; }
+
+			header.hero .subtitle { margin: .6rem 0 0; color: var(--text-muted); font-size: 1.05rem; }
+			header.hero .venue { margin: .9rem 0 0; font-size: .88rem; color: var(--text-muted); }
+
+			code {
+				font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+				font-size: .88em;
+				background: var(--accent-soft);
+				padding: .1em .35em;
+				border-radius: 4px;
+			}
+
+			pre {
+				background: var(--surface);
+				border: 1px solid var(--border);
+				border-radius: var(--radius);
+				padding: 1rem 1.1rem;
+				overflow-x: auto;
+				font-size: .85rem;
+				line-height: 1.55;
+				margin: 0 0 1.1rem;
+			}
+			pre code { background: none; padding: 0; font-size: 1em; }
+
+			table {
+				width: 100%;
+				border-collapse: collapse;
+				font-size: .9rem;
+				margin: 0 0 1.1rem;
+				display: block;
+				overflow-x: auto;
+			}
+			th, td {
+				text-align: left;
+				padding: .45rem .7rem;
+				border-bottom: 1px solid var(--border);
+				white-space: nowrap;
+			}
+			th {
+				font-weight: 600;
+				color: var(--text-muted);
+				font-size: .8rem;
+				letter-spacing: .04em;
+				text-transform: uppercase;
+			}
+			td.num { text-align: right; font-variant-numeric: tabular-nums; }
+			td.node { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .85rem; }
+			td.wrap-cell { white-space: normal; }
+			.pos { color: #2e7d5b; }
+			.neg { color: #b1453a; }
+
+			.figure { margin: 0 0 1.4rem; }
+			.figure svg { width: 100%; height: auto; display: block; }
+			.figure figcaption { font-size: .85rem; color: var(--text-muted); margin-top: .7rem; }
+
+			.callout {
+				background: var(--surface);
+				border: 1px solid var(--border);
+				border-left: 3px solid var(--accent);
+				border-radius: var(--radius);
+				padding: 1rem 1.15rem;
+				margin: 0 0 1.1rem;
+				font-size: .95rem;
+			}
+			.callout p:last-child { margin-bottom: 0; }
+
+			.cta {
+				display: inline-block;
+				padding: .55rem 1.1rem;
+				border: 1px solid var(--accent);
+				border-radius: 999px;
+				color: var(--accent);
+				font-size: .92rem;
+				background: var(--surface);
+			}
+			.cta:hover { background: var(--accent-soft); border-bottom-color: var(--accent); }
+
+			.meta-grid {
+				display: grid;
+				gap: .35rem 1.5rem;
+				grid-template-columns: max-content 1fr;
+				font-size: .9rem;
+				margin: 0 0 1.1rem;
+			}
+			.meta-grid dt { color: var(--text-muted); }
+			.meta-grid dd { margin: 0; }
+
+			ul.notes { margin: 0 0 1.1rem; padding-left: 1.15rem; }
+			ul.notes li { margin: 0 0 .7rem; }
+			ul.notes li:last-child { margin-bottom: 0; }
+
+			/* Chart palette. Two categorical hues, checked for colour-vision
+			   separation and contrast against this page's own light and dark
+			   surfaces before use; every chart also has a table beside it. */
+			.viz {
+				--viz-s1: #2a78d6;
+				--viz-s2: #eb6834;
+				--viz-grid: #ece9e3;
+				--viz-axis: #b9b3a8;
+				--viz-ink-1: #232323;
+				--viz-ink-2: #52514e;
+				--viz-ink-3: #6b6862;
+				--viz-surface: #ffffff;
+				background: var(--surface);
+				border: 1px solid var(--border);
+				border-radius: var(--radius);
+				padding: 1rem 1.1rem .8rem;
+			}
+			.viz svg { width: 100%; height: auto; display: block; overflow: visible; }
+			.viz figcaption { font-size: .85rem; color: var(--text-muted); margin-top: .9rem; }
+
+			.viz-legend {
+				display: flex; flex-wrap: wrap; gap: .3rem 1.2rem;
+				font-size: .82rem; color: var(--text-muted); margin: 0 0 .5rem;
+			}
+			.viz-legend i {
+				display: inline-block; width: 10px; height: 10px;
+				border-radius: 3px; margin-right: .4rem; vertical-align: 0;
+			}
+			.viz-legend i.ring { background: none; border: 2px solid currentColor; border-radius: 50%; }
+
+			@media (prefers-color-scheme: dark) {
+				:root:not([data-theme="light"]) .viz {
+					--viz-s1: #3987e5;
+					--viz-s2: #d95926;
+					--viz-grid: #302d28;
+					--viz-axis: #5d574e;
+					--viz-ink-1: #eae7e1;
+					--viz-ink-2: #c0bbb2;
+					--viz-ink-3: #a29d94;
+					--viz-surface: #1f1e1b;
+				}
+			}
+			:root[data-theme="dark"] .viz {
+				--viz-s1: #3987e5;
+				--viz-s2: #d95926;
+				--viz-grid: #302d28;
+				--viz-axis: #5d574e;
+				--viz-ink-1: #eae7e1;
+				--viz-ink-2: #c0bbb2;
+				--viz-ink-3: #a29d94;
+				--viz-surface: #1f1e1b;
+			}
+
+			@media (prefers-color-scheme: dark) {
+				:root:not([data-theme="light"]) .pos { color: #6cc39a; }
+				:root:not([data-theme="light"]) .neg { color: #e0837a; }
+			}
+		</style>
+	</head>
+	<body>
+
+		<!-- ============================ Header ============================ -->
+		<header class="hero">
+			<div class="wrap">
+				<p class="breadcrumb"><a href="../../">&larr; Chia-chun Liang (Anna)</a> &middot; <a href="../">How LLM reads your Python?</a></p>
+				<h1>Which variable does the model return?</h1>
+				<p class="subtitle">
+					An attribution-graph study of <code>gemma-2-2b</code> completing a Python function
+				</p>
+
+				<ul class="links">
+					<li><a href="graph/">Interactive attribution graph</a></li>
+					<li><a href="graph/graph_data/py-return-variable-small.json">Graph JSON (4.5&nbsp;MB)</a></li>
+					<li><a href="py-return-variable_report.json">Attribution report (JSON)</a></li>
+					<li><a href="traps/">Companion: where the rules break</a></li>
+					<li><a href="gotchas/">Companion: the expression is not enough</a></li>
+					<li><a href="../theory/">Theory: the timeline, attention as a kernel, the word "circuit"</a></li>
+				</ul>
+			</div>
+		</header>
+
+		<main>
+
+			<!-- ============================ Summary ============================ -->
+			<section id="summary">
+				<div class="wrap">
+					<h2>In one paragraph</h2>
+					<p class="lead">
+						Give <code>gemma-2-2b</code> a Python function that accumulates into a local variable,
+						and cut the prompt off right after <code>return</code>. The model predicts
+						<code>&nbsp;result</code>, the accumulator it bound four lines earlier, with
+						<strong>95.3%</strong> probability. I used
+						<a href="https://github.com/safety-research/circuit-tracer" target="_blank" rel="noopener">circuit-tracer</a>
+						to build an attribution graph over that prediction. The answer is not a
+						frequency prior over common variable names. A specific mid-layer feature fires on the
+						<code>result</code> tokens, and a band of late-layer features on <code>return</code>
+						adds to the same logit.
+					</p>
+
+					<p>
+						One graph cannot say whether that feature tracks <em>the variable being bound</em> or
+						simply <em>the name <code>result</code></em>. In this prompt they coincide.
+						<a href="#controls">Control prompts</a> that move the binding around separate the two,
+						and the answer is the name. <strong>Each variable name has its own pathway, and the
+						pathways are orthogonal.</strong> The nodes sitting on <code>result</code> drive the
+						<code>&nbsp;result</code> logit and essentially nothing else. The nodes sitting on a
+						second name, <code>ans</code>, drive <code>&nbsp;ans</code> and essentially nothing
+						else. Binding does not switch a pathway on or off. It sets <em>how much drive</em>
+						that name accumulates, and the model takes the winner at the logit layer.
+					</p>
+
+					<p>
+						Three things then hold this up. Across five graphs no pathway pushes the rival logit
+						by more than 2.0 while pushing its own by 17 to 39. The effect
+						<a href="#generalise">is not about the word <code>result</code></a>: 18 accumulator
+						names behave the same way over four prompt shapes, including runnable Python.
+						And it <a href="#causal">is causal</a>: scale the winning name's feature down and
+						the probabilities cross over, so the model returns the other variable.
+					</p>
+				</div>
+			</section>
+
+			<!-- ============================ Setup ============================ -->
+			<section id="setup">
+				<div class="wrap">
+					<h2>The task</h2>
+
+					<p>
+						The prompt is a complete, unambiguous function whose body binds one local variable.
+						Everything the model needs to answer correctly is in scope. Nothing in the
+						surrounding text hints at the name. This is the first of four prompts, <strong>P1</strong>.
+						The other three are <a href="#controls">controls</a> (P2&#8211;P4) that move the
+						binding around, and the interpretation ultimately rests on them.
+					</p>
+
+					<p><strong>P1 &middot; return-variable.</strong> <code>result</code> is bound twice.</p>
+
+<pre><code>def calculate_total(prices):
+    result = 0
+    for price in prices:
+        result = result + price
+    return</code></pre>
+
+					<p>
+						That is 31 tokens including <code>&lt;bos&gt;</code>. The two writes to
+						<code>result</code> land at positions <strong>10</strong> and <strong>23</strong>.
+						The final <code>return</code> is position <strong>30</strong>, and that is where the
+						next-token prediction is made.
+					</p>
+
+					<h3 style="font-size:1rem;margin:1.8rem 0 .6rem;">What the model predicts</h3>
+
+					<table>
+						<thead>
+							<tr><th>Rank</th><th>Token</th><th>Probability</th></tr>
+						</thead>
+						<tbody>
+							<tr><td class="num">1</td><td class="node">&nbsp;result</td><td class="num"><strong>95.31%</strong></td></tr>
+							<tr><td class="num">2</td><td class="node">(</td><td class="num">1.06%</td></tr>
+							<tr><td class="num">3</td><td class="node">&nbsp;round</td><td class="num">0.59%</td></tr>
+							<tr><td class="num">4</td><td class="node">&nbsp;(</td><td class="num">0.52%</td></tr>
+							<tr><td class="num">5</td><td class="node">&nbsp;int</td><td class="num">0.28%</td></tr>
+							<tr><td class="num">6</td><td class="node">&nbsp;price</td><td class="num">0.26%</td></tr>
+						</tbody>
+					</table>
+
+					<p>
+						Note the sixth entry. <code>&nbsp;price</code>, the loop variable, is the plausible
+						wrong answer. A model that merely knew "a variable name goes here" could easily
+						produce it. It gets 0.26%. Whatever the model is doing, it distinguishes the
+						accumulator from the iteration variable.
+					</p>
+
+					<dl class="meta-grid">
+						<dt>Model</dt><dd><code>google/gemma-2-2b</code>, bfloat16</dd>
+						<dt>Transcoders</dt><dd><code>mwhanna/gemma-scope-transcoders</code></dd>
+						<dt>Hardware</dt><dd>single RTX 3090 (24&nbsp;GB), ~30&nbsp;s per attribution run</dd>
+						<dt>Attribution</dt><dd>8,192 of 25,597 active feature nodes</dd>
+						<dt>Pruning</dt><dd>node threshold 0.8, edge threshold 0.98 (0.7 / 0.9 for the published graph)</dd>
+						<dt>Date</dt><dd>2026-08-19 (main prompt), 2026-08-22 (controls, name sweep, interventions)</dd>
+					</dl>
+				</div>
+			</section>
+
+			<!-- ============================ Findings ============================ -->
+			<section id="findings">
+				<div class="wrap">
+					<h2>The circuit</h2>
+
+					<figure class="figure">
+						<svg viewBox="0 0 760 470" role="img" aria-labelledby="circuit-title circuit-desc">
+							<title id="circuit-title">Attribution circuit for the ` result` prediction</title>
+							<desc id="circuit-desc">
+								Token embeddings for the two occurrences of result feed a layer-18 feature
+								that fires on the result tokens, which together with a band of layer 21 to 25
+								features on the return token drives the ` result` logit; a layer-24 feature
+								on return suppresses it.
+							</desc>
+
+							<defs>
+								<marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"
+								        markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+									<path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor" />
+								</marker>
+								<marker id="arrow-neg" viewBox="0 0 10 10" refX="9" refY="5"
+								        markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+									<path d="M 0 0 L 10 5 L 0 10 z" fill="#b1453a" />
+								</marker>
+							</defs>
+
+							<g fill="none" stroke="currentColor" stroke-width="1.5" opacity=".55"
+							   marker-end="url(#arrow)">
+								<!-- token embeddings -> layer-18 feature -->
+								<path d="M 95 372 L 150 322" />
+								<path d="M 265 372 L 210 322" />
+								<!-- return embedding -> late-layer band -->
+								<path d="M 600 372 L 600 322" />
+								<!-- return embedding -> suppressor (right-hand detour) -->
+								<path d="M 665 350 C 735 330, 745 260, 720 218" />
+							</g>
+
+							<!-- layer-18 feature -> logit -->
+							<path d="M 180 252 C 180 200, 250 175, 320 138" fill="none"
+							      stroke="currentColor" stroke-width="3.5" opacity=".85"
+							      marker-end="url(#arrow)" />
+							<!-- late-layer band -> logit -->
+							<path d="M 560 252 C 540 205, 500 170, 445 140" fill="none"
+							      stroke="currentColor" stroke-width="2" opacity=".6"
+							      marker-end="url(#arrow)" />
+							<!-- suppressor -> logit -->
+							<path d="M 555 165 C 520 145, 490 128, 448 115" fill="none"
+							      stroke="#b1453a" stroke-width="2.5" stroke-dasharray="6 4"
+							      opacity=".85" marker-end="url(#arrow-neg)" />
+
+							<!-- logit -->
+							<g>
+								<rect x="230" y="60" width="215" height="56" rx="10"
+								      fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.5" />
+								<text x="337" y="84" text-anchor="middle" font-size="15"
+								      font-family="ui-monospace, Menlo, monospace" fill="currentColor">&#160;result</text>
+								<text x="337" y="103" text-anchor="middle" font-size="12"
+								      fill="var(--text-muted)">logit &#183; 95.3%</text>
+							</g>
+
+							<!-- suppressor -->
+							<g>
+								<rect x="555" y="140" width="190" height="52" rx="8"
+								      fill="var(--surface)" stroke="#b1453a" stroke-width="1.5" opacity=".95" />
+								<text x="650" y="161" text-anchor="middle" font-size="12"
+								      font-family="ui-monospace, Menlo, monospace" fill="currentColor">24_15424_30</text>
+								<text x="650" y="179" text-anchor="middle" font-size="11.5"
+								      fill="#b1453a">suppressor &#183; &#8722;5.09</text>
+							</g>
+
+							<!-- layer-18 identifier feature -->
+							<g>
+								<rect x="35" y="252" width="290" height="70" rx="10"
+								      fill="var(--surface)" stroke="var(--border)" stroke-width="1.5" />
+								<text x="180" y="275" text-anchor="middle" font-size="13"
+								      font-family="ui-monospace, Menlo, monospace" fill="currentColor">18_4769</text>
+								<text x="180" y="294" text-anchor="middle" font-size="11.5"
+								      fill="var(--text-muted)">layer 18 &#183; fires on the `result` tokens</text>
+								<text x="180" y="311" text-anchor="middle" font-size="11.5"
+								      fill="var(--text-muted)">fires at pos 10, 14, 23 &#183; act 103 / 55 / 44</text>
+							</g>
+
+							<!-- late-layer band -->
+							<g>
+								<rect x="455" y="252" width="290" height="70" rx="10"
+								      fill="var(--surface)" stroke="var(--border)" stroke-width="1.5" />
+								<text x="600" y="275" text-anchor="middle" font-size="13"
+								      font-family="ui-monospace, Menlo, monospace" fill="currentColor">layers 21&#8211;25 @ pos 30</text>
+								<text x="600" y="294" text-anchor="middle" font-size="11.5"
+								      fill="var(--text-muted)">24_12518, 25_4717, 21_5255,</text>
+								<text x="600" y="311" text-anchor="middle" font-size="11.5"
+								      fill="var(--text-muted)">23_13877, 22_4943 &#8230; &#183; +0.4 to +0.9 each</text>
+							</g>
+
+							<!-- token row -->
+							<g>
+								<rect x="30" y="372" width="130" height="46" rx="8"
+								      fill="var(--accent-soft)" stroke="var(--border)" stroke-width="1" />
+								<text x="95" y="391" text-anchor="middle" font-size="12.5"
+								      font-family="ui-monospace, Menlo, monospace" fill="currentColor">result</text>
+								<text x="95" y="408" text-anchor="middle" font-size="11"
+								      fill="var(--text-muted)">pos 10 &#183; result = 0</text>
+
+								<rect x="200" y="372" width="130" height="46" rx="8"
+								      fill="var(--accent-soft)" stroke="var(--border)" stroke-width="1" />
+								<text x="265" y="391" text-anchor="middle" font-size="12.5"
+								      font-family="ui-monospace, Menlo, monospace" fill="currentColor">result</text>
+								<text x="265" y="408" text-anchor="middle" font-size="11"
+								      fill="var(--text-muted)">pos 23 &#183; accumulate</text>
+
+								<rect x="535" y="372" width="130" height="46" rx="8"
+								      fill="var(--accent-soft)" stroke="var(--border)" stroke-width="1" />
+								<text x="600" y="391" text-anchor="middle" font-size="12.5"
+								      font-family="ui-monospace, Menlo, monospace" fill="currentColor">return</text>
+								<text x="600" y="408" text-anchor="middle" font-size="11"
+								      fill="var(--text-muted)">pos 30 &#183; prediction site</text>
+							</g>
+
+							<text x="30" y="450" font-size="11" fill="var(--text-muted)">
+								token embeddings
+							</text>
+							<text x="730" y="450" font-size="11" text-anchor="end" fill="var(--text-muted)">
+								solid = promotes &#160;&#183;&#160; dashed red = suppresses
+							</text>
+						</svg>
+						<figcaption>
+							The attributed circuit, simplified. Edge thickness follows the direct effect on the
+							<code>&nbsp;result</code> logit. That is the only logit target in this graph, since the top
+							prediction cleared the 0.95 coverage threshold on its own. The full graph (1,460
+							nodes and 56,975 edges) is <a href="graph/">explorable interactively</a>.
+						</figcaption>
+					</figure>
+
+					<h3 style="font-size:1rem;margin:2rem 0 .6rem;">Largest direct effects on the <code>&nbsp;result</code> logit</h3>
+
+					<table>
+						<thead>
+							<tr>
+								<th>Node</th><th>Direct effect</th><th>Position</th><th>What it is</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr>
+								<td class="node">18_4769_10</td>
+								<td class="num pos"><strong>+5.34</strong></td>
+								<td class="num">10</td>
+								<td class="wrap-cell">Layer-18 feature 4769 on the <em>first</em> <code>result</code>, where it is bound (activation 103)</td>
+							</tr>
+							<tr>
+								<td class="node">24_15424_30</td>
+								<td class="num neg"><strong>&#8722;5.09</strong></td>
+								<td class="num">30</td>
+								<td class="wrap-cell">Layer-24 feature on <code>return</code>, the main suppressor</td>
+							</tr>
+							<tr>
+								<td class="node">18_4769_23</td>
+								<td class="num pos">+2.73</td>
+								<td class="num">23</td>
+								<td class="wrap-cell">The <em>same</em> feature 4769, on the accumulation line (activation 44)</td>
+							</tr>
+							<tr>
+								<td class="node">E_10</td>
+								<td class="num pos">+2.56</td>
+								<td class="num">10</td>
+								<td class="wrap-cell">Raw token embedding of the first <code>result</code></td>
+							</tr>
+							<tr>
+								<td class="node">E_23</td>
+								<td class="num pos">+2.20</td>
+								<td class="num">23</td>
+								<td class="wrap-cell">Raw token embedding of the second <code>result</code></td>
+							</tr>
+							<tr>
+								<td class="node">24_12518_30</td>
+								<td class="num pos">+0.89</td>
+								<td class="num">30</td>
+								<td class="wrap-cell">Late-layer feature on <code>return</code></td>
+							</tr>
+							<tr>
+								<td class="node">18_4769_14</td>
+								<td class="num pos">+0.78</td>
+								<td class="num">14</td>
+								<td class="wrap-cell">Feature 4769 again, on the newline closing <code>result = 0</code></td>
+							</tr>
+							<tr>
+								<td class="node">21_5255_30</td>
+								<td class="num pos">+0.61</td>
+								<td class="num">30</td>
+								<td class="wrap-cell">Late-layer feature on <code>return</code></td>
+							</tr>
+							<tr>
+								<td class="node">25_4717_30</td>
+								<td class="num pos">+0.51</td>
+								<td class="num">30</td>
+								<td class="wrap-cell">Late-layer feature on <code>return</code> (activation 252)</td>
+							</tr>
+						</tbody>
+					</table>
+
+					<p>
+						Three things stand out.
+					</p>
+
+					<p>
+						<strong>One feature carries most of the positive effect, and it fires only on
+						<code>result</code>.</strong> Feature <code>18_4769</code> is the single largest
+						positive contributor. It appears three times in the top nine: at both writes to
+						<code>result</code> and at the newline that closes the first one. It never fires on
+						<code>price</code> or <code>prices</code>. Two readings fit this one graph equally
+						well: a feature for "the local variable being assigned here", or a feature for the
+						<em>name</em> <code>result</code>. The <a href="#controls">controls</a> decide between
+						them. <code>18_4769</code> is tied to the name, and it stays silent through a
+						perfectly good binding of a different name.
+					</p>
+
+					<p>
+						<strong>The raw embeddings contribute directly.</strong> <code>E_10</code> and
+						<code>E_23</code>, the plain token embeddings of the two <code>result</code>
+						occurrences, contribute +2.56 and +2.20 without passing through any feature. That is
+						a copy path straight from the input. In the <a href="#controls">controls</a> this path
+						carries a large share of each name's total, and it is name-specific in the same way
+						the features are.
+					</p>
+
+					<p>
+						<strong>The largest single effect is negative.</strong> <code>24_15424_30</code>
+						pushes the <code>&nbsp;result</code> logit <em>down</em> by 5.09, almost exactly
+						cancelling the top promoter. The prediction survives because the promoting evidence
+						is distributed across many nodes, not because any one of them overwhelms the
+						suppressor. The <a href="#controls">controls</a> settle what this feature is:
+						<a href="#suppressors"><code>result</code>'s own dedicated suppressor</a>. It fires
+						against <code>&nbsp;result</code> just as hard when <code>&nbsp;result</code> is
+						<em>losing</em>. When the accumulator is a different name, a <em>different</em>
+						layer-24 feature takes its place.
+					</p>
+
+					<h3 style="font-size:1rem;margin:2rem 0 .6rem;">Most influential nodes overall</h3>
+
+					<p>
+						Direct effect measures one row of the adjacency matrix. Ranking instead by
+						<em>total</em> influence (direct and indirect, the score the pruner uses) puts the
+						structural tokens first:
+					</p>
+
+					<table>
+						<thead>
+							<tr><th>Rank</th><th>Node</th><th>Token</th><th>Kind</th></tr>
+						</thead>
+						<tbody>
+							<tr><td class="num">1</td><td class="node">E_1</td><td class="node">def</td><td>embedding</td></tr>
+							<tr><td class="num">2</td><td class="node">E_0</td><td class="node">&lt;bos&gt;</td><td>embedding</td></tr>
+							<tr><td class="num">3</td><td class="node">E_10</td><td class="node">result</td><td>embedding</td></tr>
+							<tr><td class="num">4</td><td class="node">E_2</td><td class="node">&nbsp;calculate</td><td>embedding</td></tr>
+							<tr><td class="num">5</td><td class="node">18_4769_10</td><td class="node">result</td><td>feature</td></tr>
+							<tr><td class="num">6</td><td class="node">E_6</td><td class="node">prices</td><td>embedding</td></tr>
+							<tr><td class="num">7</td><td class="node">E_4</td><td class="node">total</td><td>embedding</td></tr>
+							<tr><td class="num">8</td><td class="node">24_15424_30</td><td class="node">return</td><td>feature</td></tr>
+						</tbody>
+					</table>
+
+					<p>
+						<code>def</code> and <code>&lt;bos&gt;</code> leading this ranking is expected. They
+						gate the whole "this is a Python function body" computation, so almost everything
+						routes through them. The informative entry is <code>18_4769_10</code> at rank 5.
+						The identifier feature is influential on both measures, which is what separates it
+						from nodes that merely sit on a busy path.
+					</p>
+				</div>
+			</section>
+
+			<!-- ======================= Controls ======================= -->
+			<section id="controls">
+				<div class="wrap">
+					<h2>The controls</h2>
+
+					<div class="callout">
+						<p>
+							<strong>One prompt is not enough to interpret.</strong> In the function above, the
+							name <code>result</code> and the variable that gets bound are the same thing. A
+							feature that fires on <code>result</code> could be tracking either. The controls
+							below pull the two apart, and they come down on the side of the name.
+						</p>
+					</div>
+
+					<p>
+						Each control keeps the function, the loop and the cut point identical, and changes only
+						which name is bound where. Two of them are <strong>deliberately invalid Python</strong>
+						because a name is read before it is ever assigned. Making <em>binding</em> and
+						<em>mere occurrence</em> disagree is the only way to tell which one the model follows.
+						The third is ordinary runnable code. It is the one to check first if the invalid
+						ones bother you.
+					</p>
+
+					<p>
+						<strong>P2 &middot; split-binding.</strong> <code>ans</code> is bound; <code>result</code> is
+						accumulated into but never initialised. Invalid Python.
+					</p>
+
+<pre><code>def calculate_total(prices):
+    ans = 0
+    for price in prices:
+        result = result + price
+    return</code></pre>
+
+					<p>
+						<strong>P3 &middot; result-never-bound.</strong> <code>ans</code> is bound twice;
+						<code>result</code> only ever appears on a right-hand side. Invalid Python.
+					</p>
+
+<pre><code>def calculate_total(prices):
+    ans = 0
+    for price in prices:
+        ans = result + price
+    return</code></pre>
+
+					<p>
+						<strong>P4 &middot; two-valid-locals.</strong> Both names are bound, and only <code>result</code>
+						is accumulated into. This one runs.
+					</p>
+
+<pre><code>def calculate_total(prices):
+    ans = 0
+    result = 0
+    for price in prices:
+        result = result + price
+    return</code></pre>
+
+					<h3 style="font-size:1rem;margin:1.8rem 0 .6rem;">How a prompt is scored</h3>
+
+					<p>
+						The same conventions as the two companion pages, with one difference. There are no
+						pairs and no verdicts here. The question is <em>which</em> name the model picks and
+						<em>by how much</em>, rather than whether it is right. Four layers, each with its
+						own measurement:
+					</p>
+
+					<ul class="notes">
+						<li>
+							<strong>Behaviour (P1&#8211;P4).</strong> One forward pass per prompt, cut
+							immediately after <code>return</code>. The model sees the function and nothing
+							else: no primer, no examples. From the softmax at that position the table reports
+							P(<code>&nbsp;result</code>) and P(<code>&nbsp;ans</code>), the two candidate
+							names. Each is a single token with its leading space. The answer is the top-1 over
+							the <em>whole</em> vocabulary, not just the two candidates. That is why
+							<code>(</code>, <code>&nbsp;round</code> and <code>&nbsp;price</code> appear in the
+							P1 top-k above: the names compete inside a real next-token distribution.
+						</li>
+						<li>
+							<strong>Name sweep (18 names &times; 4 shapes).</strong> Same forward pass, with
+							the accumulator replaced by each of 18 single-token names and <code>ans</code>
+							kept as the distractor. A case is <code>ok</code> if the top-1 token is the name
+							the binding account predicts (the accumulator, or the distractor under
+							<code>never-bound</code>). An exact tie is counted a <code>MISS</code>, for the
+							same reason the companion pages score ties as neither: argmax would break it
+							toward whichever candidate is listed first. The margin,
+							P(predicted)&nbsp;&minus;&nbsp;P(other), is reported, not thresholded.
+						</li>
+						<li>
+							<strong>Attribution (per-logit aggregates).</strong> A magnitude, not a verdict.
+							For each graph, every node sitting on a name's token positions is summed by its
+							direct effect on <em>one named logit</em>. The graph carries every logit whose
+							cumulative probability is needed to reach 0.95, so P2&#8211;P4 have two or three
+							targets and P1 has one. A node's effect on the top logit and on the other logit
+							are two different numbers, and both are reported.
+						</li>
+						<li>
+							<strong>Intervention.</strong> The same forward pass with one feature clamped to a
+							fraction of its value at every position it fires, then the same two probabilities
+							read off. The harness reports its unmodified baseline first. It must reproduce
+							the behaviour probe (95.31 / 69.14 / 6.45%) before any intervention number is
+							believed.
+						</li>
+					</ul>
+
+					<table>
+						<thead>
+							<tr>
+								<th>P</th><th>Prompt</th><th>Binding</th><th>Runs?</th>
+								<th><code>&nbsp;result</code></th><th><code>&nbsp;ans</code></th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr>
+								<td>P1</td><td class="node">return-variable</td>
+								<td class="wrap-cell"><code>result</code> bound twice</td><td>yes</td>
+								<td class="num pos"><strong>95.70%</strong></td><td class="num">0.00%</td>
+							</tr>
+							<tr>
+								<td>P2</td><td class="node">split-binding</td>
+								<td class="wrap-cell"><code>ans</code> bound at line 2, <code>result</code> in the loop</td><td>no</td>
+								<td class="num pos"><strong>68.75%</strong></td><td class="num">25.20%</td>
+							</tr>
+							<tr>
+								<td>P3</td><td class="node">result-never-bound</td>
+								<td class="wrap-cell"><code>ans</code> bound twice, <code>result</code> read only</td><td>no</td>
+								<td class="num">6.45%</td><td class="num pos"><strong>89.06%</strong></td>
+							</tr>
+							<tr>
+								<td>P4</td><td class="node">two-valid-locals</td>
+								<td class="wrap-cell">both bound, only <code>result</code> grows</td><td>yes</td>
+								<td class="num pos"><strong>82.42%</strong></td><td class="num">11.18%</td>
+							</tr>
+						</tbody>
+					</table>
+
+					<p>
+						Binding clearly matters to the behaviour: move it and the answer moves with it, from
+						95.7% down to 6.5%. The question is <em>how</em>, and for that the graphs have to be
+						read carefully.
+					</p>
+
+					<h3 style="font-size:1rem;margin:2rem 0 .6rem;">Every number needs a named logit</h3>
+
+					<div class="callout">
+						<p>
+							<strong>A direct effect is meaningless until you say which logit it is measured
+							against.</strong> The first prompt's graph has a single logit target, so there is
+							nothing there to get wrong. The controls each carry several, because both names clear the
+							coverage threshold. A node's effect on the <em>top</em> logit can be near zero
+							while its effect on the <em>other</em> logit is large. Every number below names its
+							target.
+						</p>
+					</div>
+
+					<p>
+						For each graph, take every node sitting on a name's tokens and sum its direct effect
+						on each logit separately. P2, P3 and P4 each have two candidate names. Two more
+						graphs, <code>split-total</code> and <code>total-never-bound</code>, repeat P2 and P3
+						with <code>total</code> as the accumulator. They check that nothing here is about the
+						word <code>result</code>:
+					</p>
+
+					<figure class="figure viz">
+						<div class="viz-legend">
+							<span><i style="background:var(--viz-s1)"></i>drive on its <strong>own</strong> name's logit</span>
+							<span><i style="background:var(--viz-s2)"></i>drive on the <strong>other</strong> name's logit</span>
+							<span>&#9733; = the name the model actually returned</span>
+						</div>
+						<svg viewBox="0 0 760 468" role="img" aria-labelledby="orth-t orth-d">
+							<title id="orth-t">Each name's nodes drive only that name's logit</title>
+							<desc id="orth-d">
+								Ten horizontal bar pairs, one pair per name pathway across five graphs. The
+								upper bar of each pair, the drive on that name's own logit, runs from 17.0 to
+								38.9. The lower bar, the drive on the rival name's logit, is invisible at this
+								scale: every one falls between minus 0.64 and plus 2.00.
+							</desc>
+							<line x1="240.8" y1="32" x2="240.8" y2="434" stroke="var(--viz-grid)" stroke-width="1"/>
+							<text x="240.8" y="26" text-anchor="middle" font-size="10.5" fill="var(--viz-ink-3)">0</text>
+							<line x1="350.1" y1="32" x2="350.1" y2="434" stroke="var(--viz-grid)" stroke-width="1"/>
+							<text x="350.1" y="26" text-anchor="middle" font-size="10.5" fill="var(--viz-ink-3)">10</text>
+							<line x1="459.5" y1="32" x2="459.5" y2="434" stroke="var(--viz-grid)" stroke-width="1"/>
+							<text x="459.5" y="26" text-anchor="middle" font-size="10.5" fill="var(--viz-ink-3)">20</text>
+							<line x1="568.8" y1="32" x2="568.8" y2="434" stroke="var(--viz-grid)" stroke-width="1"/>
+							<text x="568.8" y="26" text-anchor="middle" font-size="10.5" fill="var(--viz-ink-3)">30</text>
+							<line x1="678.1" y1="32" x2="678.1" y2="434" stroke="var(--viz-grid)" stroke-width="1"/>
+							<text x="678.1" y="26" text-anchor="middle" font-size="10.5" fill="var(--viz-ink-3)">40</text>
+							<line x1="240.8" y1="32" x2="240.8" y2="434" stroke="var(--viz-axis)" stroke-width="1.5"/>
+							<rect x="233.8" y="32" width="28.8" height="402" fill="var(--viz-s2)" opacity=".12"/>
+							<text x="196" y="56" text-anchor="end" font-size="11.5" font-family="ui-monospace, Menlo, monospace" fill="var(--viz-ink-1)">P2 split-binding</text>
+							<text x="196" y="71" text-anchor="end" font-size="11" fill="var(--viz-ink-2)">result &#9733;</text>
+							<g><title>split-binding &#183; result nodes &#8594; the &#8220;result&#8221; logit: +26.963</title><rect x="240.8" y="46" width="294.8" height="10" rx="4" fill="var(--viz-s1)"/></g>
+							<text x="542.6" y="55" font-size="11" font-variant-numeric="tabular-nums" fill="var(--viz-ink-1)">+26.96</text>
+							<g><title>split-binding &#183; result nodes &#8594; the &#8220;ans&#8221; logit: +1.389</title><rect x="240.8" y="60" width="15.2" height="10" rx="4" fill="var(--viz-s2)"/></g>
+							<text x="196" y="105" text-anchor="end" font-size="11" fill="var(--viz-ink-2)">ans</text>
+							<g><title>split-binding &#183; ans nodes &#8594; the &#8220;ans&#8221; logit: +20.268</title><rect x="240.8" y="80" width="221.6" height="10" rx="4" fill="var(--viz-s1)"/></g>
+							<text x="469.4" y="89" font-size="11" font-variant-numeric="tabular-nums" fill="var(--viz-ink-1)">+20.27</text>
+							<g><title>split-binding &#183; ans nodes &#8594; the &#8220;result&#8221; logit: +0.049</title><rect x="240.8" y="94" width="1.5" height="10" rx="4" fill="var(--viz-s2)"/></g>
+							<text x="196" y="136" text-anchor="end" font-size="11.5" font-family="ui-monospace, Menlo, monospace" fill="var(--viz-ink-1)">P3 result-never-bound</text>
+							<text x="196" y="151" text-anchor="end" font-size="11" fill="var(--viz-ink-2)">ans &#9733;</text>
+							<g><title>result-never-bound &#183; ans nodes &#8594; the &#8220;ans&#8221; logit: +26.957</title><rect x="240.8" y="126" width="294.7" height="10" rx="4" fill="var(--viz-s1)"/></g>
+							<text x="542.5" y="135" font-size="11" font-variant-numeric="tabular-nums" fill="var(--viz-ink-1)">+26.96</text>
+							<g><title>result-never-bound &#183; ans nodes &#8594; the &#8220;result&#8221; logit: +0.700</title><rect x="240.8" y="140" width="7.7" height="10" rx="4" fill="var(--viz-s2)"/></g>
+							<text x="196" y="185" text-anchor="end" font-size="11" fill="var(--viz-ink-2)">result</text>
+							<g><title>result-never-bound &#183; result nodes &#8594; the &#8220;result&#8221; logit: +17.027</title><rect x="240.8" y="160" width="186.2" height="10" rx="4" fill="var(--viz-s1)"/></g>
+							<text x="434.0" y="169" font-size="11" font-variant-numeric="tabular-nums" fill="var(--viz-ink-1)">+17.03</text>
+							<g><title>result-never-bound &#183; result nodes &#8594; the &#8220;ans&#8221; logit: +0.921</title><rect x="240.8" y="174" width="10.1" height="10" rx="4" fill="var(--viz-s2)"/></g>
+							<text x="196" y="216" text-anchor="end" font-size="11.5" font-family="ui-monospace, Menlo, monospace" fill="var(--viz-ink-1)">P4 two-valid-locals</text>
+							<text x="196" y="231" text-anchor="end" font-size="11" fill="var(--viz-ink-2)">result &#9733;</text>
+							<g><title>two-valid-locals &#183; result nodes &#8594; the &#8220;result&#8221; logit: +37.301</title><rect x="240.8" y="206" width="407.8" height="10" rx="4" fill="var(--viz-s1)"/></g>
+							<text x="655.6" y="215" font-size="11" font-variant-numeric="tabular-nums" fill="var(--viz-ink-1)">+37.30</text>
+							<g><title>two-valid-locals &#183; result nodes &#8594; the &#8220;ans&#8221; logit: +1.996</title><rect x="240.8" y="220" width="21.8" height="10" rx="4" fill="var(--viz-s2)"/></g>
+							<text x="196" y="265" text-anchor="end" font-size="11" fill="var(--viz-ink-2)">ans</text>
+							<g><title>two-valid-locals &#183; ans nodes &#8594; the &#8220;ans&#8221; logit: +21.295</title><rect x="240.8" y="240" width="232.8" height="10" rx="4" fill="var(--viz-s1)"/></g>
+							<text x="480.6" y="249" font-size="11" font-variant-numeric="tabular-nums" fill="var(--viz-ink-1)">+21.30</text>
+							<g><title>two-valid-locals &#183; ans nodes &#8594; the &#8220;result&#8221; logit: -0.206</title><rect x="238.5" y="254" width="2.3" height="10" rx="4" fill="var(--viz-s2)"/></g>
+							<text x="196" y="296" text-anchor="end" font-size="11.5" font-family="ui-monospace, Menlo, monospace" fill="var(--viz-ink-1)">split-total</text>
+							<text x="196" y="311" text-anchor="end" font-size="11" fill="var(--viz-ink-2)">total &#9733;</text>
+							<g><title>split-total &#183; total nodes &#8594; the &#8220;total&#8221; logit: +38.883</title><rect x="240.8" y="286" width="425.1" height="10" rx="4" fill="var(--viz-s1)"/></g>
+							<text x="672.9" y="295" font-size="11" font-variant-numeric="tabular-nums" fill="var(--viz-ink-1)">+38.88</text>
+							<g><title>split-total &#183; total nodes &#8594; the &#8220;ans&#8221; logit: -0.641</title><rect x="233.8" y="300" width="7.0" height="10" rx="4" fill="var(--viz-s2)"/></g>
+							<text x="196" y="345" text-anchor="end" font-size="11" fill="var(--viz-ink-2)">ans</text>
+							<g><title>split-total &#183; ans nodes &#8594; the &#8220;ans&#8221; logit: +19.000</title><rect x="240.8" y="320" width="207.7" height="10" rx="4" fill="var(--viz-s1)"/></g>
+							<text x="455.5" y="329" font-size="11" font-variant-numeric="tabular-nums" fill="var(--viz-ink-1)">+19.00</text>
+							<g><title>split-total &#183; ans nodes &#8594; the &#8220;total&#8221; logit: +0.060</title><rect x="240.8" y="334" width="1.5" height="10" rx="4" fill="var(--viz-s2)"/></g>
+							<text x="196" y="376" text-anchor="end" font-size="11.5" font-family="ui-monospace, Menlo, monospace" fill="var(--viz-ink-1)">total-never-bound</text>
+							<text x="196" y="391" text-anchor="end" font-size="11" fill="var(--viz-ink-2)">ans &#9733;</text>
+							<g><title>total-never-bound &#183; ans nodes &#8594; the &#8220;ans&#8221; logit: +28.040</title><rect x="240.8" y="366" width="306.6" height="10" rx="4" fill="var(--viz-s1)"/></g>
+							<text x="554.4" y="375" font-size="11" font-variant-numeric="tabular-nums" fill="var(--viz-ink-1)">+28.04</text>
+							<g><title>total-never-bound &#183; ans nodes &#8594; the &#8220;total&#8221; logit: +0.657</title><rect x="240.8" y="380" width="7.2" height="10" rx="4" fill="var(--viz-s2)"/></g>
+							<text x="196" y="425" text-anchor="end" font-size="11" fill="var(--viz-ink-2)">total</text>
+							<g><title>total-never-bound &#183; total nodes &#8594; the &#8220;total&#8221; logit: +20.838</title><rect x="240.8" y="400" width="227.8" height="10" rx="4" fill="var(--viz-s1)"/></g>
+							<text x="475.6" y="409" font-size="11" font-variant-numeric="tabular-nums" fill="var(--viz-ink-1)">+20.84</text>
+							<g><title>total-never-bound &#183; total nodes &#8594; the &#8220;ans&#8221; logit: -0.277</title><rect x="237.8" y="414" width="3.0" height="10" rx="4" fill="var(--viz-s2)"/></g>
+							<text x="270.6" y="452" font-size="10.5" fill="var(--viz-ink-3)">every cross term falls in this band: &#8722;0.64 to +2.00</text>
+							<line x1="262.6" y1="438" x2="267.6" y2="448" stroke="var(--viz-ink-3)" stroke-width="1"/>
+						</svg>
+						<figcaption>
+							Per-logit aggregate direct effect, summed over every node at that name's token
+							positions, in the default-threshold graphs (node 0.8 / edge 0.98). The
+							off-diagonal terms are noise: no pathway moves the rival logit by more than 2.0
+							while moving its own by 17 to 39.
+						</figcaption>
+					</figure>
+
+					<table>
+						<thead>
+							<tr>
+								<th>Graph</th><th>Returned</th><th>&rarr; own logit</th><th>&rarr; other</th>
+								<th>Loser</th><th>&rarr; own logit</th><th>&rarr; other</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr>
+								<td class="node">P2 split-binding</td><td><code>result</code></td>
+								<td class="num pos"><strong>+26.963</strong></td><td class="num">+1.389</td>
+								<td><code>ans</code></td><td class="num">+20.268</td><td class="num">+0.049</td>
+							</tr>
+							<tr>
+								<td class="node">P3 result-never-bound</td><td><code>ans</code></td>
+								<td class="num pos"><strong>+26.957</strong></td><td class="num">+0.700</td>
+								<td><code>result</code></td><td class="num">+17.027</td><td class="num">+0.921</td>
+							</tr>
+							<tr>
+								<td class="node">P4 two-valid-locals</td><td><code>result</code></td>
+								<td class="num pos"><strong>+37.301</strong></td><td class="num">+1.996</td>
+								<td><code>ans</code></td><td class="num">+21.295</td><td class="num">&#8722;0.206</td>
+							</tr>
+							<tr>
+								<td class="node">split-total (P2, <code>total</code>)</td><td><code>total</code>&#8202;<sup>&#8224;</sup></td>
+								<td class="num pos"><strong>+38.883</strong></td><td class="num">&#8722;0.641</td>
+								<td><code>ans</code></td><td class="num">+19.000</td><td class="num">+0.060</td>
+							</tr>
+							<tr>
+								<td class="node">total-never-bound (P3, <code>total</code>)</td><td><code>ans</code></td>
+								<td class="num pos"><strong>+28.040</strong></td><td class="num">+0.657</td>
+								<td><code>total</code>&#8202;<sup>&#8224;</sup></td><td class="num">+20.838</td><td class="num">&#8722;0.277</td>
+							</tr>
+						</tbody>
+					</table>
+
+					<p style="font-size:.88rem;color:var(--text-muted);">
+						<sup>&#8224;</sup> The <code>total</code> pathway includes the <code>total</code> token
+						inside the function name <code>calculate_total</code>. The <code>result</code>
+						prompts have no equivalent. That occurrence is worth +7.50 of
+						<code>split-total</code>'s +38.883 and +5.15 of <code>total-never-bound</code>'s
+						+20.838. Drop it and they read +31.380 and +15.689. Either way the cross terms stay
+						near zero, which is what this table is about. But the two <code>total</code> rows are
+						not directly comparable to the three <code>result</code> rows. The confound is
+						itself a small result: a name's pathway picks the name up wherever it occurs,
+						including in an identifier that merely contains it.
+					</p>
+
+					<div class="callout">
+						<p>
+							Each variable name has its own pathway to its own logit, and the pathways are
+							<strong>orthogonal</strong>. Binding does not switch a pathway on or off. It sets
+							<strong>how much drive</strong> that name accumulates. The model then does a
+							winner-take-all comparison at the logit layer.
+						</p>
+					</div>
+
+					<h3 style="font-size:1rem;margin:2rem 0 .6rem;">What the graphs show</h3>
+
+					<ul class="notes">
+						<li>
+							<strong>The features are tied to the name, not to the act of binding.</strong>
+							<code>18_4769</code> does not respond to <code>ans = 0</code> at all, and that is
+							a perfectly good binding. A different feature, <code>18_4732</code>, is the one
+							that fires there.
+						</li>
+						<li>
+							<strong>A losing pathway is still fully routed.</strong> In P3,
+							<code>18_4769</code> fires once (position 25,
+							activation 92.5) and is worth <strong>+8.50</strong> to <code>&nbsp;result</code>.
+							Its largest firing in P2 (position 23, activation 91.0) is
+							worth <strong>+8.94</strong>. Matched activation, matched effect, whether its name
+							wins or loses. Likewise <code>18_4732</code> at activation 39.0 gives
+							<code>&nbsp;ans</code> +1.555 in one graph and +1.305 in the other: the same
+							feature doing the same job. What changes between the graphs is how much total drive
+							each name accumulates, not what any one feature does.
+						</li>
+						<li>
+							<strong>The ordering is consistent; the magnitude is not.</strong> The winning
+							pathway's total runs 26.96 / 26.96 / 37.30 / 38.88 / 28.04 across the five graphs,
+							a spread of 11.9. There is no fixed drive budget. What holds in every graph is that
+							the winner's own-logit drive exceeds the loser's. The winner also recruits more
+							nodes (259&thinsp;&gt;&thinsp;238, 500&thinsp;&gt;&thinsp;102,
+							335&thinsp;&gt;&thinsp;188, 560&thinsp;&gt;&thinsp;183,
+							509&thinsp;&gt;&thinsp;313), a trend rather than a mechanism.
+						</li>
+						<li>
+							<strong>Part of the drive is name-agnostic.</strong> <code>24_12518_30</code>, on
+							the <code>return</code> token, gives +1.680 to <code>&nbsp;result</code> and
+							+1.781 to <code>&nbsp;ans</code> in P2. That is a baseline "a
+							local variable goes here" push that belongs to neither name's pathway.
+						</li>
+						<li>
+							<strong>Suppression is per-pathway, not global.</strong> <code>24_15424</code>
+							presses on <code>&nbsp;result</code> even where <code>&nbsp;result</code> has
+							already lost and sits at 6.5%, so it is not reacting to the outcome. Swapping
+							the accumulator's name swaps the suppressing feature.
+							<a href="#suppressors">Its own subsection, below.</a>
+						</li>
+						<li>
+							<strong>Attribution and ablation agree, independently.</strong> Deleting
+							<code>18_4732</code> from P3 moves
+							<code>&nbsp;ans</code> only 89.06% &rarr; 86.72%. That is small, and exactly what the
+							graph predicts: <code>ans</code>'s drive sits mostly in its raw
+							embeddings (+5.688 and +4.906) rather than in that feature (+1.305).
+						</li>
+					</ul>
+
+					<h3 id="suppressors" style="font-size:1rem;margin:2rem 0 .6rem;">Each pathway has its own suppressor</h3>
+
+					<p>
+						The largest negative node in the first graph, <code>24_15424_30</code>, could be a
+						global calibrator that presses on whichever name is winning. Or it could be something
+						specific to <code>result</code>. Swapping the accumulator for <code>total</code> answers that:
+						<strong>each name's pathway is opposed by its own dedicated layer-24 feature at the
+						<code>return</code> position</strong>. Rank the negative nodes into each pathway's own
+						logit, as a fraction of that pathway's drive:
+					</p>
+
+					<table>
+						<thead>
+							<tr><th>Pathway</th><th>Suppressor</th><th>Magnitude &divide; pathway drive, per graph</th></tr>
+						</thead>
+						<tbody>
+							<tr>
+								<td><code>result</code></td>
+								<td class="node">24_15424</td>
+								<td class="num">0.285 / 0.263 / 0.240 / 0.292</td>
+							</tr>
+							<tr>
+								<td><code>total</code></td>
+								<td class="node"><strong>24_12843</strong></td>
+								<td class="num">0.285 / 0.288</td>
+							</tr>
+							<tr>
+								<td><code>ans</code></td>
+								<td class="wrap-cell"><em>none above 0.15</em></td>
+								<td class="num">largest negatives 0.06&#8211;0.10</td>
+							</tr>
+						</tbody>
+					</table>
+
+					<p>
+						The load-bearing fact is qualitative, and it needs no ratio to state: change the
+						accumulator from <code>result</code> to <code>total</code> and <strong>the
+						suppressing feature index changes with it</strong>. Both are layer 24, both sit on
+						<code>return</code>, but they are different features. One global calibrator would be
+						the same feature in both.
+					</p>
+
+					<p>
+						The 0.24&#8211;0.29 band is an <em>observation</em>, not a law. Six points across two
+						names is not enough to call a ratio fixed, so it is reported and not leaned on. The
+						claim rests on the feature indices, not on the ratio.
+					</p>
+
+					<p>
+						For <code>ans</code> the honest phrasing is <strong>"not captured"</strong>, not
+						"does not exist". Its drive sits in its raw embeddings (+7.375 in P4) rather than in
+						its feature (+1.727). The transcoders
+						cover that pathway poorly, so its partner is presumably just not represented in the
+						graph.
+					</p>
+
+					<p>
+						In P4 the pairing is at its most dramatic:
+						<code>18_4769_16</code> drives <code>&nbsp;result</code> at <strong>+10.562</strong>
+						while <code>24_15424_36</code> opposes it at <strong>&#8722;10.875</strong>. Those are the
+						two largest-magnitude nodes anywhere in this project, and they very nearly cancel.
+					</p>
+
+					<h3 id="subgraph-trap" style="font-size:1rem;margin:2rem 0 .6rem;">A trap in reading the subgraphs</h3>
+
+					<div class="callout">
+						<p>
+							<strong>In P3 the pinned subgraph says the opposite
+							of the outcome.</strong> The handful of pinned nodes give <code>result</code>
+							+12.8 against <code>ans</code> +11.9. Yet the model answers
+							<code>&nbsp;ans</code> at 89.1%. The true ordering appears only once
+							<em>every</em> node at those positions is summed: <strong>+26.957 against
+							+17.027</strong>. <code>ans</code> wins on <strong>breadth</strong>, not on peak:
+							500 nodes against 103.
+						</p>
+						<p>
+							So any subgraph figure has to carry the aggregate totals beside it, or a reader
+							will draw the opposite conclusion from the picture. That is the general lesson
+							rather than a quirk of this prompt. A pinned subgraph is a <em>hypothesis</em>
+							about which nodes matter, and the aggregate is the check on it.
+						</p>
+					</div>
+
+					<p>
+						All four prompts' graphs are hosted on Neuronpedia with the relevant nodes pinned and
+						every logit target pinned beside them. Each supernode label names the logit its total
+						is measured against. The P2 and P3 labels give both the pinned total and the all-nodes
+						aggregate, so the P3 subgraph cannot be read as saying <code>result</code> wins. The
+						hosted copies are pruned harder than the graphs the table above is computed from, so
+						their totals run somewhat lower.
+					</p>
+
+					<p>
+						P4 is the one to start with. It is the valid
+						Python among them. It separates the two pathways most cleanly (the pinned pathway
+						groups cross to the rival logit at just +0.29 and +0.24), and it holds the
+						near-cancelling pair described above. In
+						its pinned view the suppressor <code>24_15424_36</code> is deliberately left outside
+						every group, so it reads as what it is: the single dominant opposer, not part of a
+						distributed background. All three logit nodes are pinned, including
+						<code>(</code> at 1.3%. The two names are competing inside a real distribution, not
+						a two-way choice we constructed.
+					</p>
+
+					<ul class="links">
+						<li><a href="https://www.neuronpedia.org/gemma-2-2b/graph?slug=py-return-variable&amp;pinnedIds=27_2196_30%2C18_4769_10%2C18_4769_23%2CE_2667_10%2CE_2667_23%2C24_15424_30%2C24_12518_30%2C19_-1_30%2C25_-1_30%2CE_1293_1%2C22_2657_30&amp;supernodes=%5B%5B%22%27result%27%20nodes%20%40%2010%2C23%20-%3E%20%27%20result%27%3A%20%2B12.8%22%2C%2218_4769_10%22%2C%2218_4769_23%22%2C%22E_2667_10%22%2C%22E_2667_23%22%5D%2C%5B%22minor%20suppressors%20%40%2030%20-%3E%20%27%20result%27%3A%20-2.0%22%2C%2219_-1_30%22%2C%2225_-1_30%22%2C%22E_1293_1%22%2C%2222_2657_30%22%5D%5D" target="_blank" rel="noopener">P1 &middot; py-return-variable &rarr;</a></li>
+						<li><a href="https://www.neuronpedia.org/gemma-2-2b/graph?slug=py-split-binding&amp;pruningThreshold=0.7&amp;densityThreshold=0.99&amp;pinnedIds=27_2196_30%2C27_4811_30%2C18_4769_23%2CE_2667_23%2C18_4769_25%2CE_779_10%2C18_4732_10%2C24_12518_30%2CE_773_30%2C22_4719_30&amp;supernodes=%5B%5B%22result%20pathway%20-%3E%20%27%20result%27%3A%20pinned%20%2B17.5%2C%20ALL%20nodes%20%2B26.7%20%28wins%29%22%2C%2218_4769_23%22%2C%22E_2667_23%22%2C%2218_4769_25%22%5D%2C%5B%22ans%20pathway%20-%3E%20%27%20ans%27%3A%20pinned%20%2B7.9%2C%20ALL%20nodes%20%2B19.1%20%28loses%29%22%2C%22E_779_10%22%2C%2218_4732_10%22%5D%2C%5B%22return%20posn%2C%20name-agnostic%3A%20%2B2.8%20-%3E%20%27%20result%27%2C%20%2B2.5%20-%3E%20%27%20ans%27%22%2C%2224_12518_30%22%2C%22E_773_30%22%2C%2222_4719_30%22%5D%5D" target="_blank" rel="noopener">P2 &middot; py-split-binding &rarr;</a></li>
+						<li><a href="https://www.neuronpedia.org/gemma-2-2b/graph?slug=py-result-never-bound&amp;pruningThreshold=0.7&amp;densityThreshold=0.99&amp;pinnedIds=27_4811_30%2C27_2196_30%2CE_779_10%2CE_779_23%2C18_4732_10%2C18_4769_25%2CE_2196_25%2C24_13277_30%2C23_-1_30%2C24_-1_30&amp;supernodes=%5B%5B%22ans%20pathway%20-%3E%20%27%20ans%27%3A%20pinned%20%2B11.9%2C%20ALL%20nodes%20%2B26.6%20%28wins%29%22%2C%22E_779_10%22%2C%22E_779_23%22%2C%2218_4732_10%22%5D%2C%5B%22result%20pathway%20-%3E%20%27%20result%27%3A%20pinned%20%2B12.8%2C%20ALL%20nodes%20%2B16.6%20%28loses%29%22%2C%2218_4769_25%22%2C%22E_2196_25%22%5D%2C%5B%22return%20posn%2C%20name-agnostic%3A%20%2B0.7%20-%3E%20%27%20ans%27%2C%20%2B2.9%20-%3E%20%27%20result%27%22%2C%2224_13277_30%22%2C%2223_-1_30%22%2C%2224_-1_30%22%5D%5D" target="_blank" rel="noopener">P3 &middot; py-result-never-bound &rarr;</a></li>
+						<li><a href="https://www.neuronpedia.org/gemma-2-2b/graph?slug=py-two-valid-locals&amp;pruningThreshold=0.7&amp;densityThreshold=0.99&amp;pinnedIds=27_2196_36%2C27_4811_36%2C27_235278_36%2C18_4769_16%2CE_2667_16%2C18_4769_29%2CE_2667_29%2C18_4769_20%2CE_779_10%2C18_4732_10%2C16_3061_10%2C15_12477_10%2C24_15424_36%2C24_12518_36%2CE_773_36&amp;supernodes=%5B%5B%22%2B29.2%20result%20pathway%20-%3E%20%5C%22%20result%5C%22%22%2C%2218_4769_16%22%2C%22E_2667_16%22%2C%2218_4769_29%22%2C%22E_2667_29%22%2C%2218_4769_20%22%5D%2C%5B%22%2B11.8%20ans%20pathway%20-%3E%20%5C%22%20ans%5C%22%22%2C%22E_779_10%22%2C%2218_4732_10%22%2C%2216_3061_10%22%2C%2215_12477_10%22%5D%2C%5B%22return%20position%2C%20name-agnostic%3A%20%2B3.2%20%2F%20%2B2.6%22%2C%2224_12518_36%22%2C%22E_773_36%22%5D%5D" target="_blank" rel="noopener">P4 &middot; py-two-valid-locals &middot; valid Python &rarr;</a></li>
+					</ul>
+
+					<p style="margin-top:1.4rem;">
+						The behaviour table comes from a direct probe of the model. The attribution runs read
+						it in bfloat16 and report 95.3 / 69.1 / 89.1 / 82.4% for P1&#8211;P4. That is
+						where the logit probabilities in the graphs come from. Raw reports:
+						<a href="py-return-variable_report.json">P1</a>,
+						<a href="py-split-binding_report.json">P2</a>,
+						<a href="py-result-never-bound_report.json">P3</a>,
+						<a href="py-two-valid-locals_report.json">P4</a>.
+					</p>
+
+					<p>
+						One number is deliberately missing from the aggregate table: P1's.
+						Summed over its two <code>result</code> writes it is +17.709. But its top prediction
+						cleared <code>--desired-logit-prob 0.95</code> on its own, so its graph has a single
+						logit target and a different node set. It is not comparable to the others. Putting
+						it in the same column would invite exactly the apples-to-oranges reading this section
+						is about.
+					</p>
+				</div>
+			</section>
+
+			<!-- ======================= Generalisation ======================= -->
+			<section id="generalise">
+				<div class="wrap">
+					<h2>Is any of this about the word <code>result</code>?</h2>
+
+					<p>
+						No. Sweeping 18 accumulator names through four prompt shapes, against the same
+						distractor <code>ans</code>, the binding account predicts the top-1 token in
+						<strong>71 of 72</strong> cases. <code>total</code>, <code>buf</code>,
+						<code>tally</code>, <code>subtotal</code>, <code>running</code> and
+						<code>accum</code> behave like <code>result</code> does.
+					</p>
+
+					<figure class="figure viz">
+						<div class="viz-legend">
+							<span><i style="background:var(--viz-s1)"></i>one accumulator name</span>
+							<span><i class="ring"></i>the one miss</span>
+						</div>
+						<svg viewBox="0 0 760 296" role="img" aria-labelledby="gen-t gen-d">
+							<title id="gen-t">18 accumulator names across four prompt shapes</title>
+							<desc id="gen-d">
+								Four rows of dots, one row per prompt shape, 18 dots each. Margins cluster
+								near 95% for the consistent shape, near 89% for never-bound, near 60% for
+								two-valid, and spread from 0 to 61% for split. One open circle at exactly
+								zero marks the single miss.
+							</desc>
+							<line x1="254.6" y1="24" x2="254.6" y2="240" stroke="var(--viz-grid)" stroke-width="1"/>
+							<text x="254.6" y="18" text-anchor="middle" font-size="10.5" fill="var(--viz-ink-3)">0%</text>
+							<line x1="367.4" y1="24" x2="367.4" y2="240" stroke="var(--viz-grid)" stroke-width="1"/>
+							<text x="367.4" y="18" text-anchor="middle" font-size="10.5" fill="var(--viz-ink-3)">25%</text>
+							<line x1="480.3" y1="24" x2="480.3" y2="240" stroke="var(--viz-grid)" stroke-width="1"/>
+							<text x="480.3" y="18" text-anchor="middle" font-size="10.5" fill="var(--viz-ink-3)">50%</text>
+							<line x1="593.1" y1="24" x2="593.1" y2="240" stroke="var(--viz-grid)" stroke-width="1"/>
+							<text x="593.1" y="18" text-anchor="middle" font-size="10.5" fill="var(--viz-ink-3)">75%</text>
+							<line x1="706.0" y1="24" x2="706.0" y2="240" stroke="var(--viz-grid)" stroke-width="1"/>
+							<text x="706.0" y="18" text-anchor="middle" font-size="10.5" fill="var(--viz-ink-3)">100%</text>
+							<line x1="254.6" y1="24" x2="254.6" y2="240" stroke="var(--viz-axis)" stroke-width="1.5"/>
+							<text x="218" y="40" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="var(--viz-ink-1)">consistent</text>
+							<text x="218" y="55" text-anchor="end" font-size="10.5" fill="var(--viz-ink-3)">A bound twice</text>
+							<text x="218" y="69" text-anchor="end" font-size="10" fill="var(--viz-ink-3)" font-style="italic">runnable Python</text>
+							<g><title>result: P(acc) 96.09%, P(ans) 0.00%, margin +96.09</title><circle cx="688.3" cy="46" r="5" fill="var(--viz-s1)" opacity=".78" stroke="var(--viz-surface)" stroke-width="1.5"/></g>
+							<g><title>total: P(acc) 97.27%, P(ans) 0.00%, margin +97.27</title><circle cx="693.7" cy="46" r="5" fill="var(--viz-s1)" opacity=".78" stroke="var(--viz-surface)" stroke-width="1.5"/></g>
+							<g><title>acc: P(acc) 97.27%, P(ans) 0.00%, margin +97.27</title><circle cx="693.7" cy="46" r="5" fill="var(--viz-s1)" opacity=".78" stroke="var(--viz-surface)" stroke-width="1.5"/></g>
+							<g><title>out: P(acc) 95.70%, P(ans) 0.00%, margin +95.70</title><circle cx="686.6" cy="46" r="5" fill="var(--viz-s1)" opacity=".78" stroke="var(--viz-surface)" stroke-width="1.5"/></g>
+							<g><title>count: P(acc) 94.14%, P(ans) 0.00%, margin +94.14</title><circle cx="679.5" cy="46" r="5" fill="var(--viz-s1)" opacity=".78" stroke="var(--viz-surface)" stroke-width="1.5"/></g>
+							<g><title>buf: P(acc) 96.48%, P(ans) 0.00%, margin +96.48</title><circle cx="690.1" cy="46" r="5" fill="var(--viz-s1)" opacity=".78" stroke="var(--viz-surface)" stroke-width="1.5"/></g>
+							<g><title>value: P(acc) 92.58%, P(ans) 0.00%, margin +92.58</title><circle cx="672.5" cy="46" r="5" fill="var(--viz-s1)" opacity=".78" stroke="var(--viz-surface)" stroke-width="1.5"/></g>
+							<g><title>tmp: P(acc) 91.41%, P(ans) 0.00%, margin +91.41</title><circle cx="667.2" cy="46" r="5" fill="var(--viz-s1)" opacity=".78" stroke="var(--viz-surface)" stroke-width="1.5"/></g>
+							<g><title>res: P(acc) 96.09%, P(ans) 0.00%, margin +96.09</title><circle cx="688.3" cy="46" r="5" fill="var(--viz-s1)" opacity=".78" stroke="var(--viz-surface)" stroke-width="1.5"/></g>
+							<g><title>agg: P(acc) 95.70%, P(ans) 0.00%, margin +95.70</title><circle cx="686.6" cy="46" r="5" fill="var(--viz-s1)" opacity=".78" stroke="var(--viz-surface)" stroke-width="1.5"/></g>
+							<g><title>score: P(acc) 93.75%, P(ans) 0.00%, margin +93.75</title><circle cx="677.8" cy="46" r="5" fill="var(--viz-s1)" opacity=".78" stroke="var(--viz-surface)" stroke-width="1.5"/></g>
+							<g><title>data: P(acc) 92.58%, P(ans) 0.00%, margin +92.58</title><circle cx="672.5" cy="46" r="5" fill="var(--viz-s1)" opacity=".78" stroke="var(--viz-surface)" stroke-width="1.5"/></g>
+							<g><title>accum: P(acc) 92.58%, P(ans) 0.00%, margin +92.58</title><circle cx="672.5" cy="46" r="5" fill="var(--viz-s1)" opacity=".78" stroke="var(--viz-surface)" stroke-width="1.5"/></g>
+							<g><title>output: P(acc) 96.88%, P(ans) 0.00%, margin +96.88</title><circle cx="691.9" cy="46" r="5" fill="var(--viz-s1)" opacity=".78" stroke="var(--viz-surface)" stroke-width="1.5"/></g>
+							<g><title>running: P(acc) 97.27%, P(ans) 0.00%, margin +97.27</title><circle cx="693.7" cy="46" r="5" fill="var(--viz-s1)" opacity=".78" stroke="var(--viz-surface)" stroke-width="1.5"/></g>
+							<g><title>tally: P(acc) 93.36%, P(ans) 0.00%, margin +93.36</title><circle cx="676.0" cy="46" r="5" fill="var(--viz-s1)" opacity=".78" stroke="var(--viz-surface)" stroke-width="1.5"/></g>
+							<g><title>subtotal: P(acc) 92.58%, P(ans) 0.00%, margin +92.58</title><circle cx="672.5" cy="46" r="5" fill="var(--viz-s1)" opacity=".78" stroke="var(--viz-surface)" stroke-width="1.5"/></g>
+							<g><title>amount: P(acc) 95.31%, P(ans) 0.00%, margin +95.31</title><circle cx="684.8" cy="46" r="5" fill="var(--viz-s1)" opacity=".78" stroke="var(--viz-surface)" stroke-width="1.5"/></g>
+							<text x="710" y="50" font-size="11" font-weight="600" fill="var(--viz-ink-1)">18/18</text>
+							<text x="218" y="94" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="var(--viz-ink-1)">two-valid</text>
+							<text x="218" y="109" text-anchor="end" font-size="10.5" fill="var(--viz-ink-3)">both bound, only A grows</text>
+							<text x="218" y="123" text-anchor="end" font-size="10" fill="var(--viz-ink-3)" font-style="italic">runnable Python</text>
+							<g><title>result: P(acc) 82.42%, P(ans) 11.18%, margin +71.24</title><circle cx="576.2" cy="100" r="5" fill="var(--viz-s1)" opacity=".78" stroke="var(--viz-surface)" stroke-width="1.5"/></g>
+							<g><title>total: P(acc) 79.69%, P(ans) 13.87%, margin +65.82</title><circle cx="551.7" cy="100" r="5" fill="var(--viz-s1)" opacity=".78" stroke="var(--viz-surface)" stroke-width="1.5"/></g>
+							<g><title>acc: P(acc) 69.14%, P(ans) 22.46%, margin +46.68</title><circle cx="465.3" cy="100" r="5" fill="var(--viz-s1)" opacity=".78" stroke="var(--viz-surface)" stroke-width="1.5"/></g>
+							<g><title>out: P(acc) 72.27%, P(ans) 20.70%, margin +51.57</title><circle cx="487.4" cy="100" r="5" fill="var(--viz-s1)" opacity=".78" stroke="var(--viz-surface)" stroke-width="1.5"/></g>
+							<g><title>count: P(acc) 68.75%, P(ans) 19.73%, margin +49.02</title><circle cx="475.9" cy="100" r="5" fill="var(--viz-s1)" opacity=".78" stroke="var(--viz-surface)" stroke-width="1.5"/></g>
+							<g><title>buf: P(acc) 81.25%, P(ans) 14.06%, margin +67.19</title><circle cx="557.9" cy="100" r="5" fill="var(--viz-s1)" opacity=".78" stroke="var(--viz-surface)" stroke-width="1.5"/></g>
+							<g><title>value: P(acc) 85.55%, P(ans) 7.96%, margin +77.59</title><circle cx="604.8" cy="100" r="5" fill="var(--viz-s1)" opacity=".78" stroke="var(--viz-surface)" stroke-width="1.5"/></g>
+							<g><title>tmp: P(acc) 75.00%, P(ans) 14.75%, margin +60.25</title><circle cx="526.6" cy="100" r="5" fill="var(--viz-s1)" opacity=".78" stroke="var(--viz-surface)" stroke-width="1.5"/></g>
+							<g><title>res: P(acc) 67.19%, P(ans) 24.71%, margin +42.48</title><circle cx="446.3" cy="100" r="5" fill="var(--viz-s1)" opacity=".78" stroke="var(--viz-surface)" stroke-width="1.5"/></g>
+							<g><title>agg: P(acc) 77.73%, P(ans) 7.23%, margin +70.50</title><circle cx="572.8" cy="100" r="5" fill="var(--viz-s1)" opacity=".78" stroke="var(--viz-surface)" stroke-width="1.5"/></g>
+							<g><title>score: P(acc) 73.05%, P(ans) 18.46%, margin +54.59</title><circle cx="501.0" cy="100" r="5" fill="var(--viz-s1)" opacity=".78" stroke="var(--viz-surface)" stroke-width="1.5"/></g>
+							<g><title>data: P(acc) 76.56%, P(ans) 11.77%, margin +64.79</title><circle cx="547.1" cy="100" r="5" fill="var(--viz-s1)" opacity=".78" stroke="var(--viz-surface)" stroke-width="1.5"/></g>
+							<g><title>accum: P(acc) 65.62%, P(ans) 18.85%, margin +46.77</title><circle cx="465.7" cy="100" r="5" fill="var(--viz-s1)" opacity=".78" stroke="var(--viz-surface)" stroke-width="1.5"/></g>
+							<g><title>output: P(acc) 85.16%, P(ans) 8.94%, margin +76.22</title><circle cx="598.7" cy="100" r="5" fill="var(--viz-s1)" opacity=".78" stroke="var(--viz-surface)" stroke-width="1.5"/></g>
+							<g><title>running: P(acc) 89.06%, P(ans) 5.03%, margin +84.03</title><circle cx="633.9" cy="100" r="5" fill="var(--viz-s1)" opacity=".78" stroke="var(--viz-surface)" stroke-width="1.5"/></g>
+							<g><title>tally: P(acc) 67.19%, P(ans) 19.34%, margin +47.85</title><circle cx="470.6" cy="100" r="5" fill="var(--viz-s1)" opacity=".78" stroke="var(--viz-surface)" stroke-width="1.5"/></g>
+							<g><title>subtotal: P(acc) 64.84%, P(ans) 16.31%, margin +48.53</title><circle cx="473.6" cy="100" r="5" fill="var(--viz-s1)" opacity=".78" stroke="var(--viz-surface)" stroke-width="1.5"/></g>
+							<g><title>amount: P(acc) 67.19%, P(ans) 19.24%, margin +47.95</title><circle cx="471.0" cy="100" r="5" fill="var(--viz-s1)" opacity=".78" stroke="var(--viz-surface)" stroke-width="1.5"/></g>
+							<text x="710" y="104" font-size="11" font-weight="600" fill="var(--viz-ink-1)">18/18</text>
+							<text x="218" y="148" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="var(--viz-ink-1)">never-bound</text>
+							<text x="218" y="163" text-anchor="end" font-size="10.5" fill="var(--viz-ink-3)">A only ever read</text>
+							<text x="218" y="177" text-anchor="end" font-size="10" fill="var(--viz-ink-3)" font-style="italic">invalid Python (control)</text>
+							<g><title>result: P(acc) 7.23%, P(ans) 88.28%, margin +81.05</title><circle cx="620.5" cy="154" r="5" fill="var(--viz-s1)" opacity=".78" stroke="var(--viz-surface)" stroke-width="1.5"/></g>
+							<g><title>total: P(acc) 5.15%, P(ans) 91.41%, margin +86.26</title><circle cx="644.0" cy="154" r="5" fill="var(--viz-s1)" opacity=".78" stroke="var(--viz-surface)" stroke-width="1.5"/></g>
+							<g><title>acc: P(acc) 1.73%, P(ans) 94.92%, margin +93.19</title><circle cx="675.3" cy="154" r="5" fill="var(--viz-s1)" opacity=".78" stroke="var(--viz-surface)" stroke-width="1.5"/></g>
+							<g><title>out: P(acc) 1.94%, P(ans) 93.36%, margin +91.42</title><circle cx="667.3" cy="154" r="5" fill="var(--viz-s1)" opacity=".78" stroke="var(--viz-surface)" stroke-width="1.5"/></g>
+							<g><title>count: P(acc) 1.05%, P(ans) 94.53%, margin +93.48</title><circle cx="676.6" cy="154" r="5" fill="var(--viz-s1)" opacity=".78" stroke="var(--viz-surface)" stroke-width="1.5"/></g>
+							<g><title>buf: P(acc) 7.23%, P(ans) 87.89%, margin +80.66</title><circle cx="618.7" cy="154" r="5" fill="var(--viz-s1)" opacity=".78" stroke="var(--viz-surface)" stroke-width="1.5"/></g>
+							<g><title>value: P(acc) 2.20%, P(ans) 93.36%, margin +91.16</title><circle cx="666.1" cy="154" r="5" fill="var(--viz-s1)" opacity=".78" stroke="var(--viz-surface)" stroke-width="1.5"/></g>
+							<g><title>tmp: P(acc) 8.11%, P(ans) 87.11%, margin +79.00</title><circle cx="611.2" cy="154" r="5" fill="var(--viz-s1)" opacity=".78" stroke="var(--viz-surface)" stroke-width="1.5"/></g>
+							<g><title>res: P(acc) 6.45%, P(ans) 89.06%, margin +82.61</title><circle cx="627.5" cy="154" r="5" fill="var(--viz-s1)" opacity=".78" stroke="var(--viz-surface)" stroke-width="1.5"/></g>
+							<g><title>agg: P(acc) 0.38%, P(ans) 93.75%, margin +93.37</title><circle cx="676.1" cy="154" r="5" fill="var(--viz-s1)" opacity=".78" stroke="var(--viz-surface)" stroke-width="1.5"/></g>
+							<g><title>score: P(acc) 1.51%, P(ans) 93.75%, margin +92.24</title><circle cx="671.0" cy="154" r="5" fill="var(--viz-s1)" opacity=".78" stroke="var(--viz-surface)" stroke-width="1.5"/></g>
+							<g><title>data: P(acc) 1.51%, P(ans) 93.36%, margin +91.85</title><circle cx="669.2" cy="154" r="5" fill="var(--viz-s1)" opacity=".78" stroke="var(--viz-surface)" stroke-width="1.5"/></g>
+							<g><title>accum: P(acc) 0.93%, P(ans) 95.31%, margin +94.38</title><circle cx="680.6" cy="154" r="5" fill="var(--viz-s1)" opacity=".78" stroke="var(--viz-surface)" stroke-width="1.5"/></g>
+							<g><title>output: P(acc) 5.71%, P(ans) 89.06%, margin +83.35</title><circle cx="630.8" cy="154" r="5" fill="var(--viz-s1)" opacity=".78" stroke="var(--viz-surface)" stroke-width="1.5"/></g>
+							<g><title>running: P(acc) 3.15%, P(ans) 92.19%, margin +89.04</title><circle cx="656.5" cy="154" r="5" fill="var(--viz-s1)" opacity=".78" stroke="var(--viz-surface)" stroke-width="1.5"/></g>
+							<g><title>tally: P(acc) 0.93%, P(ans) 94.92%, margin +93.99</title><circle cx="678.9" cy="154" r="5" fill="var(--viz-s1)" opacity=".78" stroke="var(--viz-surface)" stroke-width="1.5"/></g>
+							<g><title>subtotal: P(acc) 1.18%, P(ans) 93.75%, margin +92.57</title><circle cx="672.5" cy="154" r="5" fill="var(--viz-s1)" opacity=".78" stroke="var(--viz-surface)" stroke-width="1.5"/></g>
+							<g><title>amount: P(acc) 1.50%, P(ans) 92.97%, margin +91.47</title><circle cx="667.5" cy="154" r="5" fill="var(--viz-s1)" opacity=".78" stroke="var(--viz-surface)" stroke-width="1.5"/></g>
+							<text x="710" y="158" font-size="11" font-weight="600" fill="var(--viz-ink-1)">18/18</text>
+							<text x="218" y="202" text-anchor="end" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="var(--viz-ink-1)">split</text>
+							<text x="218" y="217" text-anchor="end" font-size="10.5" fill="var(--viz-ink-3)">D bound, A grows in loop</text>
+							<text x="218" y="231" text-anchor="end" font-size="10" fill="var(--viz-ink-3)" font-style="italic">invalid Python (control)</text>
+							<g><title>result: P(acc) 71.09%, P(ans) 23.14%, margin +47.95</title><circle cx="471.0" cy="208" r="5" fill="var(--viz-s1)" opacity=".78" stroke="var(--viz-surface)" stroke-width="1.5"/></g>
+							<g><title>total: P(acc) 78.12%, P(ans) 17.48%, margin +60.64</title><circle cx="528.3" cy="208" r="5" fill="var(--viz-s1)" opacity=".78" stroke="var(--viz-surface)" stroke-width="1.5"/></g>
+							<g><title>acc: P(acc) 50.39%, P(ans) 44.34%, margin +6.05</title><circle cx="281.9" cy="208" r="5" fill="var(--viz-s1)" opacity=".78" stroke="var(--viz-surface)" stroke-width="1.5"/></g>
+							<g><title>out: P(acc) 64.45%, P(ans) 30.27%, margin +34.18</title><circle cx="408.9" cy="208" r="5" fill="var(--viz-s1)" opacity=".78" stroke="var(--viz-surface)" stroke-width="1.5"/></g>
+							<g><title>count: P(acc) 47.66%, P(ans) 42.19%, margin +5.47</title><circle cx="279.3" cy="208" r="5" fill="var(--viz-s1)" opacity=".78" stroke="var(--viz-surface)" stroke-width="1.5"/></g>
+							<g><title>buf: P(acc) 62.11%, P(ans) 29.49%, margin +32.62</title><circle cx="401.8" cy="208" r="5" fill="var(--viz-s1)" opacity=".78" stroke="var(--viz-surface)" stroke-width="1.5"/></g>
+							<g><title>value: P(acc) 65.62%, P(ans) 27.34%, margin +38.28</title><circle cx="427.4" cy="208" r="5" fill="var(--viz-s1)" opacity=".78" stroke="var(--viz-surface)" stroke-width="1.5"/></g>
+							<g><title>tmp: P(acc) 61.72%, P(ans) 29.10%, margin +32.62</title><circle cx="401.8" cy="208" r="5" fill="var(--viz-s1)" opacity=".78" stroke="var(--viz-surface)" stroke-width="1.5"/></g>
+							<g><title>res: P(acc) 63.67%, P(ans) 30.08%, margin +33.59</title><circle cx="406.2" cy="208" r="5" fill="var(--viz-s1)" opacity=".78" stroke="var(--viz-surface)" stroke-width="1.5"/></g>
+							<g><title>agg: P(acc) 55.47%, P(ans) 33.79%, margin +21.68</title><circle cx="352.4" cy="208" r="5" fill="var(--viz-s1)" opacity=".78" stroke="var(--viz-surface)" stroke-width="1.5"/></g>
+							<g><title>score: P(acc) 44.92%, P(ans) 44.92%: exact tie, counted a miss</title><circle cx="254.6" cy="208" r="6.5" fill="var(--viz-surface)" stroke="var(--viz-ink-1)" stroke-width="2"/></g>
+							<text x="265.6" y="199" font-size="10.5" fill="var(--viz-ink-1)">score: exact tie, counted a miss</text>
+							<g><title>data: P(acc) 53.12%, P(ans) 36.72%, margin +16.40</title><circle cx="328.6" cy="208" r="5" fill="var(--viz-s1)" opacity=".78" stroke="var(--viz-surface)" stroke-width="1.5"/></g>
+							<g><title>accum: P(acc) 51.95%, P(ans) 40.43%, margin +11.52</title><circle cx="306.6" cy="208" r="5" fill="var(--viz-s1)" opacity=".78" stroke="var(--viz-surface)" stroke-width="1.5"/></g>
+							<g><title>output: P(acc) 75.78%, P(ans) 19.14%, margin +56.64</title><circle cx="510.3" cy="208" r="5" fill="var(--viz-s1)" opacity=".78" stroke="var(--viz-surface)" stroke-width="1.5"/></g>
+							<g><title>running: P(acc) 66.41%, P(ans) 24.41%, margin +42.00</title><circle cx="444.2" cy="208" r="5" fill="var(--viz-s1)" opacity=".78" stroke="var(--viz-surface)" stroke-width="1.5"/></g>
+							<g><title>tally: P(acc) 45.31%, P(ans) 40.04%, margin +5.27</title><circle cx="278.4" cy="208" r="5" fill="var(--viz-s1)" opacity=".78" stroke="var(--viz-surface)" stroke-width="1.5"/></g>
+							<g><title>subtotal: P(acc) 55.86%, P(ans) 29.88%, margin +25.98</title><circle cx="371.9" cy="208" r="5" fill="var(--viz-s1)" opacity=".78" stroke="var(--viz-surface)" stroke-width="1.5"/></g>
+							<g><title>amount: P(acc) 46.48%, P(ans) 41.02%, margin +5.46</title><circle cx="279.2" cy="208" r="5" fill="var(--viz-s1)" opacity=".78" stroke="var(--viz-surface)" stroke-width="1.5"/></g>
+							<text x="710" y="212" font-size="11" font-weight="600" fill="var(--viz-ink-1)">17/18</text>
+							<text x="469" y="282" text-anchor="middle" font-size="10.5" fill="var(--viz-ink-3)">margin: P(name the binding account predicts) &#8722; P(the other name), one dot per accumulator name</text>
+						</svg>
+						<figcaption>
+							Each dot is one accumulator name. Position is the margin between the name the
+							binding account predicts and the other candidate. A dot to the right of the axis
+							means the account was right. The two upper shapes are ordinary runnable Python.
+						</figcaption>
+					</figure>
+
+					<table>
+						<thead>
+							<tr><th>Shape</th><th>Runnable?</th><th>Top-1 correct</th><th>Mean margin</th></tr>
+						</thead>
+						<tbody>
+							<tr><td class="node">consistent</td><td>yes</td><td class="num pos"><strong>18/18</strong></td><td class="num">+94.8%</td></tr>
+							<tr><td class="node">two-valid</td><td>yes</td><td class="num pos"><strong>18/18</strong></td><td class="num">+59.6%</td></tr>
+							<tr><td class="node">never-bound</td><td>no, control</td><td class="num pos"><strong>18/18</strong></td><td class="num">+89.0%</td></tr>
+							<tr><td class="node">split</td><td>no, control</td><td class="num">17/18</td><td class="num">+26.5%</td></tr>
+						</tbody>
+					</table>
+
+					<div class="callout">
+						<p>
+							<strong>The one miss is reported as a miss.</strong> Under <code>split</code>,
+							<code>score</code> lands on 44.92% against 44.92%, an exact tie in bfloat16.
+							The argmax breaks it toward <code>&nbsp;ans</code>. A tie is not a win, so it
+							is counted as a miss.
+						</p>
+						<p>
+							Note also which shape is hardest. <code>split</code> has the smallest margins
+							because it is the most conflicted prompt: one name is bound, a different one is
+							accumulated into. That is the shape the pathway account predicts should be close,
+							and it is.
+						</p>
+					</div>
+
+					<p>
+						<strong>This is also the answer to the obvious objection.</strong> Two of the control
+						prompts are invalid Python, and a Python audience is right to be suspicious of
+						conclusions drawn from code that cannot run. But <code>two-valid</code> is ordinary
+						runnable code: both locals bound, one of them accumulated into. It is 18/18
+						with a mean margin of +59.6%. The effect does not depend on the prompt being broken.
+					</p>
+				</div>
+			</section>
+
+			<!-- ======================= Causality ======================= -->
+			<section id="causal">
+				<div class="wrap">
+					<h2>Turning one pathway down</h2>
+
+					<p>
+						Everything above is correlational: the attribution graph says which nodes are
+						associated with which logit. The direct test is to intervene. Clamp feature
+						<code>18_4769</code> (the <code>result</code> feature) to a fraction of its value at
+						every position it fires, and re-run the forward pass. The answer moves smoothly
+						and then flips.
+					</p>
+
+					<figure class="figure viz">
+						<div class="viz-legend">
+							<span><i style="background:var(--viz-s1)"></i>P(<code>&nbsp;result</code>)</span>
+							<span><i style="background:var(--viz-s2)"></i>P(<code>&nbsp;ans</code>)</span>
+							<span>prompt: P2 <code>split-binding</code>, attention frozen</span>
+						</div>
+						<svg viewBox="0 0 760 300" role="img" aria-labelledby="dose-t dose-d">
+							<title id="dose-t">Scaling one name's feature down flips the prediction; amplifying the other backfires</title>
+							<desc id="dose-d">
+								Two panels. On the left, scaling the result feature from full strength down to
+								zero lowers the probability of result from 69% to 24% and raises ans from 25%
+								to 65%; the two cross near a gain of 0.35. On the right, amplifying the ans
+								feature up to 32 times does not raise ans at all. Past about 6 times it
+								collapses to under 3%.
+							</desc>
+							<text x="46" y="10" font-size="11.5" fill="var(--viz-ink-1)" font-weight="600">Scale the &#8216;result&#8217; feature DOWN</text>
+							<line x1="46" y1="238.0" x2="356" y2="238.0" stroke="var(--viz-grid)" stroke-width="1"/>
+							<text x="38" y="242.0" text-anchor="end" font-size="10.5" fill="var(--viz-ink-3)">0%</text>
+							<line x1="46" y1="187.0" x2="356" y2="187.0" stroke="var(--viz-grid)" stroke-width="1"/>
+							<text x="38" y="191.0" text-anchor="end" font-size="10.5" fill="var(--viz-ink-3)">25%</text>
+							<line x1="46" y1="136.0" x2="356" y2="136.0" stroke="var(--viz-grid)" stroke-width="1"/>
+							<text x="38" y="140.0" text-anchor="end" font-size="10.5" fill="var(--viz-ink-3)">50%</text>
+							<line x1="46" y1="85.0" x2="356" y2="85.0" stroke="var(--viz-grid)" stroke-width="1"/>
+							<text x="38" y="89.0" text-anchor="end" font-size="10.5" fill="var(--viz-ink-3)">75%</text>
+							<line x1="46" y1="34.0" x2="356" y2="34.0" stroke="var(--viz-grid)" stroke-width="1"/>
+							<text x="38" y="38.0" text-anchor="end" font-size="10.5" fill="var(--viz-ink-3)">100%</text>
+							<text x="356.0" y="256" text-anchor="middle" font-size="10.5" fill="var(--viz-ink-3)">1</text>
+							<line x1="356.0" y1="238.0" x2="356.0" y2="242.0" stroke="var(--viz-axis)" stroke-width="1"/>
+							<text x="294.0" y="256" text-anchor="middle" font-size="10.5" fill="var(--viz-ink-3)">0.8</text>
+							<line x1="294.0" y1="238.0" x2="294.0" y2="242.0" stroke="var(--viz-axis)" stroke-width="1"/>
+							<text x="232.0" y="256" text-anchor="middle" font-size="10.5" fill="var(--viz-ink-3)">0.6</text>
+							<line x1="232.0" y1="238.0" x2="232.0" y2="242.0" stroke="var(--viz-axis)" stroke-width="1"/>
+							<text x="170.0" y="256" text-anchor="middle" font-size="10.5" fill="var(--viz-ink-3)">0.4</text>
+							<line x1="170.0" y1="238.0" x2="170.0" y2="242.0" stroke="var(--viz-axis)" stroke-width="1"/>
+							<text x="108.0" y="256" text-anchor="middle" font-size="10.5" fill="var(--viz-ink-3)">0.2</text>
+							<line x1="108.0" y1="238.0" x2="108.0" y2="242.0" stroke="var(--viz-axis)" stroke-width="1"/>
+							<text x="46.0" y="256" text-anchor="middle" font-size="10.5" fill="var(--viz-ink-3)">0</text>
+							<line x1="46.0" y1="238.0" x2="46.0" y2="242.0" stroke="var(--viz-axis)" stroke-width="1"/>
+							<line x1="46" y1="238.0" x2="356" y2="238.0" stroke="var(--viz-axis)" stroke-width="1.5"/>
+							<path d="M356.0,97.0 L325.0,102.5 L294.0,108.1 L263.0,119.3 L232.0,125.6 L201.0,132.0 L170.0,144.8 L139.0,144.4 L108.0,157.1 L77.0,168.7 L46.0,189.0" fill="none" stroke="var(--viz-s1)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+							<g><title>scaled to 1 &#8594; P(&#8220; result&#8221;) = 69.14%</title><circle cx="356.0" cy="97.0" r="4" fill="var(--viz-s1)" stroke="var(--viz-surface)" stroke-width="2"/></g>
+							<g><title>scaled to 0.9 &#8594; P(&#8220; result&#8221;) = 66.41%</title><circle cx="325.0" cy="102.5" r="4" fill="var(--viz-s1)" stroke="var(--viz-surface)" stroke-width="2"/></g>
+							<g><title>scaled to 0.8 &#8594; P(&#8220; result&#8221;) = 63.67%</title><circle cx="294.0" cy="108.1" r="4" fill="var(--viz-s1)" stroke="var(--viz-surface)" stroke-width="2"/></g>
+							<g><title>scaled to 0.7 &#8594; P(&#8220; result&#8221;) = 58.20%</title><circle cx="263.0" cy="119.3" r="4" fill="var(--viz-s1)" stroke="var(--viz-surface)" stroke-width="2"/></g>
+							<g><title>scaled to 0.6 &#8594; P(&#8220; result&#8221;) = 55.08%</title><circle cx="232.0" cy="125.6" r="4" fill="var(--viz-s1)" stroke="var(--viz-surface)" stroke-width="2"/></g>
+							<g><title>scaled to 0.5 &#8594; P(&#8220; result&#8221;) = 51.95%</title><circle cx="201.0" cy="132.0" r="4" fill="var(--viz-s1)" stroke="var(--viz-surface)" stroke-width="2"/></g>
+							<g><title>scaled to 0.4 &#8594; P(&#8220; result&#8221;) = 45.70%</title><circle cx="170.0" cy="144.8" r="4" fill="var(--viz-s1)" stroke="var(--viz-surface)" stroke-width="2"/></g>
+							<g><title>scaled to 0.3 &#8594; P(&#8220; result&#8221;) = 45.90%</title><circle cx="139.0" cy="144.4" r="4" fill="var(--viz-s1)" stroke="var(--viz-surface)" stroke-width="2"/></g>
+							<g><title>scaled to 0.2 &#8594; P(&#8220; result&#8221;) = 39.65%</title><circle cx="108.0" cy="157.1" r="4" fill="var(--viz-s1)" stroke="var(--viz-surface)" stroke-width="2"/></g>
+							<g><title>scaled to 0.1 &#8594; P(&#8220; result&#8221;) = 33.98%</title><circle cx="77.0" cy="168.7" r="4" fill="var(--viz-s1)" stroke="var(--viz-surface)" stroke-width="2"/></g>
+							<g><title>scaled to 0 &#8594; P(&#8220; result&#8221;) = 24.02%</title><circle cx="46.0" cy="189.0" r="4" fill="var(--viz-s1)" stroke="var(--viz-surface)" stroke-width="2"/></g>
+							<path d="M356.0,186.2 L325.0,181.8 L294.0,176.6 L263.0,165.9 L232.0,160.7 L201.0,155.5 L170.0,144.8 L139.0,144.4 L108.0,134.4 L77.0,124.0 L46.0,104.9" fill="none" stroke="var(--viz-s2)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+							<g><title>scaled to 1 &#8594; P(&#8220; ans&#8221;) = 25.39%</title><circle cx="356.0" cy="186.2" r="4" fill="var(--viz-s2)" stroke="var(--viz-surface)" stroke-width="2"/></g>
+							<g><title>scaled to 0.9 &#8594; P(&#8220; ans&#8221;) = 27.54%</title><circle cx="325.0" cy="181.8" r="4" fill="var(--viz-s2)" stroke="var(--viz-surface)" stroke-width="2"/></g>
+							<g><title>scaled to 0.8 &#8594; P(&#8220; ans&#8221;) = 30.08%</title><circle cx="294.0" cy="176.6" r="4" fill="var(--viz-s2)" stroke="var(--viz-surface)" stroke-width="2"/></g>
+							<g><title>scaled to 0.7 &#8594; P(&#8220; ans&#8221;) = 35.35%</title><circle cx="263.0" cy="165.9" r="4" fill="var(--viz-s2)" stroke="var(--viz-surface)" stroke-width="2"/></g>
+							<g><title>scaled to 0.6 &#8594; P(&#8220; ans&#8221;) = 37.89%</title><circle cx="232.0" cy="160.7" r="4" fill="var(--viz-s2)" stroke="var(--viz-surface)" stroke-width="2"/></g>
+							<g><title>scaled to 0.5 &#8594; P(&#8220; ans&#8221;) = 40.43%</title><circle cx="201.0" cy="155.5" r="4" fill="var(--viz-s2)" stroke="var(--viz-surface)" stroke-width="2"/></g>
+							<g><title>scaled to 0.4 &#8594; P(&#8220; ans&#8221;) = 45.70%</title><circle cx="170.0" cy="144.8" r="4" fill="var(--viz-s2)" stroke="var(--viz-surface)" stroke-width="2"/></g>
+							<g><title>scaled to 0.3 &#8594; P(&#8220; ans&#8221;) = 45.90%</title><circle cx="139.0" cy="144.4" r="4" fill="var(--viz-s2)" stroke="var(--viz-surface)" stroke-width="2"/></g>
+							<g><title>scaled to 0.2 &#8594; P(&#8220; ans&#8221;) = 50.78%</title><circle cx="108.0" cy="134.4" r="4" fill="var(--viz-s2)" stroke="var(--viz-surface)" stroke-width="2"/></g>
+							<g><title>scaled to 0.1 &#8594; P(&#8220; ans&#8221;) = 55.86%</title><circle cx="77.0" cy="124.0" r="4" fill="var(--viz-s2)" stroke="var(--viz-surface)" stroke-width="2"/></g>
+							<g><title>scaled to 0 &#8594; P(&#8220; ans&#8221;) = 65.23%</title><circle cx="46.0" cy="104.9" r="4" fill="var(--viz-s2)" stroke="var(--viz-surface)" stroke-width="2"/></g>
+							<text x="414" y="10" font-size="11.5" fill="var(--viz-ink-1)" font-weight="600">Amplify the &#8216;ans&#8217; feature UP</text>
+							<line x1="414" y1="238.0" x2="724" y2="238.0" stroke="var(--viz-grid)" stroke-width="1"/>
+							<line x1="414" y1="187.0" x2="724" y2="187.0" stroke="var(--viz-grid)" stroke-width="1"/>
+							<line x1="414" y1="136.0" x2="724" y2="136.0" stroke="var(--viz-grid)" stroke-width="1"/>
+							<line x1="414" y1="85.0" x2="724" y2="85.0" stroke="var(--viz-grid)" stroke-width="1"/>
+							<line x1="414" y1="34.0" x2="724" y2="34.0" stroke="var(--viz-grid)" stroke-width="1"/>
+							<text x="414.0" y="256" text-anchor="middle" font-size="10.5" fill="var(--viz-ink-3)">1</text>
+							<line x1="414.0" y1="238.0" x2="414.0" y2="242.0" stroke="var(--viz-axis)" stroke-width="1"/>
+							<text x="476.0" y="256" text-anchor="middle" font-size="10.5" fill="var(--viz-ink-3)">2</text>
+							<line x1="476.0" y1="238.0" x2="476.0" y2="242.0" stroke="var(--viz-axis)" stroke-width="1"/>
+							<text x="538.0" y="256" text-anchor="middle" font-size="10.5" fill="var(--viz-ink-3)">4</text>
+							<line x1="538.0" y1="238.0" x2="538.0" y2="242.0" stroke="var(--viz-axis)" stroke-width="1"/>
+							<text x="600.0" y="256" text-anchor="middle" font-size="10.5" fill="var(--viz-ink-3)">8</text>
+							<line x1="600.0" y1="238.0" x2="600.0" y2="242.0" stroke="var(--viz-axis)" stroke-width="1"/>
+							<text x="662.0" y="256" text-anchor="middle" font-size="10.5" fill="var(--viz-ink-3)">16</text>
+							<line x1="662.0" y1="238.0" x2="662.0" y2="242.0" stroke="var(--viz-axis)" stroke-width="1"/>
+							<text x="724.0" y="256" text-anchor="middle" font-size="10.5" fill="var(--viz-ink-3)">32</text>
+							<line x1="724.0" y1="238.0" x2="724.0" y2="242.0" stroke="var(--viz-axis)" stroke-width="1"/>
+							<line x1="414" y1="238.0" x2="724" y2="238.0" stroke="var(--viz-axis)" stroke-width="1.5"/>
+							<path d="M414.0,97.0 L450.3,97.8 L476.0,101.7 L512.3,102.5 L538.0,103.3 L574.3,104.9 L600.0,91.4 L636.3,77.8 L662.0,69.9 L698.3,64.3 L724.0,62.7" fill="none" stroke="var(--viz-s1)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+							<g><title>gain &#215;1 &#8594; P(&#8220; result&#8221;) = 69.14%</title><circle cx="414.0" cy="97.0" r="4" fill="var(--viz-s1)" stroke="var(--viz-surface)" stroke-width="2"/></g>
+							<g><title>gain &#215;1.5 &#8594; P(&#8220; result&#8221;) = 68.75%</title><circle cx="450.3" cy="97.8" r="4" fill="var(--viz-s1)" stroke="var(--viz-surface)" stroke-width="2"/></g>
+							<g><title>gain &#215;2 &#8594; P(&#8220; result&#8221;) = 66.80%</title><circle cx="476.0" cy="101.7" r="4" fill="var(--viz-s1)" stroke="var(--viz-surface)" stroke-width="2"/></g>
+							<g><title>gain &#215;3 &#8594; P(&#8220; result&#8221;) = 66.41%</title><circle cx="512.3" cy="102.5" r="4" fill="var(--viz-s1)" stroke="var(--viz-surface)" stroke-width="2"/></g>
+							<g><title>gain &#215;4 &#8594; P(&#8220; result&#8221;) = 66.02%</title><circle cx="538.0" cy="103.3" r="4" fill="var(--viz-s1)" stroke="var(--viz-surface)" stroke-width="2"/></g>
+							<g><title>gain &#215;6 &#8594; P(&#8220; result&#8221;) = 65.23%</title><circle cx="574.3" cy="104.9" r="4" fill="var(--viz-s1)" stroke="var(--viz-surface)" stroke-width="2"/></g>
+							<g><title>gain &#215;8 &#8594; P(&#8220; result&#8221;) = 71.88%</title><circle cx="600.0" cy="91.4" r="4" fill="var(--viz-s1)" stroke="var(--viz-surface)" stroke-width="2"/></g>
+							<g><title>gain &#215;12 &#8594; P(&#8220; result&#8221;) = 78.52%</title><circle cx="636.3" cy="77.8" r="4" fill="var(--viz-s1)" stroke="var(--viz-surface)" stroke-width="2"/></g>
+							<g><title>gain &#215;16 &#8594; P(&#8220; result&#8221;) = 82.42%</title><circle cx="662.0" cy="69.9" r="4" fill="var(--viz-s1)" stroke="var(--viz-surface)" stroke-width="2"/></g>
+							<g><title>gain &#215;24 &#8594; P(&#8220; result&#8221;) = 85.16%</title><circle cx="698.3" cy="64.3" r="4" fill="var(--viz-s1)" stroke="var(--viz-surface)" stroke-width="2"/></g>
+							<g><title>gain &#215;32 &#8594; P(&#8220; result&#8221;) = 85.94%</title><circle cx="724.0" cy="62.7" r="4" fill="var(--viz-s1)" stroke="var(--viz-surface)" stroke-width="2"/></g>
+							<path d="M414.0,186.2 L450.3,186.2 L476.0,181.4 L512.3,181.8 L538.0,181.8 L574.3,182.6 L600.0,196.0 L636.3,213.5 L662.0,222.4 L698.3,229.4 L724.0,232.7" fill="none" stroke="var(--viz-s2)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+							<g><title>gain &#215;1 &#8594; P(&#8220; ans&#8221;) = 25.39%</title><circle cx="414.0" cy="186.2" r="4" fill="var(--viz-s2)" stroke="var(--viz-surface)" stroke-width="2"/></g>
+							<g><title>gain &#215;1.5 &#8594; P(&#8220; ans&#8221;) = 25.39%</title><circle cx="450.3" cy="186.2" r="4" fill="var(--viz-s2)" stroke="var(--viz-surface)" stroke-width="2"/></g>
+							<g><title>gain &#215;2 &#8594; P(&#8220; ans&#8221;) = 27.73%</title><circle cx="476.0" cy="181.4" r="4" fill="var(--viz-s2)" stroke="var(--viz-surface)" stroke-width="2"/></g>
+							<g><title>gain &#215;3 &#8594; P(&#8220; ans&#8221;) = 27.54%</title><circle cx="512.3" cy="181.8" r="4" fill="var(--viz-s2)" stroke="var(--viz-surface)" stroke-width="2"/></g>
+							<g><title>gain &#215;4 &#8594; P(&#8220; ans&#8221;) = 27.54%</title><circle cx="538.0" cy="181.8" r="4" fill="var(--viz-s2)" stroke="var(--viz-surface)" stroke-width="2"/></g>
+							<g><title>gain &#215;6 &#8594; P(&#8220; ans&#8221;) = 27.15%</title><circle cx="574.3" cy="182.6" r="4" fill="var(--viz-s2)" stroke="var(--viz-surface)" stroke-width="2"/></g>
+							<g><title>gain &#215;8 &#8594; P(&#8220; ans&#8221;) = 20.61%</title><circle cx="600.0" cy="196.0" r="4" fill="var(--viz-s2)" stroke="var(--viz-surface)" stroke-width="2"/></g>
+							<g><title>gain &#215;12 &#8594; P(&#8220; ans&#8221;) = 12.01%</title><circle cx="636.3" cy="213.5" r="4" fill="var(--viz-s2)" stroke="var(--viz-surface)" stroke-width="2"/></g>
+							<g><title>gain &#215;16 &#8594; P(&#8220; ans&#8221;) = 7.67%</title><circle cx="662.0" cy="222.4" r="4" fill="var(--viz-s2)" stroke="var(--viz-surface)" stroke-width="2"/></g>
+							<g><title>gain &#215;24 &#8594; P(&#8220; ans&#8221;) = 4.22%</title><circle cx="698.3" cy="229.4" r="4" fill="var(--viz-s2)" stroke="var(--viz-surface)" stroke-width="2"/></g>
+							<g><title>gain &#215;32 &#8594; P(&#8220; ans&#8221;) = 2.60%</title><circle cx="724.0" cy="232.7" r="4" fill="var(--viz-s2)" stroke="var(--viz-surface)" stroke-width="2"/></g>
+							<rect x="139.0" y="30" width="31.0" height="208.0" fill="var(--viz-ink-3)" opacity=".10"/>
+							<text x="154.5" y="28" text-anchor="middle" font-size="10.5" fill="var(--viz-ink-2)">tie &#8594; flip</text>
+							<text x="52.0" y="193.0" font-size="11" fill="var(--viz-ink-1)">24.0%</text>
+							<text x="52.0" y="108.9" font-size="11" fill="var(--viz-ink-1)">65.2%</text>
+							<text x="720.0" y="54.7" text-anchor="end" font-size="11" fill="var(--viz-ink-1)">85.9%</text>
+							<text x="720.0" y="224.7" text-anchor="end" font-size="11" fill="var(--viz-ink-1)">2.6%</text>
+							<text x="201" y="274" text-anchor="middle" font-size="10.5" fill="var(--viz-ink-3)">gain on 18_4769 (the &#8216;result&#8217; feature)</text>
+							<text x="569" y="274" text-anchor="middle" font-size="10.5" fill="var(--viz-ink-3)">gain on 18_4732 (the &#8216;ans&#8217; feature)</text>
+						</svg>
+						<figcaption>
+							Left: the intervention that works. Right: the same experiment run in the other
+							direction, which does not. It is worth showing rather than dropping.
+						</figcaption>
+					</figure>
+
+					<table>
+						<thead>
+							<tr><th>Gain on <code>18_4769</code></th><th>1.0</th><th>0.8</th><th>0.6</th><th>0.4</th><th>0.3</th><th>0.2</th><th>0.0</th></tr>
+						</thead>
+						<tbody>
+							<tr><td><code>&nbsp;result</code></td><td class="num">69.14%</td><td class="num">63.67%</td><td class="num">55.08%</td><td class="num">45.70%</td><td class="num">45.90%</td><td class="num">39.65%</td><td class="num">24.02%</td></tr>
+							<tr><td><code>&nbsp;ans</code></td><td class="num">25.39%</td><td class="num">30.08%</td><td class="num">37.89%</td><td class="num">45.70%</td><td class="num">45.90%</td><td class="num pos"><strong>50.78%</strong></td><td class="num pos"><strong>65.23%</strong></td></tr>
+						</tbody>
+					</table>
+
+					<p>
+						The response is monotonic in <code>&nbsp;ans</code> throughout. The two candidates tie
+						exactly at gain 0.4 and again at 0.3, and from 0.2 down <code>&nbsp;ans</code> is
+						ahead. <strong>Turning one name's volume down changes which variable the model
+						returns</strong>. That is the claim, tested directly rather than inferred from the
+						graph.
+					</p>
+
+					<p>
+						The baseline forward pass in this harness reproduces the probe exactly
+						(95.31 / 69.14 / 6.45%), so the pipeline was verified before any of the intervention
+						numbers were believed. Ablating outright, rather than scaling, does the same thing:
+						removing <code>18_4769</code> from P2 takes
+						<code>&nbsp;result</code> from 69.14% to 24.02% and hands the argmax to
+						<code>&nbsp;ans</code>.
+					</p>
+
+					<h3 style="font-size:1rem;margin:2rem 0 .6rem;">Why only scaling down counts</h3>
+
+					<div class="callout">
+						<p>
+							<strong>Amplifying a feature does not do the mirror image of ablating it.</strong>
+							Scaling the losing <code>ans</code> feature <em>up</em> should, on a naive reading,
+							raise <code>&nbsp;ans</code>. It does not. Past about 6&times; it collapses:
+							27.2% at 6&times;, 7.7% at 16&times;, 2.6% at 32&times;, while
+							<code>&nbsp;result</code> climbs to 85.9%.
+						</p>
+						<p>
+							This is not a property of the pathway. It is the residual stream being pushed off
+							the distribution the later layers were trained on, so the output falls back toward
+							the prior. Scaling <em>down</em> stays inside the feature's natural range, and it is the
+							intervention this page relies on. The amplification sweep is shown so the asymmetry
+							is on record.
+						</p>
+					</div>
+
+					<p>
+						A mechanism this reliable invites a stronger reading than it has earned: that the
+						model knows Python's binding rules. It does not. The pathways track <em>which name
+						carries how much drive</em>, not <em>when a name is resolved</em>. Two companion pages
+						probe that boundary with executed ground truth and paired prompts:
+					</p>
+
+					<ul class="notes">
+						<li>
+							<a href="traps/"><strong>Right name, wrong rules</strong></a>: ten classic binding
+							traps (closure capture, mutable defaults, loop-variable leak, class-body scope), posed
+							as near-identical pairs with opposite answers. The score is <strong>0 of 4 pairs</strong>, with the
+							two scoping rules exactly swapped in one pair.
+						</li>
+						<li>
+							<a href="gotchas/"><strong>The expression is not enough</strong></a>: PEP 289
+							generator-expression late binding, where the model is worse on the sugared form of
+							the identical program. Plus four chapters (float width, set order, bound-method
+							identity, interpreter version) where the printed expression underdetermines the
+							answer. The score is <strong>1 of 13 pairs</strong>.
+						</li>
+					</ul>
+				</div>
+			</section>
+
+			<!-- ======================= Negative result ======================= -->
+			<section id="negative">
+				<div class="wrap">
+					<h2>A prompt design that does not work here</h2>
+
+					<div class="callout">
+						<p>
+							<strong>Cutting mid-identifier is not a usable probe on this model.</strong>
+							A natural first design is to cut the prompt at <code>return res</code> and watch
+							the model complete <code>res</code> &rarr; <code>ult</code>. That premise does
+							not hold on <code>gemma-2-2b</code>, which is why the prompts above all cut at
+							<code>return</code> instead.
+						</p>
+					</div>
+
+					<p>
+						Probed directly, the top prediction after <code>&nbsp;res</code> is a newline
+						(29.5%): the model accepts <code>res</code> as a complete variable name. And because
+						<code>&nbsp;result</code> and <code>result</code> are each a <em>single</em> token in
+						Gemma's vocabulary, there is no high-probability <code>res</code>&nbsp;&rarr;&nbsp;<code>ult</code>
+						BPE split to observe at all. The top identifier continuations are junk like
+						<code>ut</code> and <code>lut</code>.
+					</p>
+
+					<p>
+						The attribution graph for that variant says the same thing from the inside. Its
+						strongest direct effects are transcoder <em>error</em> nodes at the
+						<code>&nbsp;res</code> position (<code>E_23_31</code>, <code>E_19_31</code>),
+						that is, behaviour the transcoders do not explain. High error-node attribution is a
+						warning sign that the graph is not describing a clean circuit.
+					</p>
+
+					<p>
+						The practical lesson, and the reason it is on this page: <strong>probe the
+						tokenizer and the top-<em>k</em> predictions before spending GPU time on
+						attribution.</strong> A prompt design can be perfectly reasonable as Python and
+						still be unanswerable as a next-token problem.
+					</p>
+				</div>
+			</section>
+
+			<!-- ======================= Explore the graph ======================= -->
+			<section id="explore">
+				<div class="wrap">
+					<h2>Explore the graph</h2>
+
+					<p>
+						The full attribution graph is hosted here, running Anthropic's attribution-graph
+						viewer against the pruned graph for this prompt. It opens with the circuit described
+						above already pinned into the Subgraph pane at the bottom. The three firings of
+						<code>18_4769</code> are grouped as one supernode, and the layer-21 to layer-25 features on
+						<code>return</code> as another. The suppressor, the two
+						<code>result</code> embeddings and the target logit sit alongside them.
+					</p>
+
+					<p>
+						From there, click any node to see its inputs and outputs, Ctrl/Cmd-click to pin or
+						unpin nodes, and hold G while clicking to group pinned nodes into a supernode of
+						your own.
+					</p>
+
+					<p style="margin-bottom:1.4rem;">
+						<a class="cta" href="graph/">Open the interactive graph &rarr;</a>
+					</p>
+
+					<div class="callout">
+						<p>
+							Three caveats. The page loads a 4.5&nbsp;MB graph file and pulls its plotting
+							libraries from <code>transformer-circuits.pub</code> and <code>unpkg</code>, so it
+							needs a live connection and a moment to start.
+						</p>
+						<p>
+							The feature-detail panel on the right stays empty. It fetches example activations
+							from Anthropic's own feature store, which hosts their scans and not GemmaScope.
+							There is no public equivalent to point it at. Generating those examples means a
+							GPU pass over a corpus, which is outside this experiment. Feature identifiers
+							follow <code>{layer}_{feature}_{position}</code>. Look a feature up on
+							<a href="https://www.neuronpedia.org/gemma-2-2b" target="_blank" rel="noopener">Neuronpedia</a>
+							to see what it responds to.
+						</p>
+						<p>
+							Finally, the node labels are mine, not the model's. GemmaScope transcoders ship
+							without auto-interpretation text. So every feature node in the published graph is
+							labelled with what is verifiable (its layer, feature index, the token it fires on
+							and its activation) and nothing about what the feature <em>means</em>. The
+							interpretive claims on this page come from the attribution numbers, not from the
+							labels.
+						</p>
+						<p>
+							The graph hosted here is the first prompt's. On its own it shows the circuit but
+							not what the circuit is tracking. That needs the <a href="#controls">controls</a>.
+							It does have one advantage: a single logit target, so a node's direct effect is
+							unambiguous here in a way it is not in the controls. Read it alongside the
+							<a href="#controls">Neuronpedia graphs</a> for those.
+						</p>
+					</div>
+				</div>
+			</section>
+
+			<!-- ======================= Limitations ======================= -->
+			<section id="limitations">
+				<div class="wrap">
+					<h2>Limitations and future work</h2>
+
+					<p>
+						<strong>One model.</strong> Everything here is <code>gemma-2-2b</code>. That is a
+						constraint of the method before it is a choice. Attribution graphs need a full set of
+						transcoders for the model, and GemmaScope's are the most complete public set. They are the
+						ones circuit-tracer was built and validated on, and the only ones Neuronpedia can host
+						graphs and run steering for. The alternatives are also much larger: the Llama-3.2 1B
+						CLTs are 25&nbsp;GB, Qwen-3 1.7B's 71&nbsp;GB, GPT-OSS 20B's 264&nbsp;GB, against
+						7.4&nbsp;GB here, on a single RTX&nbsp;3090. No cross-model claim is made. The result
+						is a mechanism in one model, verified causally in that model.
+					</p>
+
+					<p>
+						<strong>Transcoder coverage is uneven.</strong> The <code>ans</code> pathway's drive
+						sits in raw embeddings rather than in a feature, and it has no suppressor above 0.15 of
+						its drive. "Not captured" is the honest reading. The transcoders explain that pathway
+						less well than the <code>result</code> and <code>total</code> ones, and an
+						embedding-led pathway is harder to intervene on cleanly.
+					</p>
+
+					<p>
+						<strong>Two of the four prompts are invalid Python.</strong> P2 and P3 read a name
+						before it is bound, because that is the only way to make binding and occurrence
+						disagree. P4 and the <code>two-valid</code> sweep (18/18) show the effect does not
+						depend on it, but the attribution numbers for P2 and P3 are numbers about code that
+						cannot run.
+					</p>
+
+					<p>
+						<strong>Single-token cuts and a pruned view.</strong> Every prompt is decided by one
+						next-token distribution, which probes recognition, not generation. The per-logit totals
+						are computed from graphs pruned at node&nbsp;0.8&nbsp;/ edge&nbsp;0.98, and the hosted
+						copies at 0.7&nbsp;/&nbsp;0.9, so absolute magnitudes shift with the threshold. The
+						orderings and the near-zero cross terms are what is stable. The self-hosted viewer's
+						feature-detail panel is empty, so what each feature responds to elsewhere has to be
+						looked up on Neuronpedia.
+					</p>
+
+					<p>
+						<strong>Next.</strong> The obvious second model is Llama-3.2 1B: its CLTs exist, the
+						model fits the same GPU without offload, and the attribution driver runs unchanged on
+						the same backend. The behavioural probes (the four prompts, the 18-name sweep, the
+						interventions' baseline) need no transcoders and are the first thing to run. Start
+						with whether <code>&nbsp;result</code> and <code>&nbsp;ans</code> are single tokens in
+						that vocabulary, which the whole design depends on. Beyond that: attribution on the
+						<code>total</code> graphs' suppressor, to see whether per-name suppression is a
+						general pattern or a feature of a few names, and a proper feature-detail panel for the
+						hosted viewer.
+					</p>
+				</div>
+			</section>
+
+			<!-- ======================= Reproducing ======================= -->
+			<section id="reproduce">
+				<div class="wrap">
+					<h2>Reproducing this</h2>
+
+					<p>
+						Everything below runs against the public
+						<a href="https://github.com/safety-research/circuit-tracer" target="_blank" rel="noopener">safety-research/circuit-tracer</a>
+						release. No private code is needed to get the same graph. You will need a GPU with
+						roughly 10&nbsp;GB free in bfloat16 (18&nbsp;GB in float32). You also need a Hugging Face
+						account that has accepted the Gemma licence, since the first run downloads about
+						18&nbsp;GB of weights and transcoders.
+					</p>
+
+<pre><code>git clone https://github.com/safety-research/circuit-tracer
+cd circuit-tracer
+
+uv venv .venv --python 3.11
+uv pip install "torch==2.7.1" --index-url https://download.pytorch.org/whl/cu126
+uv pip install .
+
+.venv/bin/huggingface-cli login    # gemma-2-2b is a gated model</code></pre>
+
+					<p>Then run the attribution:</p>
+
+<pre><code>.venv/bin/circuit-tracer attribute \
+    -m google/gemma-2-2b \
+    -t gemma \
+    -p "$(printf 'def calculate_total(prices):\n    result = 0\n    for price in prices:\n        result = result + price\n    return')" \
+    -o py-return-variable.pt \
+    --dtype bfloat16 \
+    --offload cpu \
+    --batch_size 128 \
+    --max_feature_nodes 8192 \
+    --slug py-return-variable \
+    --graph_file_dir graph_files \
+    --node_threshold 0.8 \
+    --edge_threshold 0.98 \
+    --verbose</code></pre>
+
+					<p>
+						That writes <code>graph_files/py-return-variable.json</code> alongside the raw
+						<code>.pt</code> graph. To view it locally, add <code>--server</code> to the command
+						above, or serve an existing directory:
+					</p>
+
+<pre><code>.venv/bin/circuit-tracer start-server --graph_file_dir graph_files --port 8041</code></pre>
+
+					<div class="callout">
+						<p>
+							<strong>On thresholds.</strong> At the defaults (node 0.8, edge 0.98) the graph
+							JSON is 76&nbsp;MB, which is fine for the local viewer and unwieldy for anything
+							else. The graph published on this page was re-pruned from the same saved
+							<code>.pt</code> at node 0.7 / edge 0.9, giving 4.5&nbsp;MB. Re-pruning does not
+							require rerunning attribution, but it does still need the GPU.
+						</p>
+					</div>
+
+					<p>
+						<strong>Do not use float16.</strong> <code>gemma-2</code>'s activation magnitudes
+						overflow in fp16. Use bfloat16 on Ampere or newer, and float32 on older cards.
+						This is why the run above pins <code>--dtype bfloat16</code> rather than letting a
+						generic half-precision default apply.
+					</p>
+
+					<p>
+						The <a href="#controls">control prompts</a> run through the same command. Only
+						<code>-p</code> and <code>--slug</code> change. Their per-logit numbers are read
+						straight out of the graph JSON: for <em>each</em> node whose
+						<code>feature_type</code> is <code>logit</code>, sum the <code>links</code> whose
+						<code>target</code> is that node. Take <em>every</em> logit node, not just the first.
+						On the first prompt there is only one, so reading the top logit alone happens to be
+						correct there and silently wrong on the controls.
+					</p>
+
+					<p>
+						The <a href="#generalise">18-name sweep</a> and the
+						<a href="#causal">interventions</a> need no transcoders and no attribution run. They
+						are plain <code>transformers</code> forward passes, which is why they were used to
+						check the graph rather than the other way round. The intervention harness clamps a
+						feature through the transcoder at every position it fires and re-runs the model.
+						It reports its unmodified baseline first, so a broken hook cannot pass silently.
+					</p>
+
+					<p>
+						The scripts that produced the exact numbers on this page live in a fork of circuit-tracer,
+						<code>circuit-tracer-python</code>, which is currently private. They are the prompt probe,
+						the name sweep, the intervention harness, the attribution driver, the per-position feature
+						comparison and the re-pruning helper. The raw attribution
+						reports behind the tables above are published here:
+						<a href="py-return-variable_report.json">py-return-variable_report.json</a>,
+						<a href="py-two-valid-locals_report.json">py-two-valid-locals_report.json</a>,
+						<a href="py-split-binding_report.json">py-split-binding_report.json</a>,
+						<a href="py-result-never-bound_report.json">py-result-never-bound_report.json</a>.
+					</p>
+				</div>
+			</section>
+
+			<!-- ======================= Credits ======================= -->
+			<section id="credits">
+				<div class="wrap">
+					<h2>Credits</h2>
+					<p>
+						Method and tooling:
+						<a href="https://transformer-circuits.pub/2025/attribution-graphs/methods.html" target="_blank" rel="noopener">Circuit Tracing: Revealing Computational Graphs in Language Models</a>
+						and
+						<a href="https://transformer-circuits.pub/2025/attribution-graphs/biology.html" target="_blank" rel="noopener">On the Biology of a Large Language Model</a>
+						(Anthropic, 2025); the
+						<a href="https://github.com/safety-research/circuit-tracer" target="_blank" rel="noopener">circuit-tracer</a>
+						library by Michael Hanna and Mateusz Piotrowski; GemmaScope transcoders
+						(<code>mwhanna/gemma-scope-transcoders</code>). The interactive viewer bundled under
+						<a href="graph/">/interpretability/practice/graph/</a> is Anthropic's
+						attribution-graphs-frontend, MIT licensed, redistributed with its licence intact.
+					</p>
+				</div>
+			</section>
+
+		</main>
+
+		<!-- ============================ Footer ============================ -->
+		<footer>
+			<div class="wrap">
+				<p>Chia-chun Liang (Anna) &middot; <a href="mailto:d14948004@ntu.edu.tw">d14948004@ntu.edu.tw</a></p>
+				<p>&copy; 2026 Chia-chun Liang</p>
+			</div>
+		</footer>
+
+	</body>
+</html>

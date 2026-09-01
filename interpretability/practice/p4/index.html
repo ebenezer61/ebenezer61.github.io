@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>P4 live graph &middot; redirecting to Neuronpedia</title>
+		<meta name="robots" content="noindex, nofollow" />
+		<meta http-equiv="refresh" content="0; url=https://www.neuronpedia.org/gemma-2-2b/graph?slug=py-two-valid-locals&amp;pruningThreshold=0.7&amp;densityThreshold=0.99&amp;pinnedIds=27_2196_36%2C27_4811_36%2C27_235278_36%2C18_4769_16%2CE_2667_16%2C18_4769_29%2CE_2667_29%2C18_4769_20%2CE_779_10%2C18_4732_10%2C16_3061_10%2C15_12477_10%2C24_15424_36%2C24_12518_36%2CE_773_36&amp;supernodes=%5B%5B%22%2B29.2%20result%20pathway%20-%3E%20%5C%22%20result%5C%22%22%2C%2218_4769_16%22%2C%22E_2667_16%22%2C%2218_4769_29%22%2C%22E_2667_29%22%2C%2218_4769_20%22%5D%2C%5B%22%2B11.8%20ans%20pathway%20-%3E%20%5C%22%20ans%5C%22%22%2C%22E_779_10%22%2C%2218_4732_10%22%2C%2216_3061_10%22%2C%2215_12477_10%22%5D%2C%5B%22return%20position%2C%20name-agnostic%3A%20%2B3.2%20%2F%20%2B2.6%22%2C%2224_12518_36%22%2C%22E_773_36%22%5D%5D" />
+		<link rel="stylesheet" href="../../../style.css" />
+		<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90' font-family='Georgia,serif'>A</text></svg>" />
+		<style>
+			.breadcrumb { font-size: .88rem; color: var(--text-muted); margin: 0 0 1.5rem; }
+			code {
+				font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+				font-size: .88em;
+				background: var(--accent-soft);
+				padding: .1em .35em;
+				border-radius: 4px;
+			}
+		</style>
+		<script>
+			// Same URL as the meta refresh above, unescaped. The QR code on the poster
+			// encodes only this page's address; the pinned graph URL lives here so it
+			// can be changed after printing.
+			var P4 = "https://www.neuronpedia.org/gemma-2-2b/graph?slug=py-two-valid-locals&pruningThreshold=0.7&densityThreshold=0.99&pinnedIds=27_2196_36%2C27_4811_36%2C27_235278_36%2C18_4769_16%2CE_2667_16%2C18_4769_29%2CE_2667_29%2C18_4769_20%2CE_779_10%2C18_4732_10%2C16_3061_10%2C15_12477_10%2C24_15424_36%2C24_12518_36%2CE_773_36&supernodes=%5B%5B%22%2B29.2%20result%20pathway%20-%3E%20%5C%22%20result%5C%22%22%2C%2218_4769_16%22%2C%22E_2667_16%22%2C%2218_4769_29%22%2C%22E_2667_29%22%2C%2218_4769_20%22%5D%2C%5B%22%2B11.8%20ans%20pathway%20-%3E%20%5C%22%20ans%5C%22%22%2C%22E_779_10%22%2C%2218_4732_10%22%2C%2216_3061_10%22%2C%2215_12477_10%22%5D%2C%5B%22return%20position%2C%20name-agnostic%3A%20%2B3.2%20%2F%20%2B2.6%22%2C%2224_12518_36%22%2C%22E_773_36%22%5D%5D";
+			window.location.replace(P4);
+		</script>
+	</head>
+	<body>
+		<header class="hero">
+			<div class="wrap">
+				<p class="breadcrumb"><a href="../">&larr; Which variable does the model return?</a></p>
+				<h1>Opening the P4 graph on Neuronpedia</h1>
+				<p>
+					If nothing happens, <a id="go" href="#">open it here</a>. The link carries the pins and the
+					three supernode labels used on the poster.
+				</p>
+				<p>
+					Read the pinned subgraph with the aggregate totals beside it: all <code>result</code> nodes give
+					<strong>+37.301</strong> to <code>' result'</code>, all <code>ans</code> nodes give
+					<strong>+21.295</strong> to <code>' ans'</code>, and no cross term exceeds 2.0.
+					A pinned subset alone can invert the ordering; see <a href="../#subgraph-trap">the trap in reading the subgraphs</a> in the write-up.
+				</p>
+				<p>Prefer the self-hosted viewer? <a href="../graph/">Open the local copy</a> (P1 graph).</p>
+			</div>
+		</header>
+		<script>document.getElementById('go').href = P4;</script>
+	</body>
+</html>

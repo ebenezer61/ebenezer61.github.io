@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>Attention as a Kernel Estimator &middot; Chia-chun Liang (Anna)</title>
+		<meta name="description" content="From the Nadaraya-Watson estimator (1964) to softmax attention in five steps: the kernel is the QK circuit, the values are the OV circuit, and an induction head is a kernel with one sharp peak." />
+		<meta name="author" content="Chia-chun Liang" />
+		<link rel="stylesheet" href="../../../style.css" />
+		<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90' font-family='Georgia,serif'>A</text></svg>" />
+
+		<style>
+			/* Page-local styles. This page scrolls one derivation step per screen. */
+
+			.breadcrumb { font-size: .88rem; color: var(--text-muted); margin: 0 0 1.5rem; }
+			header.hero .subtitle { margin: .6rem 0 0; color: var(--text-muted); font-size: 1.05rem; }
+			header.hero .venue { margin: .9rem 0 0; font-size: .88rem; color: var(--text-muted); }
+
+			code {
+				font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+				font-size: .88em;
+				background: var(--accent-soft);
+				padding: .1em .35em;
+				border-radius: 4px;
+			}
+
+			.math { font-family: var(--serif); font-style: italic; }
+			.math sub, .math sup { font-style: normal; font-size: .72em; }
+			.math .rm { font-style: normal; }
+			.eq {
+				display: block;
+				font-family: var(--serif);
+				font-style: italic;
+				font-size: 1.55rem;
+				line-height: 1.5;
+				text-align: center;
+				margin: 1.4rem 0;
+				overflow-x: auto;
+				padding: .5rem 0;
+			}
+			.eq .rm { font-style: normal; }
+			.eq sub, .eq sup { font-style: normal; font-size: .62em; }
+			.eq .frac { display: inline-flex; flex-direction: column; vertical-align: middle; text-align: center; margin: 0 .25em; }
+			.eq .frac > span { padding: 0 .3em; }
+			.eq .frac > span:first-child { border-bottom: 1.5px solid currentColor; }
+			.eq .big { font-size: 1.35em; vertical-align: -.1em; }
+
+			/* --- the steps --- */
+			html { scroll-snap-type: y proximity; }
+			.step {
+				min-height: 100vh;
+				min-height: 100svh;
+				scroll-snap-align: start;
+				display: flex;
+				align-items: center;
+				border-top: 1px solid var(--border);
+				padding: 3rem 0;
+			}
+			.step .wrap { width: 100%; }
+			.step .num {
+				font-family: var(--sans);
+				font-size: .78rem;
+				letter-spacing: .14em;
+				text-transform: uppercase;
+				color: var(--accent);
+				margin: 0 0 .6rem;
+			}
+			.step h2 {
+				font-family: var(--serif);
+				font-size: 1.7rem;
+				letter-spacing: 0;
+				text-transform: none;
+				color: var(--text);
+				margin: 0 0 1rem;
+			}
+			.step .cite { font-size: .85rem; color: var(--text-muted); margin-top: 1.2rem; }
+			.step .cite a { border-bottom: 1px solid var(--border); }
+			.step .hint { font-size: .82rem; color: var(--text-muted); text-align: center; margin-top: 2rem; }
+
+			/* reveal on scroll: only when JS is present; reduced motion shows everything at once */
+			.js .step .reveal { opacity: 0; transform: translateY(14px); transition: opacity .7s ease, transform .7s ease; }
+			.js .step .reveal:nth-child(2) { transition-delay: .12s; }
+			.js .step .reveal:nth-child(3) { transition-delay: .24s; }
+			.js .step .reveal:nth-child(4) { transition-delay: .36s; }
+			.js .step .reveal:nth-child(5) { transition-delay: .48s; }
+			.js .step .reveal:nth-child(6) { transition-delay: .60s; }
+			.js .step.is-visible .reveal { opacity: 1; transform: none; }
+			@media (prefers-reduced-motion: reduce) {
+				html { scroll-snap-type: none; }
+				.js .step .reveal { opacity: 1; transform: none; transition: none; }
+			}
+
+			.callout {
+				background: var(--surface);
+				border: 1px solid var(--border);
+				border-left: 3px solid var(--accent);
+				border-radius: var(--radius);
+				padding: 1rem 1.15rem;
+				margin: 0 0 1.1rem;
+				font-size: .95rem;
+			}
+			.callout p:last-child { margin-bottom: 0; }
+		</style>
+		<script>document.documentElement.classList.add('js');</script>
+	</head>
+	<body>
+
+		<!-- ============================ Header ============================ -->
+		<header class="hero">
+			<div class="wrap">
+				<p class="breadcrumb"><a href="../../">How LLM reads your Python?</a> &middot; <a href="../">Theory</a></p>
+				<h1>Attention as a kernel estimator</h1>
+				<p class="subtitle">
+					From Nadaraya and Watson (1964) to <span class="math">softmax(qk<sup>T</sup>/&radic;d)&thinsp;V</span>, one step per screen
+				</p>
+				<p class="venue">Scroll down. Each step is one screen; the derivation appears as you go.</p>
+
+				<ul class="links">
+					<li><a href="../">Back to the timeline</a></li>
+					<li><a href="../circuits/">Why "circuit"?</a></li>
+					<li><a href="../../practice/">Practice: the experiment</a></li>
+				</ul>
+			</div>
+		</header>
+
+		<main>
+
+			<!-- ============================ Step 1 ============================ -->
+			<section class="step" id="nadaraya-watson">
+				<div class="wrap">
+					<p class="num reveal">Step 1 of 6</p>
+					<h2 class="reveal">A weighted average of what you have seen</h2>
+					<p class="reveal">
+						You have pairs <span class="math">(x<sub>i</sub>, y<sub>i</sub>)</span> and a new point
+						<span class="math">x</span>. The oldest non-parametric answer to "what is
+						<span class="math">y</span> at <span class="math">x</span>?" is to average the
+						<span class="math">y<sub>i</sub></span>, weighting each by how much its
+						<span class="math">x<sub>i</sub></span> resembles <span class="math">x</span>:
+					</p>
+					<span class="eq reveal">
+						<span class="rm">f&#770;</span>(x) =
+						<span class="frac"><span>&Sigma;<sub>i</sub> K(x, x<sub>i</sub>)&thinsp;y<sub>i</sub></span><span>&Sigma;<sub>j</sub> K(x, x<sub>j</sub>)</span></span>
+					</span>
+					<p class="reveal">
+						<span class="math">K</span> is a kernel: any non-negative function that is large when its two
+						arguments are close. The usual choice is Gaussian,
+						<span class="math">K(x, x<sub>i</sub>) = <span class="rm">exp</span>(&minus;&Vert;x &minus; x<sub>i</sub>&Vert;<sup>2</sup>/2)</span>.
+						The denominator makes the weights sum to one, so the estimate is a convex combination of the
+						<span class="math">y<sub>i</sub></span>: it never leaves the range of what it has seen.
+					</p>
+					<p class="cite reveal">
+						Nadaraya, E. A. (1964). On estimating regression. <em>Theory of Probability and Its Applications</em> 9(1), 141-142.
+						Watson, G. S. (1964). Smooth regression analysis. <em>Sankhy&#257; A</em> 26(4), 359-372.
+					</p>
+				</div>
+			</section>
+
+			<!-- ============================ Step 2 ============================ -->
+			<section class="step" id="exponential-kernel">
+				<div class="wrap">
+					<p class="num reveal">Step 2 of 6</p>
+					<h2 class="reveal">Change the kernel</h2>
+					<p class="reveal">
+						Expand the Gaussian: <span class="math">&Vert;x &minus; x<sub>i</sub>&Vert;<sup>2</sup> = &Vert;x&Vert;<sup>2</sup> &minus; 2&thinsp;x&middot;x<sub>i</sub> + &Vert;x<sub>i</sub>&Vert;<sup>2</sup></span>.
+						The <span class="math">&Vert;x&Vert;<sup>2</sup></span> term is the same for every
+						<span class="math">i</span> and cancels between numerator and denominator. What is left
+						depends on the data only through an inner product. So take the inner product as the kernel
+						itself, and let the two sides be different linear views of the inputs:
+					</p>
+					<span class="eq reveal">
+						K(x, x<sub>i</sub>) = <span class="rm">exp</span><span class="big">(</span>&thinsp;q &middot; k<sub>i</sub> / &radic;d&thinsp;<span class="big">)</span>,
+						&emsp; q = W<sub>Q</sub>&thinsp;x, &ensp; k<sub>i</sub> = W<sub>K</sub>&thinsp;x<sub>i</sub>
+					</span>
+					<p class="reveal">
+						The <span class="math">&radic;d</span> keeps the exponent from growing with the dimension.
+						Nothing else about the estimator has changed: it is still a kernel-weighted average, with a
+						kernel the model can learn instead of one you fixed in advance.
+					</p>
+					<p class="cite reveal">
+						This is the reading in Tsai, Bai, Yamada, Morency, Salakhutdinov (2019).
+						<a href="https://aclanthology.org/D19-1443/" target="_blank" rel="noopener">Transformer Dissection: A Unified Understanding of Transformer's Attention via the Lens of Kernel</a>. EMNLP.
+						The textbook version of the same derivation is <a href="https://d2l.ai/chapter_attention-mechanisms-and-transformers/attention-pooling.html" target="_blank" rel="noopener">Dive into Deep Learning, chapter 11, Attention Pooling by Similarity</a>.
+					</p>
+				</div>
+			</section>
+
+			<!-- ============================ Step 3 ============================ -->
+			<section class="step" id="softmax-attention">
+				<div class="wrap">
+					<p class="num reveal">Step 3 of 6</p>
+					<h2 class="reveal">The normalised weights are a softmax</h2>
+					<p class="reveal">
+						Put the new kernel back into the Nadaraya-Watson ratio. The weight on the
+						<span class="math">i</span>-th point is
+					</p>
+					<span class="eq reveal">
+						&alpha;<sub>i</sub> =
+						<span class="frac"><span><span class="rm">exp</span>(q &middot; k<sub>i</sub> / &radic;d)</span><span>&Sigma;<sub>j</sub> <span class="rm">exp</span>(q &middot; k<sub>j</sub> / &radic;d)</span></span>
+						= <span class="rm">softmax</span><span class="big">(</span>qk<sup>T</sup>/&radic;d<span class="big">)</span><sub>i</sub>
+					</span>
+					<p class="reveal">
+						and the estimate is <span class="math"><span class="rm">f&#770;</span>(x) = &Sigma;<sub>i</sub> &alpha;<sub>i</sub>&thinsp;v<sub>i</sub></span>
+						with <span class="math">v<sub>i</sub> = W<sub>V</sub>&thinsp;x<sub>i</sub></span> in place of
+						<span class="math">y<sub>i</sub></span>. Written for all positions at once this is
+						<span class="math"><span class="rm">softmax</span>(QK<sup>T</sup>/&radic;d)&thinsp;V</span>,
+						the attention of Vaswani et al. (2017). In a language model the
+						<span class="math">x<sub>i</sub></span> are the earlier tokens' residual-stream vectors and
+						<span class="math">x</span> is the current one; the causal mask just restricts the sum to
+						<span class="math">i &le; </span> current position.
+					</p>
+					<p class="cite reveal">
+						Vaswani, Shazeer, Parmar, Uszkoreit, Jones, Gomez, Kaiser, Polosukhin (2017). <a href="https://arxiv.org/abs/1706.03762" target="_blank" rel="noopener">Attention Is All You Need</a>. NeurIPS.
+					</p>
+				</div>
+			</section>
+
+			<!-- ============================ Step 4 ============================ -->
+			<section class="step" id="qk-ov">
+				<div class="wrap">
+					<p class="num reveal">Step 4 of 6</p>
+					<h2 class="reveal">The kernel is QK. The values are OV.</h2>
+					<p class="reveal">
+						Look at what each weight matrix touches. The weights <span class="math">&alpha;<sub>i</sub></span>
+						depend on <span class="math">W<sub>Q</sub></span> and <span class="math">W<sub>K</sub></span>
+						only through the product <span class="math">W<sub>Q</sub><sup>T</sup> W<sub>K</sub></span>:
+						one bilinear form that scores every (current token, earlier token) pair. That is the
+						<strong>QK circuit</strong>. It answers <em>where to look</em>.
+					</p>
+					<p class="reveal">
+						What actually gets added to the residual stream is
+						<span class="math">W<sub>O</sub> &Sigma;<sub>i</sub> &alpha;<sub>i</sub> W<sub>V</sub>&thinsp;x<sub>i</sub> = &Sigma;<sub>i</sub> &alpha;<sub>i</sub>&thinsp;(W<sub>O</sub>W<sub>V</sub>)&thinsp;x<sub>i</sub></span>.
+						The matrix <span class="math">W<sub>O</sub>W<sub>V</sub></span> is the <strong>OV circuit</strong>.
+						It answers <em>what to move</em>, and it never sees the weights. In the kernel picture: QK is
+						the kernel, OV is the <span class="math">y<sub>i</sub></span>.
+					</p>
+					<span class="eq reveal">
+						<span class="rm">head</span>(x) = &Sigma;<sub>i</sub>
+						<span class="rm">softmax</span><span class="big">(</span>x<sup>T</sup> W<sub>Q</sub><sup>T</sup>W<sub>K</sub>&thinsp;x<sub>i</sub> / &radic;d<span class="big">)</span>
+						&thinsp;&middot;&thinsp; W<sub>O</sub>W<sub>V</sub>&thinsp;x<sub>i</sub>
+					</span>
+					<p class="reveal">
+						Two independent linear maps per head, and neither one alone tells you what the head does.
+						The framework paper draws this split and names it; everything on the poster's left-hand side
+						is the QK half, everything in the attribution graph is the OV half plus the MLPs.
+					</p>
+					<p class="cite reveal">
+						Elhage, Nanda, Olsson et al. (2021). <a href="https://transformer-circuits.pub/2021/framework/index.html" target="_blank" rel="noopener">A Mathematical Framework for Transformer Circuits</a>. Anthropic.
+					</p>
+				</div>
+			</section>
+
+			<!-- ============================ Step 5 ============================ -->
+			<section class="step" id="induction">
+				<div class="wrap">
+					<p class="num reveal">Step 5 of 6</p>
+					<h2 class="reveal">An induction head is a kernel with one sharp peak</h2>
+					<p class="reveal">
+						Suppose the sequence contains <code>[A][B]</code> somewhere and the current token is
+						<code>[A]</code> again. An induction head's QK circuit puts almost all of
+						<span class="math">&alpha;</span> on one position: the token right after the previous
+						<code>[A]</code>. (It can do this because an earlier "previous-token" head has already written
+						"I follow an A" into <code>[B]</code>'s residual stream.) Its OV circuit then copies that token's
+						identity forward, so the prediction is <code>[B]</code>.
+					</p>
+					<p class="reveal">
+						In the kernel language: a kernel that is nearly zero everywhere except at "the position after
+						the last time I saw this token", and values that are just the token identity. Olsson et al.
+						argue this pair of heads is the main mechanism behind in-context learning.
+					</p>
+					<div class="callout reveal">
+						<p>
+							A local variable that appears three times inside a function is this pattern exactly. The
+							<code>return</code> position asks "what usually follows the thing I am looking at?", and
+							the names that appeared earlier are the candidates. The poster's attention heatmap is a
+							picture of that kernel, per head, from the <code>return</code> position.
+						</p>
+					</div>
+					<p class="cite reveal">
+						Olsson, Elhage, Nanda et al. (2022). <a href="https://transformer-circuits.pub/2022/in-context-learning-and-induction-heads/index.html" target="_blank" rel="noopener">In-context Learning and Induction Heads</a>. Anthropic.
+					</p>
+				</div>
+			</section>
+
+			<!-- ============================ Step 6 ============================ -->
+			<section class="step" id="back-to-poster">
+				<div class="wrap">
+					<p class="num reveal">Step 6 of 6</p>
+					<h2 class="reveal">Back to the poster: where, what, does it matter</h2>
+					<p class="reveal">
+						The kernel view is why the poster splits the question in three. The attention pattern is the
+						kernel: it says <strong>where</strong> the <code>return</code> position looks, and nothing more.
+						What is moved along those weights, through OV and through the MLPs, is what the
+						<strong>attribution graph</strong> shows, with every effect named against a logit. And whether a
+						pathway matters is a separate question again, answered by <strong>scaling it down</strong> and
+						watching the prediction change.
+					</p>
+					<p class="reveal">
+						This is also why an attention heatmap on its own is not an explanation: high weight on a token
+						says the kernel is peaked there, not that what was moved decided the answer. Jain and Wallace
+						(2019) make the point at length. On the poster the heatmap never stands alone; it sits beside
+						the graph and the dose-response curve.
+					</p>
+					<div class="callout reveal">
+						<p>
+							Next: <a href="../../practice/">the experiment</a>, the
+							<a href="../../practice/p4/">P4 graph on Neuronpedia</a>, or back to
+							<a href="../">the timeline</a>.
+						</p>
+					</div>
+					<p class="cite reveal">
+						Jain, S., Wallace, B. C. (2019). <a href="https://aclanthology.org/N19-1357/" target="_blank" rel="noopener">Attention is not Explanation</a>. NAACL.
+					</p>
+				</div>
+			</section>
+
+		</main>
+
+		<!-- ============================ Footer ============================ -->
+		<footer>
+			<div class="wrap">
+				<p>Chia-chun Liang (Anna) &middot; <a href="mailto:d14948004@ntu.edu.tw">d14948004@ntu.edu.tw</a></p>
+				<p>&copy; 2026 Chia-chun Liang</p>
+			</div>
+		</footer>
+
+		<script>
+			// Reveal each step's content when it scrolls into view. No dependencies.
+			(function () {
+				var steps = document.querySelectorAll('.step');
+				if (!('IntersectionObserver' in window)) {
+					steps.forEach(function (s) { s.classList.add('is-visible'); });
+					return;
+				}
+				var io = new IntersectionObserver(function (entries) {
+					entries.forEach(function (e) {
+						if (e.isIntersecting) { e.target.classList.add('is-visible'); io.unobserve(e.target); }
+					});
+				}, { threshold: 0.3 });
+				steps.forEach(function (s) { io.observe(s); });
+			})();
+		</script>
+	</body>
+</html>

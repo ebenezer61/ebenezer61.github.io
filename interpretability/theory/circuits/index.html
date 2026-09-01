@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>Why "Circuit"? &middot; Chia-chun Liang (Anna)</title>
+		<meta name="description" content="Where the word circuit comes from in mechanistic interpretability: neuroscience and electronics, the three claims of Zoom In (2020), the QK/OV circuits of 2021, and the attribution graphs of 2025." />
+		<meta name="author" content="Chia-chun Liang" />
+		<link rel="stylesheet" href="../../../style.css" />
+		<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90' font-family='Georgia,serif'>A</text></svg>" />
+
+		<style>
+			/* Page-local styles, shared with the other interpretability pages by copy. */
+
+			.breadcrumb { font-size: .88rem; color: var(--text-muted); margin: 0 0 1.5rem; }
+			header.hero .subtitle { margin: .6rem 0 0; color: var(--text-muted); font-size: 1.05rem; }
+			header.hero .venue { margin: .9rem 0 0; font-size: .88rem; color: var(--text-muted); }
+
+			code {
+				font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+				font-size: .88em;
+				background: var(--accent-soft);
+				padding: .1em .35em;
+				border-radius: 4px;
+			}
+
+			.callout {
+				background: var(--surface);
+				border: 1px solid var(--border);
+				border-left: 3px solid var(--accent);
+				border-radius: var(--radius);
+				padding: 1rem 1.15rem;
+				margin: 0 0 1.1rem;
+				font-size: .95rem;
+			}
+			.callout p:last-child { margin-bottom: 0; }
+
+			/* the two lists of claims, side by side */
+			.claims { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); margin: 0 0 1.1rem; }
+			.claims article {
+				background: var(--surface);
+				border: 1px solid var(--border);
+				border-radius: var(--radius);
+				padding: 1rem 1.15rem;
+			}
+			.claims h3 { margin: 0 0 .2rem; font-size: 1.02rem; }
+			.claims .who { font-size: .82rem; color: var(--text-muted); margin: 0 0 .7rem; }
+			.claims ol { margin: 0; padding-left: 1.3rem; }
+			.claims li { margin: 0 0 .6rem; font-size: .94rem; }
+			.claims li:last-child { margin-bottom: 0; }
+			.claims li strong { font-family: var(--sans); font-weight: 600; }
+			.claims .note { font-size: .82rem; color: var(--text-muted); margin: .7rem 0 0; }
+
+			dl.senses dt { font-weight: 600; font-family: var(--serif); font-size: 1.05rem; margin-top: 1rem; }
+			dl.senses dd { margin: .3rem 0 0; }
+		</style>
+	</head>
+	<body>
+
+		<!-- ============================ Header ============================ -->
+		<header class="hero">
+			<div class="wrap">
+				<p class="breadcrumb"><a href="../../">How LLM reads your Python?</a> &middot; <a href="../">Theory</a></p>
+				<h1>Why "circuit"?</h1>
+				<p class="subtitle">
+					A borrowed word, two senses, and which one the poster's main figure is
+				</p>
+				<p class="venue">Theory pages for the PyCon TW 2026 poster</p>
+
+				<ul class="links">
+					<li><a href="../">Back to the timeline</a></li>
+					<li><a href="../attention/">Attention as a kernel estimator</a></li>
+					<li><a href="../../practice/">Practice: the experiment</a></li>
+				</ul>
+			</div>
+		</header>
+
+		<main>
+
+			<!-- ============================ The word ============================ -->
+			<section id="word">
+				<div class="wrap">
+					<h2>The word</h2>
+					<p class="lead">
+						"Circuit" reaches machine learning from two directions at once. Neuroscience has spoken of
+						<em>neural circuits</em> since the early twentieth century: a set of neurons wired together
+						whose function lives in the wiring, so that tracing the connections is how you find out what
+						the assembly does. Electronics uses the same word for the same reason: a circuit is a diagram
+						in which the components are simple and the behaviour is in how they are connected, and you
+						can read that behaviour off the diagram. Both uses carry the same promise. If the function is
+						in the connections, and the connections are written down, then the function can be read out.
+					</p>
+					<p>
+						That promise is the one the interpretability literature borrowed. A neural network's weights
+						are written down. The bet is that meaningful units exist inside it, that they are connected by
+						those weights, and that the connections can be read the way a schematic can.
+					</p>
+				</div>
+			</section>
+
+			<!-- ============================ Zoom In ============================ -->
+			<section id="zoom-in">
+				<div class="wrap">
+					<h2>2020: Zoom In</h2>
+					<p>
+						The essay that fixed the word in its current sense is <em>Zoom In: An Introduction to
+						Circuits</em>, which opens the Distill <a href="https://distill.pub/2020/circuits/" target="_blank" rel="noopener">Circuits thread</a>.
+						Its framing is the microscope: several turning points in science were moments when a new
+						instrument let people see one level further down, and a new field grew around what they saw.
+						The claim is that the trained weights of a vision model can be studied the same way, neuron by
+						neuron and connection by connection, and that this is a natural science rather than a
+						mathematics.
+					</p>
+					<p>
+						The authors make their bet explicit by putting it next to an older one. In 1839 Theodor Schwann
+						stated three claims about cells; two of them survive as cell theory and the third turned out to
+						be wrong. They then offer three claims of their own in the same spirit, "articulating a strong
+						version of something one may believe to be true, even if it might be false".
+					</p>
+
+					<div class="claims">
+						<article>
+							<h3>Schwann's Claims about Cells</h3>
+							<p class="who">Theodor Schwann, 1839, as summarised in <em>Zoom In</em></p>
+							<ol>
+								<li><strong>Claim 1.</strong> The cell is the unit of structure, physiology, and organization in living things.</li>
+								<li><strong>Claim 2.</strong> The cell retains a dual existence as a distinct entity and a building block in the construction of organisms.</li>
+								<li><strong>Claim 3.</strong> Cells form by free-cell formation, similar to the formation of crystals.</li>
+							</ol>
+							<p class="note">The first two persist in modern cell theory. The third, as the essay puts it, "turned out to be horribly wrong".</p>
+						</article>
+						<article>
+							<h3>Three Speculative Claims about Neural Networks</h3>
+							<p class="who">Olah, Cammarata, Schubert, Goh, Petrov, Carter, 2020</p>
+							<ol>
+								<li><strong>Claim 1: Features.</strong> Features are the fundamental unit of neural networks. They correspond to directions. These features can be rigorously studied and understood.</li>
+								<li><strong>Claim 2: Circuits.</strong> Features are connected by weights, forming circuits. These circuits can also be rigorously studied and understood.</li>
+								<li><strong>Claim 3: Universality.</strong> Analogous features and circuits form across models and tasks.</li>
+							</ol>
+							<p class="note">Stated as both empirical claims about networks and normative claims about how it is useful to understand them.</p>
+						</article>
+					</div>
+
+					<p class="entry-meta">
+						Both lists are quoted from Olah, C., Cammarata, N., Schubert, L., Goh, G., Petrov, M., Carter, S. (2020).
+						<a href="https://distill.pub/2020/circuits/zoom-in/" target="_blank" rel="noopener">Zoom In: An Introduction to Circuits</a>. <em>Distill</em>.
+						<a href="https://doi.org/10.23915/distill.00024.001" target="_blank" rel="noopener">doi:10.23915/distill.00024.001</a>. Text licensed CC-BY 4.0.
+					</p>
+
+					<p>
+						The second claim is the definition this page is about. In <em>Zoom In</em> a circuit is "a
+						computational subgraph of a neural network": a set of features and the weighted edges between
+						them, usually small, studied by looking at the weights directly. The examples are curve
+						detectors, a dog-head detector assembled from oriented parts, and a car detector that shares its
+						neurons with other things. What the poster does five years later on a language model is the
+						same move with different instruments.
+					</p>
+				</div>
+			</section>
+
+			<!-- ============================ Narrow sense ============================ -->
+			<section id="narrow">
+				<div class="wrap">
+					<h2>2021: the narrow sense</h2>
+					<p>
+						<em>A Mathematical Framework for Transformer Circuits</em> carried the word to transformers and
+						gave it a precise, narrow meaning. Inside one attention head there are two linear paths from
+						the input to the output: the product <code>W_Q^T W_K</code>, which scores pairs of positions and
+						so decides <em>where</em> the head looks, and the product <code>W_O W_V</code>, which decides
+						<em>what</em> is copied from the attended position into the residual stream. The paper calls
+						them the <strong>QK circuit</strong> and the <strong>OV circuit</strong>.
+					</p>
+					<p>
+						In this sense a circuit is a fixed linear map that exists in the weights before any prompt is
+						seen. You can compute it once, inspect its eigenvalues, and say things like "this OV circuit
+						copies token identity" for the whole model. The <a href="../attention/">kernel view</a> of
+						attention is the same split from a different angle: QK is the kernel, OV is what gets averaged.
+					</p>
+				</div>
+			</section>
+
+			<!-- ============================ Broad sense ============================ -->
+			<section id="broad">
+				<div class="wrap">
+					<h2>2022 to 2025: the broad sense</h2>
+					<p>
+						The word soon widened again to mean a subgraph of the whole model that implements one
+						behaviour. Three landmarks:
+					</p>
+					<dl class="senses">
+						<dt>The IOI circuit (Wang et al., 2022)</dt>
+						<dd>
+							Twenty-six heads in GPT-2 small, in seven classes, that together answer "When Mary and John
+							went to the store, John gave a drink to" with <code>Mary</code>. Found by patching activations
+							and checking which heads the behaviour depends on.
+							<a href="https://arxiv.org/abs/2211.00593" target="_blank" rel="noopener">Interpretability in the Wild</a>.
+						</dd>
+						<dt>The docstring circuit (Heimersheim and Janiak, 2023)</dt>
+						<dd>
+							A small circuit in a four-layer model that completes a Python docstring with the next argument
+							name. An early example of a circuit for code, and one that already shows the induction-style
+							"find the previous occurrence, copy what follows" pattern.
+							<a href="https://www.alignmentforum.org/posts/u6KXXmKFbXfWzoAXn/a-circuit-for-python-docstrings-in-a-4-layer-attention-only" target="_blank" rel="noopener">A circuit for Python docstrings</a>.
+						</dd>
+						<dt>Attribution graphs (Ameisen, Lindsey et al., 2025)</dt>
+						<dd>
+							Replace every MLP with a transcoder, freeze attention and normalisation, and for one prompt
+							the model becomes linear in the features; the graph of feature-to-feature and
+							feature-to-logit effects is the circuit for that prompt. This is the sense in which the
+							poster's main figure is a circuit.
+							<a href="https://transformer-circuits.pub/2025/attribution-graphs/methods.html" target="_blank" rel="noopener">Circuit Tracing</a>.
+						</dd>
+					</dl>
+				</div>
+			</section>
+
+			<!-- ============================ Caveats ============================ -->
+			<section id="caveats">
+				<div class="wrap">
+					<h2>Two things the word hides</h2>
+					<div class="callout">
+						<p>
+							<strong>A circuit is an approximation.</strong> In every sense above it is found by pruning:
+							keep the heads whose removal hurts, keep the nodes and edges above a threshold, drop the rest.
+							The circuit is what survived the threshold, not a fact about the weights, and a different
+							threshold gives a different circuit. The poster's graphs use node threshold 0.7 and say so.
+						</p>
+						<p>
+							<strong>An attribution graph is specific to one prompt.</strong> The narrow-sense QK/OV
+							circuit exists in the weights and is the same for every input. The broad-sense graph is
+							computed for one prompt's activations. Change one line of the function and you get a
+							different graph, which is why the poster shows four prompts and compares them rather than
+							presenting one.
+						</p>
+					</div>
+					<p>
+						The poster's main figure is a circuit in the broad sense: the attribution graph of one prompt
+						(P4, <code>two-valid-locals</code>), pruned, with the pathways for <code>result</code> and
+						<code>ans</code> grouped into supernodes. The first cell of the poster's timeline, the 2021
+						framework, is the narrow sense: one head, two linear maps. Both are "circuit"; the poster
+						uses both, and this page is here so that the two are not confused.
+					</p>
+					<div class="callout">
+						<p>
+							Next: <a href="../">the timeline</a>, <a href="../attention/">attention as a kernel</a>, or
+							<a href="../../practice/p4/">the P4 graph on Neuronpedia</a>.
+						</p>
+					</div>
+				</div>
+			</section>
+
+		</main>
+
+		<!-- ============================ Footer ============================ -->
+		<footer>
+			<div class="wrap">
+				<p>Chia-chun Liang (Anna) &middot; <a href="mailto:d14948004@ntu.edu.tw">d14948004@ntu.edu.tw</a></p>
+				<p>&copy; 2026 Chia-chun Liang</p>
+			</div>
+		</footer>
+
+	</body>
+</html>

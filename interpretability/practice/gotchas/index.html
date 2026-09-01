@@ -6,7 +6,7 @@
 		<title>The Expression Is Not Enough &middot; Chia-chun Liang (Anna)</title>
 		<meta name="description" content="Two executed-ground-truth probes of gemma-2-2b: it is worse on a generator expression than on its own PEP 289 desugaring, answers float comparisons by literal identity, assumes sets keep insertion order, and gives one locals() answer across Python 3.11/3.12/3.13. 1 of 13 pairs pass." />
 		<meta name="author" content="Chia-chun Liang" />
-		<link rel="stylesheet" href="../../style.css" />
+		<link rel="stylesheet" href="../../../style.css" />
 		<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90' font-family='Georgia,serif'>A</text></svg>" />
 
 		<style>
@@ -123,8 +123,6 @@
 					<li><a href="../traps/">The ten binding traps</a></li>
 					<li><a href="probe_late_binding_gemma-2-2b.txt">Raw output: late binding</a></li>
 					<li><a href="probe_gotchas_gemma-2-2b.txt">Raw output: four chapters</a></li>
-					<!-- <li><a href="../paper.pdf">Paper (PDF)</a></li> -->
-					<!-- <li><a href="../poster.pdf">PyCon TW 2026 poster (PDF)</a></li> -->
 				</ul>
 			</div>
 		</header>
@@ -172,7 +170,7 @@
 						<li style="margin:0 0 .7rem;">
 							<strong>Coverage, because the model may not be answering.</strong> On bare
 							<code>&gt;&gt;&gt; expr</code> prompts the model's top prediction was
-							<code>&gt;&gt;&gt;</code> itself, at 37–45%. It declined to answer and moved to
+							<code>&gt;&gt;&gt;</code> itself, at 37-45%. It declined to answer and moved to
 							the next prompt, leaving both candidates in the noise. The summary now prints
 							P(correct)&nbsp;+&nbsp;P(wrong) for every case, so a verdict resting on scraps is
 							visible as such.
@@ -808,9 +806,6 @@ f()"
 
 					<p>
 						One model, behavioural probes only, single-token cuts; no cross-model claims.
-						<!-- The full harness findings and numbers are written up in the
-						<a href="../paper.pdf">companion paper (PDF)</a>; the
-						<a href="../poster.pdf">PyCon TW 2026 poster (PDF)</a> carries the whole project. -->
 					</p>
 
 					<p style="margin-bottom:1.4rem;">

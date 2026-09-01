@@ -4,7 +4,7 @@
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<title>Chia-chun Liang (Anna)</title>
-		<meta name="description" content="Chia-chun Liang (Anna) — PhD student in the Data Science Degree Program at National Taiwan University, working on large language models and uncertainty estimation." />
+		<meta name="description" content="Chia-chun Liang (Anna), PhD student in the Data Science Degree Program at National Taiwan University, working on large language models and uncertainty estimation." />
 		<meta name="author" content="Chia-chun Liang" />
 		<link rel="stylesheet" href="style.css" />
 		<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90' font-family='Georgia,serif'>A</text></svg>" />
@@ -39,8 +39,8 @@
 					<h2>About</h2>
 					<p class="lead">
 						I am a PhD student in the Data Science Degree Program at National Taiwan University,
-						where I go by <strong>Anna</strong>. My research centers on large language models —
-						in particular, on understanding when they should be trusted and how reliably they
+						where I go by <strong>Anna</strong>. My research centers on large language models,
+						in particular on understanding when they should be trusted and how reliably they
 						can express what they do not know.
 					</p>
 					<p>
@@ -48,7 +48,7 @@
 						networks cheaper to run through tensor decomposition, and on building speech
 						recognition systems for languages with little training data. Those projects left me
 						with a lasting interest in the gap between a model's reported confidence and its
-						actual competence — the question I now work on directly.
+						actual competence, the question I now work on directly.
 					</p>
 					<!--
 					  TODO (Anna): 這兩段是我根據你的發表紀錄寫的草稿，請照自己的話改。
@@ -76,7 +76,7 @@
 						<article class="topic">
 							<h3>Uncertainty Estimation</h3>
 							<p>
-								Calibration, confidence, and selective prediction — measuring when a model
+								Calibration, confidence, and selective prediction: measuring when a model
 								knows that it does not know, and turning that signal into systems that can
 								abstain or defer rather than fail silently.
 							</p>
@@ -98,19 +98,21 @@
 
 						<li>
 							<span class="entry-title">
-								<a href="interpretability/">Which Variable Does the Model Return?</a>
+								<a href="interpretability/">How LLM reads your Python?</a>
 							</span>
 							<p class="entry-meta">
-								work in progress
+								PyCon TW 2026 poster. From the Transformer Circuits perspective to hands-on tracing of an open-source model.
 							</p>
 							<p class="entry-meta">
 								An attribution-graph study of how gemma-2-2b completes a Python
 								function. Cut off after return, the model reliably predicts
-								the right local variable &mdash; and control prompts show how: each
+								the right local variable, and control prompts show how: each
 								variable name has its own pathway to its own logit, binding sets how
 								much drive that name accumulates, and scaling one pathway down flips
-								the answer. Includes the full interactive graph and a companion page
-								on where the rules break.
+								the answer. <a href="interpretability/theory/">Theory</a> (the 2020 to 2025
+								timeline, attention as a kernel, the word "circuit") and
+								<a href="interpretability/practice/">practice</a> (the write-up, the interactive
+								graph, and where the rules break).
 							</p>
 							<div class="tags">
 								<span class="tag">Mechanistic Interpretability</span>
@@ -147,7 +149,7 @@
 							<span class="entry-title">Automatic Selection of Tensor Decomposition for Compressing Convolutional Neural Networks: A Case Study on VGG-type Networks</span>
 							<p class="entry-meta">
 								<strong>C.-C. Liang</strong>, C.-R. Lee<br />
-								<em>IEEE International Parallel and Distributed Processing Symposium Workshops (IPDPSW)</em>, 2021, pp. 770–778
+								<em>IEEE International Parallel and Distributed Processing Symposium Workshops (IPDPSW)</em>, 2021, pp. 770-778
 							</p>
 							<div class="tags">
 								<span class="tag">Model Compression</span>
@@ -186,7 +188,7 @@
 								The videos come out of a generation pipeline originally built for the inaugural
 								教學怪物 (Teaching Monster) competition, where our team,
 								<strong>PhD.ICU</strong>, placed fifth. The channel is where that pipeline has kept
-								running since — as much an experiment in what current models can carry with
+								running since, as much an experiment in what current models can carry with
 								little supervision as it is a set of lecture notes.
 							</p>
 							<div class="tags">
