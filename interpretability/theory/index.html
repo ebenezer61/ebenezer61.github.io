@@ -3,7 +3,7 @@
 	<head>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
-		<title>One Axis, Two Tracks &middot; Anna Liang</title>
+		<title>One Axis, Two Phases &middot; Anna Liang</title>
 		<meta name="description" content="How to think about a transformer and how to look inside one, 2020 to 2025: circuits, induction heads, superposition, sparse autoencoders, transcoders, attribution graphs." />
 		<meta name="author" content="Anna Liang" />
 		<link rel="stylesheet" href="../../style.css" />
@@ -38,19 +38,32 @@
 			}
 			.callout p:last-child { margin-bottom: 0; }
 
-			/* --- the timeline grid: year gutter, "how to think" track, "how to look" track --- */
-			.timeline { display: grid; grid-template-columns: 4.5rem 1fr 1fr; gap: .75rem 1rem; align-items: start; }
-			.tl-head { font-size: .78rem; letter-spacing: .12em; text-transform: uppercase; color: var(--text-muted); font-weight: 600; padding-bottom: .25rem; border-bottom: 1px solid var(--border); }
+			/* --- the timeline: one column of cards, two phases --- */
+			.timeline { display: grid; grid-template-columns: 4.5rem 1fr; gap: .75rem 1rem; align-items: start; }
+			.tl-phase {
+				grid-column: 1 / 3;
+				margin-top: 1rem;
+				padding: .5rem .9rem;
+				border-radius: var(--radius);
+				background: var(--accent-soft);
+				font-size: .8rem;
+				letter-spacing: .12em;
+				text-transform: uppercase;
+				color: var(--accent);
+				font-weight: 600;
+			}
+			.tl-phase span { letter-spacing: 0; text-transform: none; font-weight: 400; color: var(--text-muted); margin-left: .6rem; }
+			.tl-phase.look { background: var(--surface); border: 1px solid var(--border); color: var(--text-muted); }
 			.tl-year { font-family: var(--serif); font-size: 1.3rem; color: var(--accent); line-height: 1.2; padding-top: .55rem; }
 			.tl-card {
+				grid-column: 2;
 				background: var(--surface);
 				border: 1px solid var(--border);
 				border-top: 3px solid var(--accent);
 				border-radius: var(--radius);
 				padding: .85rem 1rem;
 			}
-			.tl-card.think { grid-column: 2; }
-			.tl-card.look { grid-column: 3; border-top-color: var(--text-muted); }
+			.tl-card.look { border-top-color: var(--text-muted); }
 			.tl-card h3 { margin: 0 0 .2rem; font-size: 1rem; }
 			.tl-card h3 a { color: var(--text); border-bottom: 0; }
 			.tl-card h3 a:hover { color: var(--accent); }
@@ -58,41 +71,33 @@
 			.tl-card p { font-size: .92rem; margin: 0; }
 			.tl-card p + p { margin-top: .4rem; }
 			.tl-def {
+				grid-column: 2;
 				background: var(--accent-soft);
 				border-left: 3px solid var(--accent);
 				border-radius: var(--radius);
 				padding: .7rem .9rem;
 				font-size: .9rem;
 			}
-			.tl-def.think { grid-column: 2; }
-			.tl-def.look { grid-column: 3; }
 			.tl-def strong { display: block; margin-bottom: .15rem; }
 			.tl-bridge {
-				grid-column: 2 / 4;
+				grid-column: 1 / 3;
 				justify-self: center;
-				max-width: 34rem;
+				max-width: 36rem;
 				text-align: center;
-				font-size: .86rem;
-				color: var(--text-muted);
-				padding: .35rem 1rem;
-				border-left: 2px dashed var(--accent);
-				border-right: 2px dashed var(--accent);
+				font-size: .9rem;
+				color: var(--text);
+				padding: .6rem 1.2rem;
+				margin: .5rem 0;
+				border: 2px dashed var(--accent);
+				border-radius: var(--radius);
 			}
-			.tl-empty { }
+			.tl-bridge strong { color: var(--accent); }
+			.tl-empty { display: none; }
 
 			@media (max-width: 640px) {
 				.timeline { grid-template-columns: 1fr; }
-				.tl-head, .tl-empty { display: none; }
-				.tl-year, .tl-card, .tl-def, .tl-bridge, .tl-card.think, .tl-card.look, .tl-def.think, .tl-def.look { grid-column: 1; }
-				.tl-card::before {
-					content: attr(data-track);
-					display: block;
-					font-size: .7rem;
-					letter-spacing: .1em;
-					text-transform: uppercase;
-					color: var(--text-muted);
-					margin-bottom: .3rem;
-				}
+				.tl-year, .tl-card, .tl-def, .tl-bridge, .tl-phase { grid-column: 1; }
+				.tl-year { padding-top: 0; margin-top: .4rem; }
 			}
 		</style>
 	</head>
@@ -102,7 +107,7 @@
 		<header class="hero">
 			<div class="wrap">
 				<p class="breadcrumb"><a href="../../">&larr; Anna Liang</a> &middot; <a href="../">How LLM reads your Python?</a></p>
-				<h1>One axis, two tracks</h1>
+				<h1>One axis, two phases</h1>
 				<p class="subtitle">
 					How to think about a transformer, and how to look inside one, 2020 to 2025
 				</p>
@@ -123,11 +128,12 @@
 				<div class="wrap">
 					<h2>How to read this page</h2>
 					<p class="lead">
-						The poster's background is one line of work, but it helps to read it as two tracks on the same
-						axis. The first track is about <strong>how to think</strong>: what a transformer computes, in
-						terms you can write down. The second is about <strong>how to look</strong>: what tool lets you
-						see that computation in a real model. The first track makes claims; the second turns them into
-						pictures you can check. The poster uses one result from each cell.
+						The poster's background is one line of work in two phases. From 2020 to 2022 the field worked out
+						<strong>how to think</strong> about a transformer: what it computes, in terms you can write down.
+						From 2023 the same people built the instruments for <strong>how to look</strong>: tools that show
+						that computation in a real model. The first phase makes claims; the second turns them into
+						pictures you can check. The hinge between them is one observation, superposition, and it is marked
+						below. The poster uses one result from each cell.
 					</p>
 					<p>
 						Two definitions recur on the poster and are boxed below where they first appear. A
@@ -148,61 +154,54 @@
 				<div class="wrap">
 					<h2>The timeline</h2>
 					<div class="timeline">
-						<div class="tl-head"></div>
-						<div class="tl-head">How to think</div>
-						<div class="tl-head">How to look</div>
+
+						<div class="tl-phase">How to think <span>2020 to 2022: the conceptual frame</span></div>
 
 						<!-- 2020 -->
 						<div class="tl-year">2020</div>
-						<article class="tl-card think" data-track="how to think">
+						<article class="tl-card">
 							<h3><a href="https://distill.pub/2020/circuits/zoom-in/" target="_blank" rel="noopener">Zoom In: An Introduction to Circuits</a></h3>
 							<p class="tl-meta">Olah, Cammarata, Schubert, Goh, Petrov, Carter &middot; Distill &middot; opens the <a href="https://distill.pub/2020/circuits/" target="_blank" rel="noopener">Circuits thread</a></p>
 							<p>Three speculative claims: features are the unit, features connect into circuits, analogous circuits recur across models. The microscope metaphor, and the word "circuit" as this field uses it. <a href="circuits/">More on the word.</a></p>
 						</article>
-						<div class="tl-empty"></div>
 
 						<!-- 2021 -->
 						<div class="tl-year">2021</div>
-						<article class="tl-card think" data-track="how to think">
+						<article class="tl-card">
 							<h3><a href="https://transformer-circuits.pub/2021/framework/index.html" target="_blank" rel="noopener">A Mathematical Framework for Transformer Circuits</a></h3>
 							<p class="tl-meta">Elhage, Nanda, Olsson et al. &middot; Anthropic</p>
 							<p>An attention head is two linear maps. The <strong>QK circuit</strong> decides where to look; the <strong>OV circuit</strong> decides what to move. Heads read and write a shared residual stream. This is the narrow sense of "circuit" and the poster's <em>where</em> / <em>what</em> split. <a href="attention/">The kernel view of the same thing.</a></p>
 						</article>
-						<div class="tl-empty"></div>
 
 						<!-- 2022 -->
 						<div class="tl-year">2022</div>
-						<article class="tl-card think" data-track="how to think">
+						<article class="tl-card">
 							<h3><a href="https://transformer-circuits.pub/2022/in-context-learning-and-induction-heads/index.html" target="_blank" rel="noopener">In-context Learning and Induction Heads</a></h3>
 							<p class="tl-meta">Olsson, Elhage, Nanda et al. &middot; Anthropic</p>
 							<p>A head whose QK circuit finds "the position after the previous occurrence of this token" and whose OV circuit copies what is there: <code>[A][B] &hellip; [A] &rarr; [B]</code>. Argued to be the main mechanism of in-context learning. A variable name repeated inside a function is exactly this pattern.</p>
 						</article>
-						<div class="tl-empty"></div>
 
-						<div class="tl-empty"></div>
-						<article class="tl-card think" data-track="how to think">
+						<article class="tl-card">
 							<h3><a href="https://transformer-circuits.pub/2022/toy_model/index.html" target="_blank" rel="noopener">Toy Models of Superposition</a></h3>
 							<p class="tl-meta">Elhage, Hume, Olsson et al. &middot; Anthropic</p>
 							<p>A layer can represent more concepts than it has dimensions by packing them into non-orthogonal directions. So single neurons are the wrong unit to read, and you need a learned dictionary to recover the directions.</p>
 						</article>
-						<div class="tl-empty"></div>
 
 						<div class="tl-bridge">
-							more concepts than dimensions &rarr; you need a dictionary to see them &rarr; the sparse autoencoder
+							<strong>The hinge.</strong> A layer holds more concepts than it has dimensions, so single neurons cannot be read. To see the concepts you need a learned dictionary. That dictionary is the sparse autoencoder, and everything below is built on it.
 						</div>
+
+						<div class="tl-phase look">How to look <span>2023 to 2025: the instruments</span></div>
 
 						<!-- 2023 -->
 						<div class="tl-year">2023</div>
-						<div class="tl-empty"></div>
-						<article class="tl-card look" data-track="how to look">
+						<article class="tl-card look">
 							<h3><a href="https://transformer-circuits.pub/2023/monosemantic-features/index.html" target="_blank" rel="noopener">Towards Monosemanticity</a></h3>
 							<p class="tl-meta">Bricken, Templeton, Batson et al. &middot; Anthropic</p>
 							<p>Train a sparse autoencoder on one layer's activations of a one-layer model and the learned directions are, mostly, things a person can name. The first tool that shows "what is here" at scale.</p>
 						</article>
 
-						<div class="tl-empty"></div>
-						<div class="tl-empty"></div>
-						<aside class="tl-def look">
+						<aside class="tl-def">
 							<strong>SAE</strong>
 							<span class="math">x &asymp; W<sub>dec</sub> f(x)</span>, with <span class="math">f(x)</span> sparse and wider than <span class="math">x</span>.
 							Decomposes the vector at one point into readable directions: "what is here".
@@ -210,24 +209,19 @@
 
 						<!-- 2024 -->
 						<div class="tl-year">2024</div>
-						<div class="tl-empty"></div>
-						<article class="tl-card look" data-track="how to look">
+						<article class="tl-card look">
 							<h3><a href="https://transformer-circuits.pub/2024/scaling-monosemanticity/index.html" target="_blank" rel="noopener">Scaling Monosemanticity</a></h3>
 							<p class="tl-meta">Templeton, Conerly, Marcus et al. &middot; Anthropic</p>
 							<p>The same tool on a production model (Claude 3 Sonnet). Among the features: one that fires on code errors across several programming languages. The high point of what an SAE alone can show, and also its ceiling: it says what is present, not what the layer did with it.</p>
 						</article>
 
-						<div class="tl-empty"></div>
-						<div class="tl-empty"></div>
-						<article class="tl-card look" data-track="how to look">
+						<article class="tl-card look">
 							<h3><a href="https://arxiv.org/abs/2406.11944" target="_blank" rel="noopener">Transcoders Find Interpretable LLM Feature Circuits</a></h3>
 							<p class="tl-meta">Dunefsky, Chlenski, Nanda &middot; NeurIPS 2024</p>
 							<p>Instead of encoding a point, learn a sparse dictionary that maps an MLP's input to its output. Each feature is now a computation the layer performs, so features can be chained across layers into a circuit.</p>
 						</article>
 
-						<div class="tl-empty"></div>
-						<div class="tl-empty"></div>
-						<aside class="tl-def look">
+						<aside class="tl-def">
 							<strong>Transcoder</strong>
 							<span class="math">MLP(x) &asymp; W<sub>dec</sub> f(x)</span>: the encoder reads the MLP input, the decoder rebuilds the MLP output.
 							Feature <span class="math">j</span> is the rule "read <span class="math">e<sub>j</sub></span>, write <span class="math">d<sub>j</sub></span>": "what this layer computed".
@@ -235,9 +229,7 @@
 							<span class="math">a<sub>i</sub> (d<sub>i</sub> &middot; J &middot; e<sub>j</sub>)</span>, an edge of the attribution graph.
 						</aside>
 
-						<div class="tl-empty"></div>
-						<div class="tl-empty"></div>
-						<article class="tl-card look" data-track="how to look">
+						<article class="tl-card look">
 							<h3><a href="https://arxiv.org/abs/2408.05147" target="_blank" rel="noopener">Gemma Scope</a> and <a href="https://arxiv.org/abs/2407.14435" target="_blank" rel="noopener">JumpReLU SAEs</a></h3>
 							<p class="tl-meta">Lieberum, Rajamanoharan, Conmy et al. &middot; Google DeepMind</p>
 							<p>Open-weight sparse autoencoders and transcoders for every layer of the Gemma 2 models, with a better activation function (JumpReLU). This is why the poster can run on <code>gemma-2-2b</code>: the dictionaries exist and are public.</p>
@@ -245,8 +237,7 @@
 
 						<!-- 2025 -->
 						<div class="tl-year">2025</div>
-						<div class="tl-empty"></div>
-						<article class="tl-card look" data-track="how to look">
+						<article class="tl-card look">
 							<h3><a href="https://transformer-circuits.pub/2025/attribution-graphs/methods.html" target="_blank" rel="noopener">Circuit Tracing</a> and <a href="https://transformer-circuits.pub/2025/attribution-graphs/biology.html" target="_blank" rel="noopener">On the Biology of a Large Language Model</a></h3>
 							<p class="tl-meta">Ameisen, Lindsey, Pearce et al.; Lindsey, Gurnee, Ameisen et al. &middot; Anthropic &middot; <a href="https://github.com/safety-research/circuit-tracer" target="_blank" rel="noopener">circuit-tracer</a> (open source) &middot; <a href="https://www.neuronpedia.org/" target="_blank" rel="noopener">Neuronpedia</a></p>
 							<p>Replace every MLP with its transcoder, freeze attention and normalisation, and the whole model becomes linear in the features for one prompt. The graph of feature-to-feature and feature-to-logit effects is the <strong>attribution graph</strong>: the broad sense of "circuit", prompt-specific, pruned to what matters for the target logits. The tool the poster's main figure comes from.</p>
