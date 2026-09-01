@@ -117,6 +117,7 @@
 
 				<ul class="links">
 					<li><a href="../">Back to the timeline</a></li>
+					<li><a href="tensors/">Companion: attention in tensor notation</a></li>
 					<li><a href="../circuits/">Why "circuit"?</a></li>
 					<li><a href="../../practice/">Practice: the experiment</a></li>
 				</ul>
@@ -242,6 +243,8 @@
 						Two independent linear maps per head, and neither one alone tells you what the head does.
 						The framework paper draws this split and names it; everything on the poster's left-hand side
 						is the QK half, everything in the attribution graph is the OV half plus the MLPs.
+						The same split written out with explicit tensor indices, shapes and <code>einsum</code>, down to
+						virtual heads and the induction head, is on the <a href="tensors/">companion page</a>.
 					</p>
 					<p class="cite reveal">
 						Elhage, Nanda, Olsson et al. (2021). <a href="https://transformer-circuits.pub/2021/framework/index.html" target="_blank" rel="noopener">A Mathematical Framework for Transformer Circuits</a>. Anthropic.

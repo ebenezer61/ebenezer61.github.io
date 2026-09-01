@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>Attention in Tensor Notation &middot; Anna Liang</title>
+		<meta name="description" content="Shapes, Einstein summation and einsum for a five-token sentence: the embedding lookup, the QK and OV circuits, the end-to-end logit path, virtual attention heads from V-composition, and the induction head step by step." />
+		<meta name="author" content="Anna Liang" />
+		<link rel="stylesheet" href="../../../../style.css" />
+		<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90' font-family='Georgia,serif'>A</text></svg>" />
+		<!-- KaTeX for the displayed maths. The only page on this site that loads an external library besides the graph viewer. -->
+		<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" />
+		<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+		<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"
+			onload="renderMathInElement(document.body, {delimiters: [{left: '\\[', right: '\\]', display: true}, {left: '\\(', right: '\\)', display: false}], throwOnError: false});"></script>
+
+		<style>
+			/* Page-local styles, shared with the other interpretability pages by copy. */
+
+			.breadcrumb { font-size: .88rem; color: var(--text-muted); margin: 0 0 1.5rem; }
+			header.hero .subtitle { margin: .6rem 0 0; color: var(--text-muted); font-size: 1.05rem; }
+			header.hero .venue { margin: .9rem 0 0; font-size: .88rem; color: var(--text-muted); }
+
+			code {
+				font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+				font-size: .88em;
+				background: var(--accent-soft);
+				padding: .1em .35em;
+				border-radius: 4px;
+			}
+			pre {
+				background: var(--surface);
+				border: 1px solid var(--border);
+				border-radius: var(--radius);
+				padding: 1rem 1.1rem;
+				overflow-x: auto;
+				font-size: .85rem;
+				line-height: 1.55;
+				margin: 0 0 1.1rem;
+			}
+			pre code { background: none; padding: 0; font-size: 1em; }
+
+			table {
+				width: 100%;
+				border-collapse: collapse;
+				font-size: .9rem;
+				margin: 0 0 1.1rem;
+				display: block;
+				overflow-x: auto;
+			}
+			th, td { text-align: left; padding: .45rem .7rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+			th { font-weight: 600; color: var(--text-muted); font-size: .8rem; letter-spacing: .04em; text-transform: uppercase; }
+
+			.callout {
+				background: var(--surface);
+				border: 1px solid var(--border);
+				border-left: 3px solid var(--accent);
+				border-radius: var(--radius);
+				padding: 1rem 1.15rem;
+				margin: 0 0 1.1rem;
+				font-size: .95rem;
+			}
+			.callout p:last-child { margin-bottom: 0; }
+
+			.katex-display { overflow-x: auto; overflow-y: hidden; padding: .3rem 0; }
+			.katex { font-size: 1.05em; }
+
+			h3 { font-size: 1.12rem; margin: 1.6rem 0 .6rem; }
+			dl.idx dt { font-weight: 600; font-family: var(--sans); margin-top: .6rem; }
+			dl.idx dd { margin: .15rem 0 0; color: var(--text-muted); }
+		</style>
+	</head>
+	<body>
+
+		<!-- ============================ Header ============================ -->
+		<header class="hero">
+			<div class="wrap">
+				<p class="breadcrumb"><a href="../../../">How LLM reads your Python?</a> &middot; <a href="../../">Theory</a> &middot; <a href="../">Attention as a kernel estimator</a></p>
+				<h1>Attention in tensor notation</h1>
+				<p class="subtitle">
+					Shapes, Einstein summation and <code>einsum</code> for a five-token sentence: the embedding lookup,
+					the QK and OV circuits, the end-to-end logit path, virtual heads, and the induction head step by step
+				</p>
+				<p class="venue">Companion to <a href="../">attention as a kernel estimator</a>. Conventions follow <em>A Mathematical Framework for Transformer Circuits</em> (Elhage et al., 2021).</p>
+
+				<ul class="links">
+					<li><a href="../">Back: the kernel view</a></li>
+					<li><a href="../../">The timeline</a></li>
+					<li><a href="../../circuits/">Why "circuit"?</a></li>
+					<li><a href="../../../practice/">Practice: the experiment</a></li>
+				</ul>
+			</div>
+		</header>
+
+		<main>
+
+			<!-- ============================ 1. Input ============================ -->
+			<section id="input">
+				<div class="wrap">
+					<h2>1. What the input is: token ids versus one-hot columns</h2>
+					<p class="lead">
+						Take a sentence of five tokens, so the context length is \(n_{\text{context}} = 5\). Write
+						\(d_{\text{model}}\) for the width of the residual stream and \(n_{\text{vocab}}\) for the
+						vocabulary size. Two things are easy to confuse here: the <em>token ids</em> a program
+						feeds to the model, and the <em>one-hot matrix</em> the mathematics uses so that a table lookup
+						becomes a matrix product.
+					</p>
+
+					<h3>What the code holds: a \(1 \times 5\) array of integers</h3>
+					<p>
+						The tokenizer turns the five tokens into five integer indices into the vocabulary, for
+						instance <code>[42, 105, 7, 900, 13]</code>. That is an array of shape <code>(5,)</code>, or
+						<code>(1, 5)</code> with a batch axis. <code>nn.Embedding</code> uses each integer directly to
+						pick a row of its weight table. No \(n_{\text{vocab}}\)-wide matrix is ever built.
+					</p>
+
+					<h3>What the maths writes: a one-hot matrix \(T \in \mathbb{R}^{n_{\text{vocab}} \times 5}\)</h3>
+					<p>
+						Each token \(t_i\) becomes a column of length \(n_{\text{vocab}}\) with a single 1 at its
+						id. Stack the five columns side by side and you get a very tall, very sparse matrix
+						(with \(n_{\text{vocab}} = 50{,}000\), it is \(50{,}000 \times 5\)):
+					</p>
+					\[
+					T = \begin{bmatrix}
+					0 & 0 & \cdots \\
+					\vdots & \vdots & \\
+					1 & 0 & \cdots & \leftarrow \text{row } 42 \\
+					\vdots & \vdots & \\
+					0 & 1 & \cdots & \leftarrow \text{row } 105 \\
+					\vdots & \vdots &
+					\end{bmatrix} \in \mathbb{R}^{50{,}000 \times 5}
+					\]
+					<p>
+						With the position axis first (the PyTorch and Transformer Circuits habit) it is the transpose,
+						\(T^{\top} \in \mathbb{R}^{5 \times 50{,}000}\), one long row of zeros and a single one per token.
+					</p>
+
+					<h3>The embedding matrix \(W_E\) does not depend on the sentence</h3>
+					<p>
+						\(W_E\) is the model's static lookup table. Its shape is \((d_{\text{model}}, n_{\text{vocab}})\)
+						in the framework paper's column convention (PyTorch stores the transpose,
+						\((n_{\text{vocab}}, d_{\text{model}})\)). Nothing about it is \((1, d_{\text{model}})\); that
+						is only the shape of <em>one token after embedding</em>:
+					</p>
+					\[
+					x_i = W_E\, t_i \in \mathbb{R}^{d_{\text{model}}}, \qquad
+					X = W_E\, T \in \mathbb{R}^{d_{\text{model}} \times 5}.
+					\]
+					<p>
+						Multiplying \(W_E\) by a one-hot column with its 1 at row 42 returns column 42 of \(W_E\). So
+						\(W_E T\) is exactly "pull these five columns out of the table and put them side by side".
+						The program does the same thing with five integer lookups; the maths writes it as a product so
+						that the whole network becomes one chain of linear maps that can be expanded and differentiated.
+					</p>
+
+					<div class="callout">
+						<p>
+							<strong>Two conventions, one object.</strong> Column view: \(X = W_E T \in \mathbb{R}^{d_{\text{model}} \times 5}\),
+							each <em>column</em> is one token's residual vector. Row view (frameworks, TransformerLens):
+							\(X \in \mathbb{R}^{5 \times d_{\text{model}}}\), shape <code>[n_context, d_model]</code>,
+							position \(i\) is the row \(x_i \in \mathbb{R}^{d_{\text{model}}}\). The index notation below
+							makes the convention irrelevant: an index is an index whichever way the matrix is printed.
+						</p>
+					</div>
+				</div>
+			</section>
+
+			<!-- ============================ 2. Einstein notation ============================ -->
+			<section id="einsum">
+				<div class="wrap">
+					<h2>2. Einstein summation and <code>einsum</code></h2>
+					<p>
+						Name the axes once and reuse the letters everywhere. A repeated index on one side of an equation
+						is summed over and the summation sign is dropped.
+					</p>
+					<dl class="idx">
+						<dt>\(p \in \{1, \dots, 5\}\)</dt><dd>position in the sequence (context index)</dd>
+						<dt>\(v \in \{1, \dots, n_{\text{vocab}}\}\)</dt><dd>vocabulary index</dd>
+						<dt>\(d \in \{1, \dots, d_{\text{model}}\}\)</dt><dd>residual-stream dimension</dd>
+					</dl>
+					<h3>The embedding lookup</h3>
+					<p>With the input as \(T_{p,v}\) and the table as \((W_E)_{d,v}\):</p>
+					\[
+					X_{p,d} = \sum_{v} T_{p,v}\,(W_E)_{d,v}
+					\qquad\text{written as}\qquad
+					X_{p,d} = T_{p,v}\,(W_E)_{d,v}.
+					\]
+<pre><code># T: [5, n_vocab] one-hot rows, W_E: [d_model, n_vocab]
+# X: [5, d_model]
+X = torch.einsum("pv, dv -> pd", T, W_E)</code></pre>
+					<p>
+						The output has shape \((5, d_{\text{model}})\). From here on every operation in an attention-only
+						transformer is one more <code>einsum</code> with a couple of extra letters.
+					</p>
+				</div>
+			</section>
+
+			<!-- ============================ 3. QK ============================ -->
+			<section id="qk">
+				<div class="wrap">
+					<h2>3. The QK circuit: where to look</h2>
+					<p>Add the indices an attention head needs:</p>
+					<dl class="idx">
+						<dt>\(d\) and \(s\)</dt><dd>destination position (the one making the prediction) and source position (the one being read); both range over the 5 positions</dd>
+						<dt>\(i, j, o\)</dt><dd>residual-stream dimensions, \(d_{\text{model}}\) wide (input side \(i, j\); output side \(o\))</dd>
+						<dt>\(h\)</dt><dd>the head's internal dimension, \(d_{\text{head}}\) wide</dd>
+					</dl>
+					<p>
+						Queries come from the destination, keys from the source:
+						\(Q_{d,h} = X_{d,i}\,(W_Q)_{h,i}\) and \(K_{s,h} = X_{s,j}\,(W_K)_{h,j}\). The score is their dot
+						product over \(h\):
+					</p>
+					\[
+					S_{d,s} = Q_{d,h}\,K_{s,h} = X_{d,i}\,(W_Q)_{h,i}\,(W_K)_{h,j}\,X_{s,j}.
+					\]
+					<p>
+						\(W_Q\) and \(W_K\) only ever appear together, so the framework paper folds them into one low-rank
+						matrix, \((W_{QK})_{i,j} = (W_Q)_{h,i}(W_K)_{h,j}\), the <strong>QK circuit</strong>:
+					</p>
+					\[
+					S_{d,s} = X_{d,i}\,(W_{QK})_{i,j}\,X_{s,j}, \qquad
+					A_{d,s} = \operatorname{softmax}_{s}\!\left(\frac{S_{d,s}}{\sqrt{d_{\text{head}}}}\right).
+					\]
+<pre><code># S: [n_ctx, n_ctx] scores; W_QK: [d_model, d_model]
+S = torch.einsum("di, ij, sj -> ds", X, W_QK, X)
+
+# causal mask, then softmax over the source axis
+A = torch.softmax(S.masked_fill(mask == 0, -1e9) / d_head**0.5, dim=-1)</code></pre>
+					<p>
+						\(A_{d,s}\) is the kernel of the <a href="../">kernel-estimator page</a>: for each destination it is
+						a probability distribution over sources. On the poster, the heatmap is one row of this matrix per
+						head, \(d = \) the <code>return</code> position, for every head in the model.
+					</p>
+				</div>
+			</section>
+
+			<!-- ============================ 4. OV ============================ -->
+			<section id="ov">
+				<div class="wrap">
+					<h2>4. The OV circuit: what to move</h2>
+					<p>
+						Once \(A\) is fixed, the head reads a value from each source, mixes the values with the attention
+						weights, and writes the result back into the destination's residual stream:
+					</p>
+					\[
+					V_{s,h} = X_{s,i}\,(W_V)_{h,i}, \qquad
+					R_{d,h} = A_{d,s}\,V_{s,h}, \qquad
+					H_{d,o} = R_{d,h}\,(W_O)_{o,h}.
+					\]
+					<p>
+						Again the two weight matrices only appear as a pair, \((W_{OV})_{o,i} = (W_O)_{o,h}(W_V)_{h,i}\), the
+						<strong>OV circuit</strong>; the head dimension \(h\) is contracted away:
+					</p>
+					\[
+					H_{d,o} = A_{d,s}\,X_{s,i}\,(W_{OV})_{o,i}.
+					\]
+<pre><code># A: [n_ctx, n_ctx], X: [n_ctx, d_model], W_OV: [d_model, d_model]
+# H: [n_ctx, d_model], added to the residual stream
+H = torch.einsum("ds, si, oi -> do", A, X, W_OV)</code></pre>
+					<div class="callout">
+						<p>
+							Read the index string: <code>ds</code> moves information along the <em>position</em> axis
+							(\(s \to d\)); <code>oi</code> transforms it along the <em>feature</em> axis (\(i \to o\)). The two
+							never touch each other's axis. The paper writes this as a tensor product,
+							\(H = (A \otimes W_{OV})\cdot X\), and it is the whole reason the poster can ask "where" and
+							"what" as separate questions.
+						</p>
+					</div>
+				</div>
+			</section>
+
+			<!-- ============================ 5. End to end ============================ -->
+			<section id="logits">
+				<div class="wrap">
+					<h2>5. End to end: from one-hot input to logits</h2>
+					<p>
+						Substitute the embedding for \(X\) and push the head's output through the unembedding
+						\((W_U)_{v_{\text{out}},o}\). Writing \(v_{\text{src}}\) for the source token's vocabulary index and
+						\(v_{\text{out}}\) for the predicted token's:
+					</p>
+					\[
+					\Delta L_{d,v_{\text{out}}}
+					= A_{d,s}\;T_{s,v_{\text{src}}}\;
+					\underbrace{(W_U)_{v_{\text{out}},o}\,(W_{OV})_{o,i}\,(W_E)_{i,v_{\text{src}}}}_{(M_{OV})_{v_{\text{out}},\,v_{\text{src}}}}.
+					\]
+<pre><code># T: [n_ctx, n_vocab] one-hot input
+# M_OV: [n_vocab, n_vocab] = W_U @ W_OV @ W_E   (the end-to-end OV circuit)
+delta_logits = torch.einsum("ds, sv, ov -> do", A, T, M_OV)</code></pre>
+					<p>
+						A one-layer attention-only model is now two separately readable matrices:
+					</p>
+					<table>
+						<thead><tr><th>circuit</th><th>matrix</th><th>what it decides</th></tr></thead>
+						<tbody>
+							<tr><td>QK</td><td>\(W_E^{\top} W_{QK} W_E\)</td><td>given the token at the destination, how much to attend to each token that could sit at a source: the weights \(A_{d,s}\)</td></tr>
+							<tr><td>OV</td><td>\(W_U W_{OV} W_E\)</td><td>once a source token is attended to, which output tokens it raises or lowers: the increments \(\Delta L\)</td></tr>
+						</tbody>
+					</table>
+					<p>
+						Together they implement the paper's <strong>skip-trigram</strong>,
+						<code>[source] ... [destination] [out]</code>: a lookup table with a gap in it.
+					</p>
+				</div>
+			</section>
+
+			<!-- ============================ 6. Two layers ============================ -->
+			<section id="composition">
+				<div class="wrap">
+					<h2>6. Two layers: composition and virtual heads</h2>
+					<p>
+						With a second layer, expand every path from input to logits. Besides the direct path \(W_U W_E\)
+						(bigram statistics) and each head's own path, there are <em>compositional</em> paths where a
+						layer-2 head \(h_2\) reads what a layer-1 head \(h_1\) wrote into the residual stream. It can read it
+						through any of its three input matrices:
+					</p>
+					<table>
+						<thead><tr><th>composition</th><th>which matrix of \(h_2\) reads \(h_1\)'s output</th><th>what changes</th></tr></thead>
+						<tbody>
+							<tr><td>Q-composition</td><td>\(W_Q^{h_2}\)</td><td>what \(h_2\) searches for (inside the softmax)</td></tr>
+							<tr><td>K-composition</td><td>\(W_K^{h_2}\)</td><td>what \(h_2\) can be found by (inside the softmax)</td></tr>
+							<tr><td>V-composition</td><td>\(W_V^{h_2}\)</td><td>what \(h_2\) moves (linear, outside the softmax)</td></tr>
+						</tbody>
+					</table>
+					<p>
+						V-composition is the tidy one, because moving information twice is still just moving information.
+						Compose the two tensor-product operators and use the mixed-product rule
+						\((A \otimes B)(C \otimes D) = (AC) \otimes (BD)\):
+					</p>
+					\[
+					(A^{h_2} \otimes W_{OV}^{h_2})\,(A^{h_1} \otimes W_{OV}^{h_1})\cdot X
+					= \underbrace{(A^{h_2} A^{h_1})}_{\text{composite pattern}} \otimes
+					  \underbrace{(W_{OV}^{h_2} W_{OV}^{h_1})}_{\text{composite } W_{OV}} \cdot X.
+					\]
+					<p>
+						This has exactly the form of a single head, hence the name <strong>virtual attention head</strong>.
+						\(A^{h_2} A^{h_1}\) is a product of row-stochastic matrices, so it is again a valid attention
+						pattern: if \(h_1\) moves position \(k\) to \(m\) and \(h_2\) moves \(m\) to \(d\), the product
+						moves \(k\) to \(d\) in one hop. Inside the composite OV matrix the middle factor
+						\(W_V^{h_2} W_O^{h_1}\) is the paper's <em>virtual weight</em>: how much of \(h_1\)'s output
+						subspace \(h_2\) actually reads.
+					</p>
+<pre><code># composite pattern: [n_ctx, n_ctx]
+A_virtual = torch.einsum("dm, ms -> ds", A_h2, A_h1)
+
+# composite OV: [d_model, d_model]
+W_OV_virtual = torch.einsum("oj, ji -> oi", W_OV_h2, W_OV_h1)
+
+# the virtual head in one step
+H_virtual = torch.einsum("ds, si, oi -> do", A_virtual, X, W_OV_virtual)</code></pre>
+				</div>
+			</section>
+
+			<!-- ============================ 7. Induction head ============================ -->
+			<section id="induction">
+				<div class="wrap">
+					<h2>7. The induction head, step by step</h2>
+					<p>
+						Q- and K-composition change the pattern itself, and that is what lets a two-layer model do
+						something a lookup table cannot: in-context learning. The sequence is
+					</p>
+					\[
+					\dots \underbrace{[A]}_{\text{pos } i}\ \underbrace{[B]}_{\text{pos } i+1} \dots\dots \underbrace{[A]}_{\text{pos } d}
+					\]
+					<p>and at position \(d\) the model should predict \([B]\). Two heads do it together.</p>
+
+					<h3>Step 1. A layer-1 previous-token head tags \([B]\) with "the token before me is \([A]\)"</h3>
+					<p>
+						Its QK circuit attends one position back, so at \(i+1\) it looks at \(i\). Its OV circuit copies
+						\([A]\)'s features into the residual stream at \(i+1\). Position \(i+1\) now carries both "I am
+						\([B]\)" and, in a separate subspace, "the token before me is \([A]\)".
+					</p>
+
+					<h3>Step 2. The layer-2 induction head builds its key from that tag (K-composition)</h3>
+					<p>
+						\(W_K^{h_2}\) reads the subspace the previous-token head wrote, not the raw embedding. So the key at
+						\(i+1\) means \(k_{i+1} \approx \text{Key}(\text{"the token before me is } [A]\text{"})\): position
+						\(i+1\) is broadcasting "if the token you are looking at is \([A]\), look at me".
+					</p>
+
+					<h3>Step 3. The QK circuit locks on to \([B]\)</h3>
+					<p>
+						At the destination \(d\) the query is built from the current token,
+						\(q_d \approx \text{Query}(\text{"my token is } [A]\text{"})\). The score
+						\(S_{d,i+1} = q_d^{\top} k_{i+1}\) is large exactly where the tag matches, and after the softmax
+						\(A_{d,i+1}\) carries almost all the weight: the kernel has a single sharp peak on the position
+						<em>after</em> the previous \([A]\).
+					</p>
+
+					<h3>Step 4. The OV circuit copies \([B]\) into the prediction</h3>
+					<p>
+						\(W_V^{h_2}\) reads position \(i+1\)'s own token features, \([B]\). The end-to-end OV matrix
+						\(W_U W_{OV}^{h_2} W_E\) of an induction head is a <em>copying</em> matrix (large positive
+						eigenvalues, diagonal-dominant): whatever token it attends to, it raises that token's own logit.
+						So \(\Delta L_d \approx W_U W_{OV}^{h_2} x_{i+1} \propto \text{logit}([B])\).
+					</p>
+
+					<table>
+						<thead><tr><th>stage</th><th>component</th><th>job</th></tr></thead>
+						<tbody>
+							<tr><td>tagging</td><td>layer-1 previous-token head, OV</td><td>leave "the token before me is \([A]\)" at \([B]\)'s position</td></tr>
+							<tr><td>search</td><td>layer-2 induction head, QK with K-composition</td><td>from a current \([A]\), attend to the position after the previous \([A]\)</td></tr>
+							<tr><td>copy</td><td>layer-2 induction head, OV</td><td>turn the attended \([B]\) into next-token probability for \([B]\)</td></tr>
+						</tbody>
+					</table>
+					<p>
+						The pair never needed to see this particular \([A][B]\) in training; one occurrence in the context is
+						enough. That is the difference between a skip-trigram table and an algorithm.
+					</p>
+
+					<div class="callout">
+						<p>
+							<strong>On the poster.</strong> The <code>return</code> position holds a query; the earlier
+							occurrences of each variable name hold the keys. Of the ten heads with the most attention on
+							the variable names, L18H6 and L21H5 score 0.79 and 0.67 on the repeated-random-sequence
+							induction test, among the highest in <code>gemma-2-2b</code>. Their kernel is step 3 above;
+							what they copy, and whether it decides the answer, is the attribution graph and the steering
+							experiment on the <a href="../../../practice/">practice</a> pages.
+						</p>
+					</div>
+				</div>
+			</section>
+
+			<!-- ============================ Sources ============================ -->
+			<section id="sources">
+				<div class="wrap">
+					<h2>Sources</h2>
+					<ul class="entries">
+						<li>
+							<span class="entry-title"><a href="https://transformer-circuits.pub/2021/framework/index.html" target="_blank" rel="noopener">A Mathematical Framework for Transformer Circuits</a></span>
+							<p class="entry-meta">Elhage, Nanda, Olsson et al., 2021. The QK / OV split, path expansion, skip-trigrams, Q/K/V-composition, virtual heads, and the two-layer induction head. The index conventions above follow its appendix on tensor notation.</p>
+						</li>
+						<li>
+							<span class="entry-title"><a href="https://transformer-circuits.pub/2022/in-context-learning-and-induction-heads/index.html" target="_blank" rel="noopener">In-context Learning and Induction Heads</a></span>
+							<p class="entry-meta">Olsson, Elhage, Nanda et al., 2022. The induction score used for the numbers quoted on the poster.</p>
+						</li>
+						<li>
+							<span class="entry-title"><a href="../">Attention as a kernel estimator</a></span>
+							<p class="entry-meta">The same split from the Nadaraya-Watson side: the kernel is QK, the values are OV.</p>
+						</li>
+					</ul>
+				</div>
+			</section>
+
+		</main>
+
+		<!-- ============================ Footer ============================ -->
+		<footer>
+			<div class="wrap">
+				<p>Anna Liang</p>
+				<p>&copy; 2026 Anna Liang</p>
+			</div>
+		</footer>
+
+	</body>
+</html>

@@ -31,6 +31,7 @@ not move.
 | `interpretability/index.html` | Hub: title, abstract, two cards (theory, practice), materials |
 | `interpretability/theory/index.html` | The timeline 2020 to 2025 in two tracks (how to think, how to look), with SAE and transcoder definitions |
 | `interpretability/theory/attention/` | Nadaraya-Watson to softmax attention to QK/OV, one step per screen |
+| `interpretability/theory/attention/tensors/` | Shapes, einsum, QK/OV, virtual heads, induction head (the one page that loads KaTeX from a CDN) |
 | `interpretability/theory/circuits/` | Where the word "circuit" comes from: Zoom In 2020, the 2021 framework, attribution graphs |
 | `interpretability/practice/index.html` | The write-up: prompts, findings, interventions, reproduction steps |
 | `interpretability/practice/p4/` | Redirect stub to the pinned P4 graph on Neuronpedia (the QR target; the long URL lives here, not in the QR) |
