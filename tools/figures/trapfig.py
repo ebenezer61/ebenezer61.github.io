@@ -1,15 +1,15 @@
 # Paired-bar figure: P(correct) vs P(wrong) per case, grouped by pair.
 CASES = [  # (pair label or None-group, case, correct tok, p_corr, wrong tok, p_wrong, verdict, model top-1, p_top)
- ("closure capture — FAIL: same answer to both",
+ ("closure capture, FAIL: same answer to both",
   [("closure-late-binding",    "'2'", 0.88, "'0'", 79.30, "MISS", "'0'", 79.30),
    ("closure-default-arg-fix", "'0'", 66.80, "'2'", 1.39, "ok",  "'0'", 66.80)]),
- ("default argument — FAIL: same answer to both",
+ ("default argument, FAIL: same answer to both",
   [("mutable-default",     "'1'", 89.06, "'2'", 10.64, "ok",   "'1'", 89.06),
    ("mutable-default-fix", "'2'", 6.74, "'1'", 93.36, "MISS", "'1'", 93.36)]),
- ("does the loop var leak — FAIL: exactly inverted",
+ ("does the loop var leak, FAIL: exactly inverted",
   [("for-var-leaks",        "'2'", 1.56, "'Traceback'", 35.55, "MISS", "'Traceback'", 35.55),
    ("comprehension-no-leak","'Traceback'", 5.15, "'2'", 33.59, "MISS", "'2'", 33.59)]),
- ("class-body comprehension — FAIL: illegal one at noise",
+ ("class-body comprehension, FAIL: illegal one at noise",
   [("class-body-scope", "'Traceback'", 0.54, "'>'", 0.07, "noise", "'>>>'", 70.70),
    ("class-body-ok",    "'2'", 93.75, "'Traceback'", 0.00, "ok",   "'2'", 93.75)]),
  ("unpaired",
@@ -51,9 +51,9 @@ for kind, yy, payload in rows:
     name, ct, pc, wt, pw, verdict, topt, ptop = payload
     out.append(f'<text x="{LAB-12}" y="{yy+BAR*2-2}" text-anchor="end" font-size="11" '
                f'font-family="ui-monospace, Menlo, monospace" fill="var(--viz-ink-1)">{name}</text>')
-    out.append(f'<g><title>P({esc(ct)} — the correct continuation) = {pc:.2f}%</title>'
+    out.append(f'<g><title>P({esc(ct)}, the correct continuation) = {pc:.2f}%</title>'
                f'<rect x="{x(0):.1f}" y="{yy}" width="{max(x(pc)-x(0),1.5):.1f}" height="{BAR}" rx="4" fill="var(--viz-s1)"/></g>')
-    out.append(f'<g><title>P({esc(wt)} — the natural misreading) = {pw:.2f}%</title>'
+    out.append(f'<g><title>P({esc(wt)}, the natural misreading) = {pw:.2f}%</title>'
                f'<rect x="{x(0):.1f}" y="{yy+BAR+INGAP}" width="{max(x(pw)-x(0),1.5):.1f}" height="{BAR}" rx="4" fill="var(--viz-s2)"/></g>')
     vmax = max(pc, pw)
     vcol = {"ok": "var(--viz-ink-2)", "MISS": "var(--viz-ink-1)", "noise": "var(--viz-ink-3)"}[verdict]

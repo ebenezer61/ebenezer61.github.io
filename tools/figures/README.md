@@ -14,7 +14,7 @@ the page's `<svg>` element.
 | `trapfig.py` | binding traps, paired bars by pair | `probe_binding_traps_gemma-2-2b.txt` values |
 
 `gen.json` is committed alongside; the other scripts carry their numbers
-inline — every value was recomputed from the circuit-tracer repo's committed
+inline; every value was recomputed from the circuit-tracer repo's committed
 graph JSONs / probe outputs before being hard-coded here.
 
 Run each script in this directory; it writes its `*.svgfrag` beside itself.
