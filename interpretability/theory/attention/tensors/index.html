@@ -454,6 +454,23 @@ print(H[4] @ W_U.T)    # tensor([1.248, 0.000, 0.000, 0.303, 0.000])</code></pre
 							difference disappear: an index is an index whichever way the matrix is printed.
 						</p>
 					</div>
+					<h3>Run it on section 1's numbers</h3>
+					<p>
+						Suppose the vocabulary is only the five tokens of the example, in that order. Then each
+						token's one-hot column has its 1 at its own position, so \(T\) in row form is the
+						\(5 \times 5\) identity, and \(W_E\) is the example's five notepads placed as columns, one per
+						vocabulary entry:
+					</p>
+					\[
+					W_E = \begin{bmatrix} 1 & 0 & 0 & 1 & 0 \\ 1 & 0 & 0 & -1 & 0 \\ 0 & 1 & 1 & 0 & 0 \\ 0 & 0 & 0 & 0 & 1 \end{bmatrix}
+					\qquad (\text{columns: } \texttt{result},\ \texttt{=},\ \texttt{0},\ \texttt{ans},\ \texttt{return}).
+					\]
+					<p>
+						The lookup \(X = T W_E^{\top}\) is then \(I\, W_E^{\top}\), which is exactly the \(X\) of section 1:
+						the five columns pulled out and laid down as rows. Column 4 of \(W_E\) is
+						<code>ans</code>'s notepad \((1, -1, 0, 0)\), so row 4 of \(X\) is that notepad. If a token
+						appeared twice, the same column would be pulled twice.
+					</p>
 				</div>
 			</section>
 
@@ -486,6 +503,20 @@ X = torch.einsum("pv, dv -> pd", T, W_E)</code></pre>
 						letter <code>v</code> appears in both and not in the output, so it is summed away; what is
 						left, <code>pd</code>, is the output's shape. Every formula below is one more
 						<code>einsum</code> with a couple of extra letters.
+					</p>
+					<h3>Run it on section 1's numbers</h3>
+					<p>
+						Take one entry of the lookup, \(X_{p,d} = T_{p,v}\,(W_E)_{d,v}\), at \(p = 4\)
+						(<code>ans</code>) and \(d = 2\). The sum runs over \(v\); \(T_{4,v}\) is 1 only at \(v = 4\), so
+						the sum collapses to \((W_E)_{2,4} = -1\), and \(X_{4,2} = -1\): the which-name bit of
+						<code>ans</code>.
+					</p>
+					<p>
+						The query of section 1 in the same notation is \(Q_{p,h} = X_{p,i}\,(W_Q)_{h,i}\), summed over the
+						slot index \(i\). At \(p = 5\): \(Q_{5,1} = X_{5,i}(W_Q)_{1,i} = X_{5,4} \cdot 2 = 2\) and
+						\(Q_{5,2} = X_{5,4} \cdot 1 = 1\), so \(q_5 = (2, 1)\). In code that is
+						<code>torch.einsum("pi, hi -> ph", X, W_Q)</code>, which is the same thing as
+						<code>X @ W_Q.T</code>: the letters just say which axis is shared.
 					</p>
 				</div>
 			</section>
@@ -533,6 +564,34 @@ A = torch.softmax(S.masked_fill(mask == 0, -1e9) / d_head**0.5, dim=-1)</code></
 						<a href="../">kernel-estimator page</a> shows it is a kernel weight. The poster's heatmap is one
 						such row per head, \(d = \) the <code>return</code> position, for every head in the model.
 					</p>
+					<h3>Run it on section 1's numbers</h3>
+					<p>
+						With the example's \(W_{QK}\), only the entries \((4,1) = 2\) and \((4,2) = 1\) are non-zero, so
+						in \(S_{d,s} = X_{d,i}\,(W_{QK})_{i,j}\,X_{s,j}\) only \(i = 4\) survives:
+					</p>
+					\[
+					S_{d,s} = X_{d,4}\,\big(2\,X_{s,1} + 1\,X_{s,2}\big).
+					\]
+					<p>
+						\(X_{d,4}\) is 1 only for \(d = 5\), so rows 1 to 4 of \(S\) are zero and row 5 is
+						\((3, 0, 0, 1, 0)\), as before. Now the two things the general form adds. First the causal
+						mask: it hides nothing from row 5, but for rows 1 to 4 an all-zero row becomes uniform over
+						the sources the mask allows. Second the rank: \(W_{QK}\) is \(4 \times 4\) but has one non-zero
+						row, so its rank is 1, within the bound \(d_{\text{head}} = 2\). The whole attention matrix is
+					</p>
+					\[
+					A = \begin{bmatrix}
+					1 & 0 & 0 & 0 & 0 \\
+					0.5 & 0.5 & 0 & 0 & 0 \\
+					0.33 & 0.33 & 0.33 & 0 & 0 \\
+					0.25 & 0.25 & 0.25 & 0.25 & 0 \\
+					0.62 & 0.07 & 0.07 & 0.15 & 0.07
+					\end{bmatrix},
+					\]
+					<p>
+						one row per destination, each row adding to one, zeros above the diagonal because a position
+						cannot look ahead. Section 1 only used the last row.
+					</p>
 				</div>
 			</section>
 
@@ -568,6 +627,28 @@ H = torch.einsum("ds, si, oi -> do", A, X, W_OV)</code></pre>
 							\(H = (A \otimes W_{OV})\cdot X\). It is the same separation the callout in step 2 pointed at.
 						</p>
 					</div>
+					<h3>Run it on section 1's numbers</h3>
+					<p>
+						\(H_{d,o} = A_{d,s}\,X_{s,i}\,(W_{OV})_{o,i}\) can be done in two products. The inner one,
+						\(X W_{OV}^{\top}\), keeps slots 1 and 2 of every notepad and zeroes the rest: rows
+						\((1, 1, 0, 0)\), \((0,0,0,0)\), \((0,0,0,0)\), \((1, -1, 0, 0)\), \((0,0,0,0)\). The outer one mixes
+						those rows with each row of \(A\):
+					</p>
+					\[
+					H = A\,(X W_{OV}^{\top}) = \begin{bmatrix}
+					1 & 1 & 0 & 0 \\
+					0.5 & 0.5 & 0 & 0 \\
+					0.33 & 0.33 & 0 & 0 \\
+					0.5 & 0 & 0 & 0 \\
+					0.78 & 0.47 & 0 & 0
+					\end{bmatrix}.
+					\]
+					<p>
+						Row 5 is \(h_5\) from section 1. Row 4, the <code>ans</code> position, is \((0.5, 0, 0, 0)\): it
+						attends a quarter each to <code>result</code> and <code>ans</code>, and their which-name bits
+						cancel. The einsum reached the same numbers without ever forming \(r\) or \(W_O\) on its own;
+						that is what folding \(W_V\) and \(W_O\) into \(W_{OV}\) buys.
+					</p>
 				</div>
 			</section>
 
@@ -607,6 +688,33 @@ delta_logits = torch.einsum("ds, sv, ov -> do", A, T, M_OV)</code></pre>
 						Together they implement the paper's <strong>skip-trigram</strong>,
 						<code>[source] ... [destination] [out]</code>: a lookup table with a gap in it. In the example the
 						table said "<code>return</code> ... <code>result</code> raises <code>result</code>".
+					</p>
+					<h3>Run it on section 1's numbers</h3>
+					<p>
+						With \(T = I\) and \(W_E = X^{\top}\) from section 2, both end-to-end matrices are
+						\(5 \times 5\) tables over the five tokens. The OV one, \(M_{OV} = W_U W_{OV} W_E\), has a 2 at
+						(<code>result</code>, <code>result</code>) and a 2 at (<code>ans</code>, <code>ans</code>) and
+						zeros elsewhere: attend to a name, raise that name. The QK one,
+						\(W_E^{\top} W_{QK} W_E\), has a 3 at (<code>return</code>, <code>result</code>) and a 1 at
+						(<code>return</code>, <code>ans</code>): it is the score table of section 1, and it coincides
+						with \(S\) only because here every token sits at one position. Then
+						\(\Delta L = A\,T\,M_{OV}\):
+					</p>
+					\[
+					\Delta L = \begin{bmatrix}
+					2 & 0 & 0 & 0 & 0 \\
+					1 & 0 & 0 & 0 & 0 \\
+					0.67 & 0 & 0 & 0 & 0 \\
+					0.5 & 0 & 0 & 0.5 & 0 \\
+					1.25 & 0 & 0 & 0.30 & 0
+					\end{bmatrix}
+					\qquad (\text{columns: } \texttt{result},\ \texttt{=},\ \texttt{0},\ \texttt{ans},\ \texttt{return}).
+					\]
+					<p>
+						Row 5 is section 1's answer. Row 4 is the same head standing on <code>ans</code>: it pushes both
+						names equally, because its attention row split evenly. The skip-trigrams this head encodes are
+						<code>[result] ... [return] &rarr; result</code>, with 3 in the QK table and 2 in the OV table,
+						and <code>[ans] ... [return] &rarr; ans</code>, with 1 and 2.
 					</p>
 				</div>
 			</section>
@@ -660,6 +768,25 @@ W_OV_virtual = torch.einsum("oj, ji -> oi", W_OV_h2, W_OV_h1)
 
 # the virtual head in one step
 H_virtual = torch.einsum("ds, si, oi -> do", A_virtual, X, W_OV_virtual)</code></pre>
+					<h3>Run it on section 1's numbers</h3>
+					<p>
+						Give the example a layer-1 partner \(h_1\): a previous-token head, whose pattern \(P\) puts all
+						its weight one position back (\(P_{p,\,p-1} = 1\), and \(P_{1,1} = 1\) because position 1 has
+						nothing before it), with the same copy matrix for its OV circuit. Let \(h_2\) be section 1's
+						head. The composite pattern is \(A^{h_2} P\); its row 5 is
+						\((A P)_{5,s} = A_{5,m}\,P_{m,s}\), summed over \(m\):
+					</p>
+					\[
+					(A^{h_2} P)_{5,\cdot} = (0.70,\ 0.07,\ 0.15,\ 0.07,\ 0).
+					\]
+					<p>
+						Every weight moved one position earlier: the 0.15 that sat on <code>ans</code> now sits on
+						<code>0</code>, the token before it, and the 0.62 on <code>result</code> and the 0.07 on
+						<code>=</code> both land on position 1. The composite OV matrix is \(W_{OV} W_{OV}\), which is
+						the same copy matrix, because copying twice is copying. So the virtual head reads the name
+						bits of the token <em>before</em> whatever \(h_2\) attended to, in one hop. In code:
+						<code>A_virtual = torch.einsum("dm, ms -> ds", A, P)</code>.
+					</p>
 				</div>
 			</section>
 
@@ -731,6 +858,24 @@ H_virtual = torch.einsum("ds, si, oi -> do", A_virtual, X, W_OV_virtual)</code><
 							steering experiment on the <a href="../../../practice/">practice</a> pages.
 						</p>
 					</div>
+					<h3>Run it on section 1's numbers</h3>
+					<p>
+						Section 1's head already has half of an induction head. Its OV side is the copying matrix
+						step 4 needs: \(M_{OV}\) is 2 on each name. What it lacks is step 3's sharp peak; its row puts
+						0.62 on <code>result</code>, not almost all. Sharpen the QK circuit by tripling \(W_Q\) and the
+						same formulas give
+					</p>
+					\[
+					S_{5,\cdot} = (9,\ 0,\ 0,\ 3,\ 0), \qquad
+					e^{S/\sqrt 2} = (580.5,\ 1,\ 1,\ 8.34,\ 1), \qquad
+					A_{5,\cdot} = (0.98,\ 0.002,\ 0.002,\ 0.014,\ 0.002),
+					\]
+					<p>
+						and the logit increments, still twice the weights, become <code>result</code> \(+1.96\) and
+						<code>ans</code> \(+0.03\). That single spike is what a trained induction head's row looks
+						like. What the toy cannot do is <em>find</em> the spike by K-composition, because it has one
+						layer: the tag "the token before me is \([A]\)" needs the layer-1 partner of section 7.
+					</p>
 				</div>
 			</section>
 
