@@ -296,6 +296,15 @@
 					\begin{bmatrix} 0 & 1 & 0 & 0 \\ 1 & 0 & 0 & 0 \end{bmatrix}
 					= (0.78,\ 0.47,\ 0,\ 0).
 					\]
+					<p>
+						So <code>return</code>'s notepad gains 0.78 of "a name is here" and \(+0.47\) of "and it leans
+						toward <code>result</code>". As before, \(W_V\) and \(W_O\) only ever act as a pair. Their product
+						\(W_{OV} = W_O W_V\) is one \(4 \times 4\) matrix, the <strong>OV circuit</strong>, and here it
+						simply copies slots 1 and 2 and ignores slots 3 and 4:
+					</p>
+					\[
+					W_{OV} = \begin{bmatrix} 1 & 0 & 0 & 0 \\ 0 & 1 & 0 & 0 \\ 0 & 0 & 0 & 0 \\ 0 & 0 & 0 & 0 \end{bmatrix}.
+					\]
 					<table>
 						<thead><tr><th>step</th><th>product</th><th>shapes</th></tr></thead>
 						<tbody>
@@ -308,15 +317,6 @@
 						The chain only closes because \(W_O\) is transposed relative to \(W_V\): the head's width, 2,
 						is what gets multiplied away in the middle, and the output comes back with four slots.
 					</p>
-					<p>
-						So <code>return</code>'s notepad gains 0.78 of "a name is here" and \(+0.47\) of "and it leans
-						toward <code>result</code>". As before, \(W_V\) and \(W_O\) only ever act as a pair. Their product
-						\(W_{OV} = W_O W_V\) is one \(4 \times 4\) matrix, the <strong>OV circuit</strong>, and here it
-						simply copies slots 1 and 2 and ignores slots 3 and 4:
-					</p>
-					\[
-					W_{OV} = \begin{bmatrix} 1 & 0 & 0 & 0 \\ 0 & 1 & 0 & 0 \\ 0 & 0 & 0 & 0 \\ 0 & 0 & 0 & 0 \end{bmatrix}.
-					\]
 					<div class="callout">
 						<p>
 							<strong>Two separate axes.</strong> The attention row moved information along the
@@ -466,7 +466,8 @@ print(H[4] @ W_U.T)    # tensor([1.248, 0.000, 0.000, 0.303, 0.000])</code></pre
 					\qquad (\text{columns: } \texttt{result},\ \texttt{=},\ \texttt{0},\ \texttt{ans},\ \texttt{return}).
 					\]
 					<p>
-						The lookup \(X = T W_E^{\top}\) is then \(I\, W_E^{\top}\), which is exactly the \(X\) of section 1:
+						In the row convention of section 1 the lookup is \(X = T W_E^{\top}\), here \(I\, W_E^{\top}\),
+						which is exactly the \(X\) of section 1:
 						the five columns pulled out and laid down as rows. Column 4 of \(W_E\) is
 						<code>ans</code>'s notepad \((1, -1, 0, 0)\), so row 4 of \(X\) is that notepad. If a token
 						appeared twice, the same column would be pulled twice.
@@ -687,7 +688,7 @@ delta_logits = torch.einsum("ds, sv, ov -> do", A, T, M_OV)</code></pre>
 					<p>
 						Together they implement the paper's <strong>skip-trigram</strong>,
 						<code>[source] ... [destination] [out]</code>: a lookup table with a gap in it. In the example the
-						table said "<code>return</code> ... <code>result</code> raises <code>result</code>".
+						table said "<code>[result] ... [return] &rarr; result</code>".
 					</p>
 					<h3>Run it on section 1's numbers</h3>
 					<p>
@@ -853,6 +854,13 @@ H_virtual = torch.einsum("ds, si, oi -> do", A_virtual, X, W_OV_virtual)</code><
 						<a href="https://www.lesswrong.com/posts/TvrfY4c9eaGLeyDkE/induction-heads-illustrated" target="_blank" rel="noopener">Induction heads, illustrated</a> (McDougall, 2023).
 					</p>
 
+					<h3>Run it on section 1's numbers</h3>
+					<p>
+						Section 1's head already has half of an induction head. Its OV side is the copying matrix
+						step 4 needs: \(M_{OV}\) is 2 on each name. What it lacks is step 3's sharp peak; its row puts
+						0.62 on <code>result</code>, not almost all. Sharpen the QK circuit by tripling \(W_Q\) and the
+						same formulas give
+					</p>
 					<div class="callout">
 						<p>
 							<strong>On the poster.</strong> The <code>return</code> position holds a query; the earlier
@@ -863,13 +871,6 @@ H_virtual = torch.einsum("ds, si, oi -> do", A_virtual, X, W_OV_virtual)</code><
 							steering experiment on the <a href="../../../practice/">practice</a> pages.
 						</p>
 					</div>
-					<h3>Run it on section 1's numbers</h3>
-					<p>
-						Section 1's head already has half of an induction head. Its OV side is the copying matrix
-						step 4 needs: \(M_{OV}\) is 2 on each name. What it lacks is step 3's sharp peak; its row puts
-						0.62 on <code>result</code>, not almost all. Sharpen the QK circuit by tripling \(W_Q\) and the
-						same formulas give
-					</p>
 					\[
 					S_{5,\cdot} = (9,\ 0,\ 0,\ 3,\ 0), \qquad
 					e^{S/\sqrt 2} = (580.5,\ 1,\ 1,\ 8.34,\ 1), \qquad
