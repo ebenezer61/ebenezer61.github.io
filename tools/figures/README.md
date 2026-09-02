@@ -9,7 +9,7 @@ the page's `<svg>` element.
 | script | figure | data source |
 |---|---|---|
 | `fig1.py` | orthogonal pathways, 10 paired bars | `pathway_totals.txt` values, hard-coded after verification |
-| `fig2.py` | dose-response, two panels | `intervention_results.txt` values |
+| `fig2.py` | dose-response, two panels; the left one carries both the frozen-attention and the free-attention sweep | `intervention_results.txt` values |
 | `fig3.py` | 18-name generalisation dot plot | `gen.json`, extracted from `probe_name_generalization.txt` |
 | `trapfig.py` | binding traps, paired bars by pair | `probe_binding_traps_gemma-2-2b.txt` values |
 
