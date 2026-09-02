@@ -39,6 +39,8 @@
 				margin: 0 0 1.1rem;
 			}
 			pre code { background: none; padding: 0; font-size: 1em; }
+			details { margin: 0 0 1.1rem; }
+			details summary { cursor: pointer; color: var(--text-muted); font-size: .9rem; margin-bottom: .6rem; }
 
 			table {
 				width: 100%;
@@ -78,11 +80,11 @@
 				<p class="breadcrumb"><a href="../../../">How LLM reads your Python?</a> &middot; <a href="../../">Theory</a> &middot; <a href="../">Attention as a kernel estimator</a></p>
 				<h1>Attention in tensor notation</h1>
 				<p class="subtitle">
-					Shapes, Einstein summation and <code>einsum</code> for a five-token sentence: the embedding lookup,
-					the QK and OV circuits, the end-to-end logit path, virtual heads, and the induction head step by step
+					One attention head followed by hand on five tokens, from the input to the logits. Then the same
+					steps in general notation and <code>einsum</code>: shapes, the QK and OV circuits, the end-to-end
+					logit path, virtual heads, and the induction head.
 				</p>
 				<p class="venue">Companion to <a href="../">attention as a kernel estimator</a>. Conventions follow <em>A Mathematical Framework for Transformer Circuits</em> (Elhage et al., 2021).</p>
-
 				<ul class="links">
 					<li><a href="../">Back: the kernel view</a></li>
 					<li><a href="../../">The timeline</a></li>
@@ -94,31 +96,248 @@
 
 		<main>
 
-			<!-- ============================ 1. Input ============================ -->
+			<!-- ============================ How to read ============================ -->
+			<section id="guide">
+				<div class="wrap">
+					<h2>How to read this page</h2>
+					<p class="lead">
+						An attention head answers three questions about each position in the text: <em>where</em>
+						should I look, <em>what</em> should I bring back from there, and what does that do to the
+						<em>next-token prediction</em>. The poster asks the same three questions of a real model. This
+						page shows the arithmetic behind them, twice: first on a toy you can multiply out on paper,
+						then in the general notation the papers use.
+					</p>
+					<p>Four words carry most of the weight, so here they are in plain terms:</p>
+					<dl class="idx">
+						<dt>residual stream</dt><dd>a short list of numbers that every position carries with it, like a notepad; each layer reads it and writes a little back</dd>
+						<dt>query</dt><dd>what a position is looking for, computed from its own notepad</dd>
+						<dt>key</dt><dd>what a position advertises about itself, so that queries can find it</dd>
+						<dt>value</dt><dd>what a position hands over once it has been chosen</dd>
+					</dl>
+					<p>
+						Query against key decides <em>where</em> (section 1, step 1, and section 4). Value decides
+						<em>what</em> (section 1, step 2, and section 5). The unembedding turns what arrived into a
+						change in the logits (section 1, step 3, and section 6). Sections 7 and 8 stack two heads.
+					</p>
+				</div>
+			</section>
+
+			<!-- ============================ 1. Worked example ============================ -->
+			<section id="example">
+				<div class="wrap">
+					<h2>1. One head by hand: five tokens</h2>
+					<p>
+						Take the five tokens <code>result = 0 ans return</code>, the end of the poster's prompt shrunk
+						to its bones. Give each token a notepad of four numbers, and give the four slots meanings so
+						that every weight below can be read out loud:
+					</p>
+					<table>
+						<thead><tr><th>slot</th><th>meaning</th><th><code>result</code></th><th><code>=</code></th><th><code>0</code></th><th><code>ans</code></th><th><code>return</code></th></tr></thead>
+						<tbody>
+							<tr><td>1</td><td>this token is a variable name</td><td>1</td><td>0</td><td>0</td><td>1</td><td>0</td></tr>
+							<tr><td>2</td><td>which name: \(+1\) result, \(-1\) ans</td><td>1</td><td>0</td><td>0</td><td>\(-1\)</td><td>0</td></tr>
+							<tr><td>3</td><td>operator or literal</td><td>0</td><td>1</td><td>1</td><td>0</td><td>0</td></tr>
+							<tr><td>4</td><td>this token is <code>return</code></td><td>0</td><td>0</td><td>0</td><td>0</td><td>1</td></tr>
+						</tbody>
+					</table>
+					<p>
+						Written as a matrix with one row per position, that table is the input \(X\), five rows of four
+						numbers. A trained model does not hand out slots this cleanly; that is what superposition and
+						the learned dictionaries on the timeline are about. The arithmetic is the same either way.
+					</p>
+					\[
+					X = \begin{bmatrix} 1 & 1 & 0 & 0 \\ 0 & 0 & 1 & 0 \\ 0 & 0 & 1 & 0 \\ 1 & -1 & 0 & 0 \\ 0 & 0 & 0 & 1 \end{bmatrix}
+					\begin{matrix} \texttt{result} \\ \texttt{=} \\ \texttt{0} \\ \texttt{ans} \\ \texttt{return} \end{matrix}
+					\]
+
+					<h3>Step 1. Where to look: query meets key</h3>
+					<p>
+						<strong>In words.</strong> The head we build has one job: when it stands on <code>return</code>,
+						find the variable names that came before, and prefer <code>result</code>. So the query should
+						be non-zero only at <code>return</code>, and the keys should be non-zero only at names.
+					</p>
+					<p>
+						Both are made from the notepad by a small matrix with two rows (the head is two numbers wide):
+					</p>
+					\[
+					W_Q = \begin{bmatrix} 0 & 0 & 0 & 2 \\ 0 & 0 & 0 & 1 \end{bmatrix}, \qquad
+					W_K = \begin{bmatrix} 1 & 0 & 0 & 0 \\ 0 & 1 & 0 & 0 \end{bmatrix}.
+					\]
+					<p>
+						\(W_Q\) reads only slot 4, so only <code>return</code> gets a query, \(q_5 = (2, 1)\); the
+						other four queries are zero. \(W_K\) reads slots 1 and 2, so <code>result</code> gets the key
+						\(k_1 = (1, 1)\), <code>ans</code> gets \(k_4 = (1, -1)\), and the rest get zero. A score is a
+						query dotted with a key. From <code>return</code>, the five scores are
+					</p>
+					\[
+					S_{5,\cdot} = \big(\,3,\ 0,\ 0,\ 1,\ 0\,\big):
+					\]
+					<p>
+						\(2 \cdot 1 + 1 \cdot 1 = 3\) for <code>result</code>, \(2 \cdot 1 + 1 \cdot (-1) = 1\) for
+						<code>ans</code>, zero for the rest. Every other position has a zero query and scores zero
+						everywhere.
+					</p>
+					<p>
+						Here is the first thing the notation is for. \(W_Q\) and \(W_K\) never act alone; only their
+						product matters. Multiply them into one \(4 \times 4\) matrix, \(W_{QK} = W_Q^{\top} W_K\), and
+						it has exactly two non-zero entries:
+					</p>
+					\[
+					(W_{QK})_{4,1} = 2, \qquad (W_{QK})_{4,2} = 1.
+					\]
+					<p>
+						That is the head's <em>where</em> rule in one line: "a position carrying <code>return</code>
+						scores each earlier position by \(2 \times\) (is a name) \(+\, 1 \times\) (which name)".
+						This matrix is the <strong>QK circuit</strong>. Section 4 gives its general form.
+					</p>
+					<p>
+						Scores become weights through a softmax: divide by \(\sqrt{2}\) (the head's width), take
+						\(e^{x}\), and normalise so the five weights add to one.
+					</p>
+					\[
+					\frac{S_{5,\cdot}}{\sqrt 2} = (2.12,\ 0,\ 0,\ 0.71,\ 0), \qquad
+					e^{(\cdot)} = (8.34,\ 1,\ 1,\ 2.03,\ 1), \qquad
+					A_{5,\cdot} = (0.62,\ 0.07,\ 0.07,\ 0.15,\ 0.07).
+					\]
+					<p>
+						From <code>return</code>, 62% of the attention goes to <code>result</code>, 15% to
+						<code>ans</code>, and the rest is spread thinly. <strong>That row is what one row of the
+						poster's heatmap is</strong>: one head, one query position, a weight for every earlier token.
+					</p>
+
+					<h3>Step 2. What to move: value and output</h3>
+					<p>
+						<strong>In words.</strong> Attention weights only say where to look. The head still has to
+						decide what to carry back from the places it looked at, and where on the notepad to write it.
+						The value matrix picks what leaves each source; the output matrix decides where it lands at
+						the destination.
+					</p>
+					\[
+					W_V = \begin{bmatrix} 0 & 1 & 0 & 0 \\ 1 & 0 & 0 & 0 \end{bmatrix}, \qquad
+					W_O = \begin{bmatrix} 0 & 1 \\ 1 & 0 \\ 0 & 0 \\ 0 & 0 \end{bmatrix}.
+					\]
+					<p>
+						\(W_V\) reads slots 2 and 1, the name bits, so <code>result</code> offers the value
+						\(v_1 = (1, 1)\), <code>ans</code> offers \(v_4 = (-1, 1)\), and the other three offer nothing.
+						The head mixes the values with the weights from step 1:
+					</p>
+					\[
+					r_5 = 0.62\,(1, 1) + 0.15\,(-1, 1) = (0.47,\ 0.78).
+					\]
+					<p>
+						\(W_O\) writes those two numbers into slots 2 and 1 of the notepad at <code>return</code>:
+					</p>
+					\[
+					h_5 = W_O\, r_5 = (0.78,\ 0.47,\ 0,\ 0).
+					\]
+					<p>
+						So <code>return</code>'s notepad gains 0.78 of "a name is here" and \(+0.47\) of "and it leans
+						toward <code>result</code>". As before, \(W_V\) and \(W_O\) only ever act as a pair. Their product
+						\(W_{OV} = W_O W_V\) is one \(4 \times 4\) matrix, the <strong>OV circuit</strong>, and here it
+						simply copies slots 1 and 2 and ignores slots 3 and 4:
+					</p>
+					\[
+					W_{OV} = \begin{bmatrix} 1 & 0 & 0 & 0 \\ 0 & 1 & 0 & 0 \\ 0 & 0 & 0 & 0 \\ 0 & 0 & 0 & 0 \end{bmatrix}.
+					\]
+					<div class="callout">
+						<p>
+							<strong>Two separate axes.</strong> The attention row moved information along the
+							<em>position</em> axis (from positions 1 and 4 to position 5). \(W_{OV}\) chose which
+							<em>slots</em> travel. Neither touched the other's axis. That is the whole reason the poster
+							can ask "where" and "what" as separate questions, and section 5 writes it down in general.
+						</p>
+					</div>
+
+					<h3>Step 3. What it does to the prediction</h3>
+					<p>
+						<strong>In words.</strong> The model's guess for the next token is a score per vocabulary
+						entry, the logits, read off the last notepad by the unembedding. Let the unembedding score
+						<code>result</code> as (name \(+\) which-name), <code>ans</code> as (name \(-\) which-name), and
+						the other three tokens from slots 3 and 4. Then the head's write-back changes the logits by
+					</p>
+					\[
+					\Delta L_5 = \big(\,1.25,\ 0,\ 0,\ 0.30,\ 0\,\big)
+					\qquad (\texttt{result},\ \texttt{=},\ \texttt{0},\ \texttt{ans},\ \texttt{return}),
+					\]
+					<p>
+						from \(0.78 + 0.47 = 1.25\) and \(0.78 - 0.47 = 0.30\). Both names go up, <code>result</code>
+						four times as much. Notice that the two increments are exactly twice the two attention weights
+						(\(2 \times 0.62\) and \(2 \times 0.15\)). That is because, end to end, this head is a
+						<em>copying</em> head: attending to <code>result</code> adds 2 to the <code>result</code> logit,
+						attending to <code>ans</code> adds 2 to the <code>ans</code> logit, and attending to anything
+						else adds nothing. Section 6 gives that end-to-end matrix a name, and section 8 needs exactly
+						this shape for the induction head.
+					</p>
+
+					<h3>The whole example on one card</h3>
+					<table>
+						<thead><tr><th>quantity</th><th>value</th><th>plain reading</th></tr></thead>
+						<tbody>
+							<tr><td>\(W_{QK}\)</td><td>two entries: \((4,1) = 2\), \((4,2) = 1\)</td><td>from <code>return</code>, look for names, prefer <code>result</code></td></tr>
+							<tr><td>\(A_{5,\cdot}\)</td><td>\((0.62,\ 0.07,\ 0.07,\ 0.15,\ 0.07)\)</td><td>one row of the heatmap: where <code>return</code> looks</td></tr>
+							<tr><td>\(W_{OV}\)</td><td>identity on slots 1, 2; zero elsewhere</td><td>carry the name bits, nothing else</td></tr>
+							<tr><td>\(h_5\)</td><td>\((0.78,\ 0.47,\ 0,\ 0)\)</td><td>what lands on <code>return</code>'s notepad</td></tr>
+							<tr><td>\(\Delta L_5\)</td><td><code>result</code> \(+1.25\), <code>ans</code> \(+0.30\)</td><td>the head's vote, twice the attention weights</td></tr>
+						</tbody>
+					</table>
+					<details>
+						<summary>Run it: the same numbers in eleven lines of PyTorch</summary>
+<pre><code>import torch
+X   = torch.tensor([[1,1,0,0],[0,0,1,0],[0,0,1,0],[1,-1,0,0],[0,0,0,1.]])   # result = 0 ans return
+W_Q = torch.tensor([[0,0,0,2],[0,0,0,1.]]);  W_K = torch.tensor([[1,0,0,0],[0,1,0,0.]])
+W_V = torch.tensor([[0,1,0,0],[1,0,0,0.]]);  W_O = torch.tensor([[0,1],[1,0],[0,0],[0,0.]])
+W_U = torch.tensor([[1,1,0,0],[0,0,1,0],[0,0,1,0],[1,-1,0,0],[0,0,0,1.]])
+
+W_QK = W_Q.T @ W_K                     # [4, 4], two non-zero entries
+W_OV = W_O @ W_V                       # [4, 4], identity on the name slots
+S = torch.einsum("di, ij, sj -> ds", X, W_QK, X)
+mask = torch.tril(torch.ones(5, 5))    # a position may only look backwards
+A = torch.softmax(S.masked_fill(mask == 0, -1e9) / 2**0.5, dim=-1)
+H = torch.einsum("ds, si, oi -> do", A, X, W_OV)
+print(A[4])            # tensor([0.624, 0.075, 0.075, 0.152, 0.075])
+print(H[4] @ W_U.T)    # tensor([1.248, 0.000, 0.000, 0.303, 0.000])</code></pre>
+					</details>
+					<div class="callout">
+						<p>
+							<strong>What the example is not.</strong> The slots were chosen by hand so that every matrix
+							is readable. A trained head spreads "is a name" and "which name" across many directions and
+							shares them with other features; that is why the poster reads its heads through learned
+							dictionaries (transcoder features) rather than hand-picked slots. What does carry over is
+							the arithmetic: a row of attention weights, a copy matrix, and a logit increment that is
+							their product. The rest of this page is that arithmetic with the sizes left general.
+						</p>
+					</div>
+				</div>
+			</section>
+
+			<!-- ============================ 2. Shapes ============================ -->
 			<section id="input">
 				<div class="wrap">
-					<h2>1. What the input is: token ids versus one-hot columns</h2>
-					<p class="lead">
-						Take a sentence of five tokens, so the context length is \(n_{\text{context}} = 5\). Write
-						\(d_{\text{model}}\) for the width of the residual stream and \(n_{\text{vocab}}\) for the
-						vocabulary size. Two things are easy to confuse here: the <em>token ids</em> a program
-						feeds to the model, and the <em>one-hot matrix</em> the mathematics uses so that a table lookup
-						becomes a matrix product.
+					<h2>2. Shapes: token ids, one-hot columns, and the embedding table</h2>
+					<p>
+						<strong>In words.</strong> In the example each token arrived with its notepad already filled
+						in. In a real model the notepad comes from a lookup: the token's id picks one row out of a big
+						table. The maths writes that lookup as a matrix product, so that the whole network becomes one
+						chain of matrices. This section is only about that bookkeeping.
+					</p>
+					<p>
+						Three sizes appear everywhere: the context length (five here, \(n_{\text{context}} = 5\)), the
+						notepad width \(d_{\text{model}}\) (four in the example, a few thousand in a real model), and
+						the vocabulary size \(n_{\text{vocab}}\) (a few hundred thousand).
 					</p>
 
-					<h3>What the code holds: a \(1 \times 5\) array of integers</h3>
+					<h3>What the code holds: five integers</h3>
 					<p>
-						The tokenizer turns the five tokens into five integer indices into the vocabulary, for
-						instance <code>[42, 105, 7, 900, 13]</code>. That is an array of shape <code>(5,)</code>, or
-						<code>(1, 5)</code> with a batch axis. <code>nn.Embedding</code> uses each integer directly to
-						pick a row of its weight table. No \(n_{\text{vocab}}\)-wide matrix is ever built.
+						The tokenizer turns the five tokens into five ids, say <code>[42, 105, 7, 900, 13]</code>: an
+						array of shape <code>(5,)</code>, or <code>(1, 5)</code> with a batch axis.
+						<code>nn.Embedding</code> uses each integer directly to pick a row of its table. No
+						\(n_{\text{vocab}}\)-wide matrix is ever built in the program.
 					</p>
 
-					<h3>What the maths writes: a one-hot matrix \(T \in \mathbb{R}^{n_{\text{vocab}} \times 5}\)</h3>
+					<h3>What the maths writes: a one-hot matrix \(T\)</h3>
 					<p>
-						Each token \(t_i\) becomes a column of length \(n_{\text{vocab}}\) with a single 1 at its
-						id. Stack the five columns side by side and you get a very tall, very sparse matrix
-						(with \(n_{\text{vocab}} = 50{,}000\), it is \(50{,}000 \times 5\)):
+						Each token becomes a column of length \(n_{\text{vocab}}\) with a single 1 at its id. Five
+						columns side by side make a very tall, very sparse matrix:
 					</p>
 					\[
 					T = \begin{bmatrix}
@@ -128,58 +347,51 @@
 					\vdots & \vdots & \\
 					0 & 1 & \cdots & \leftarrow \text{row } 105 \\
 					\vdots & \vdots &
-					\end{bmatrix} \in \mathbb{R}^{50{,}000 \times 5}
+					\end{bmatrix} \in \mathbb{R}^{n_{\text{vocab}} \times 5}.
 					\]
-					<p>
-						With the position axis first (the PyTorch and Transformer Circuits habit) it is the transpose,
-						\(T^{\top} \in \mathbb{R}^{5 \times 50{,}000}\), one long row of zeros and a single one per token.
-					</p>
 
-					<h3>The embedding matrix \(W_E\) does not depend on the sentence</h3>
+					<h3>The table \(W_E\) does not depend on the sentence</h3>
 					<p>
-						\(W_E\) is the model's static lookup table. Its shape is \((d_{\text{model}}, n_{\text{vocab}})\)
-						in the framework paper's column convention (PyTorch stores the transpose,
-						\((n_{\text{vocab}}, d_{\text{model}})\)). Nothing about it is \((1, d_{\text{model}})\); that
-						is only the shape of <em>one token after embedding</em>:
+						\(W_E\) is the model's fixed lookup table, one column per vocabulary entry, each column
+						\(d_{\text{model}}\) long. Multiplying it by a one-hot column with its 1 at row 42 returns
+						column 42 of the table. So the input notepads are
 					</p>
 					\[
-					x_i = W_E\, t_i \in \mathbb{R}^{d_{\text{model}}}, \qquad
-					X = W_E\, T \in \mathbb{R}^{d_{\text{model}} \times 5}.
+					x_i = W_E\, t_i, \qquad X = W_E\, T \in \mathbb{R}^{d_{\text{model}} \times 5},
 					\]
 					<p>
-						Multiplying \(W_E\) by a one-hot column with its 1 at row 42 returns column 42 of \(W_E\). So
-						\(W_E T\) is exactly "pull these five columns out of the table and put them side by side".
-						The program does the same thing with five integer lookups; the maths writes it as a product so
-						that the whole network becomes one chain of linear maps that can be expanded and differentiated.
+						which is exactly "pull these five columns out of the table and put them side by side". The
+						program does it with five integer lookups; the maths writes it as a product so that it can be
+						expanded and differentiated like everything downstream.
 					</p>
-
 					<div class="callout">
 						<p>
-							<strong>Two conventions, one object.</strong> Column view: \(X = W_E T \in \mathbb{R}^{d_{\text{model}} \times 5}\),
-							each <em>column</em> is one token's residual vector. Row view (frameworks, TransformerLens):
-							\(X \in \mathbb{R}^{5 \times d_{\text{model}}}\), shape <code>[n_context, d_model]</code>,
-							position \(i\) is the row \(x_i \in \mathbb{R}^{d_{\text{model}}}\). The index notation below
-							makes the convention irrelevant: an index is an index whichever way the matrix is printed.
+							<strong>Two conventions, one object.</strong> The paper stacks tokens as columns,
+							\(X \in \mathbb{R}^{d_{\text{model}} \times 5}\). PyTorch and TransformerLens stack them as
+							rows, \(X \in \mathbb{R}^{5 \times d_{\text{model}}}\), shape <code>[n_context, d_model]</code>,
+							which is how the example above was written. The index notation of the next section makes the
+							difference disappear: an index is an index whichever way the matrix is printed.
 						</p>
 					</div>
 				</div>
 			</section>
 
-			<!-- ============================ 2. Einstein notation ============================ -->
+			<!-- ============================ 3. Einstein notation ============================ -->
 			<section id="einsum">
 				<div class="wrap">
-					<h2>2. Einstein summation and <code>einsum</code></h2>
+					<h2>3. Einstein summation: name the axes once</h2>
 					<p>
-						Name the axes once and reuse the letters everywhere. A repeated index on one side of an equation
-						is summed over and the summation sign is dropped.
+						<strong>In words.</strong> Every operation from here on is "multiply some entries and add them
+						up over one axis". Rather than writing sums, give each axis a letter and agree on one rule: a
+						letter that appears twice in a product is summed over, and the summation sign is dropped.
+						<code>torch.einsum</code> uses the same letters, so the formula and the code read the same.
 					</p>
 					<dl class="idx">
-						<dt>\(p \in \{1, \dots, 5\}\)</dt><dd>position in the sequence (context index)</dd>
-						<dt>\(v \in \{1, \dots, n_{\text{vocab}}\}\)</dt><dd>vocabulary index</dd>
-						<dt>\(d \in \{1, \dots, d_{\text{model}}\}\)</dt><dd>residual-stream dimension</dd>
+						<dt>\(p\)</dt><dd>position in the sequence, 1 to 5</dd>
+						<dt>\(v\)</dt><dd>vocabulary entry, 1 to \(n_{\text{vocab}}\)</dd>
+						<dt>\(d\)</dt><dd>slot on the notepad, 1 to \(d_{\text{model}}\)</dd>
 					</dl>
-					<h3>The embedding lookup</h3>
-					<p>With the input as \(T_{p,v}\) and the table as \((W_E)_{d,v}\):</p>
+					<p>The embedding lookup of section 2, with the input as \(T_{p,v}\) and the table as \((W_E)_{d,v}\):</p>
 					\[
 					X_{p,d} = \sum_{v} T_{p,v}\,(W_E)_{d,v}
 					\qquad\text{written as}\qquad
@@ -189,33 +401,42 @@
 # X: [5, d_model]
 X = torch.einsum("pv, dv -> pd", T, W_E)</code></pre>
 					<p>
-						The output has shape \((5, d_{\text{model}})\). From here on every operation in an attention-only
-						transformer is one more <code>einsum</code> with a couple of extra letters.
+						Read the string left to right: the inputs have axes <code>pv</code> and <code>dv</code>; the
+						letter <code>v</code> appears in both and not in the output, so it is summed away; what is
+						left, <code>pd</code>, is the output's shape. Every formula below is one more
+						<code>einsum</code> with a couple of extra letters.
 					</p>
 				</div>
 			</section>
 
-			<!-- ============================ 3. QK ============================ -->
+			<!-- ============================ 4. QK ============================ -->
 			<section id="qk">
 				<div class="wrap">
-					<h2>3. The QK circuit: where to look</h2>
-					<p>Add the indices an attention head needs:</p>
+					<h2>4. The QK circuit in general: where to look</h2>
+					<p>
+						<strong>In words.</strong> Step 1 of the example, with the sizes left open. A query is the
+						destination's notepad pushed through \(W_Q\); a key is a source's notepad pushed through
+						\(W_K\); a score is their dot product; the two weight matrices collapse into one, the QK circuit.
+					</p>
+					<p>Three more letters:</p>
 					<dl class="idx">
-						<dt>\(d\) and \(s\)</dt><dd>destination position (the one making the prediction) and source position (the one being read); both range over the 5 positions</dd>
-						<dt>\(i, j, o\)</dt><dd>residual-stream dimensions, \(d_{\text{model}}\) wide (input side \(i, j\); output side \(o\))</dd>
-						<dt>\(h\)</dt><dd>the head's internal dimension, \(d_{\text{head}}\) wide</dd>
+						<dt>\(d\) and \(s\)</dt><dd>destination position (the one making the prediction) and source position (the one being read); both run over the 5 positions</dd>
+						<dt>\(i, j, o\)</dt><dd>notepad slots, \(d_{\text{model}}\) wide (input side \(i, j\); output side \(o\))</dd>
+						<dt>\(h\)</dt><dd>the head's internal coordinate, \(d_{\text{head}}\) wide (two in the example)</dd>
 					</dl>
 					<p>
 						Queries come from the destination, keys from the source:
-						\(Q_{d,h} = X_{d,i}\,(W_Q)_{h,i}\) and \(K_{s,h} = X_{s,j}\,(W_K)_{h,j}\). The score is their dot
+						\(Q_{d,h} = X_{d,i}\,(W_Q)_{h,i}\) and \(K_{s,h} = X_{s,j}\,(W_K)_{h,j}\). The score sums their
 						product over \(h\):
 					</p>
 					\[
 					S_{d,s} = Q_{d,h}\,K_{s,h} = X_{d,i}\,(W_Q)_{h,i}\,(W_K)_{h,j}\,X_{s,j}.
 					\]
 					<p>
-						\(W_Q\) and \(W_K\) only ever appear together, so the framework paper folds them into one low-rank
-						matrix, \((W_{QK})_{i,j} = (W_Q)_{h,i}(W_K)_{h,j}\), the <strong>QK circuit</strong>:
+						\(W_Q\) and \(W_K\) only ever appear together, so the framework paper folds them into one matrix,
+						\((W_{QK})_{i,j} = (W_Q)_{h,i}(W_K)_{h,j}\), of size \(d_{\text{model}} \times d_{\text{model}}\)
+						but of rank at most \(d_{\text{head}}\). In the example it had two entries; in general it is
+						dense, and the score is a bilinear form in the two notepads:
 					</p>
 					\[
 					S_{d,s} = X_{d,i}\,(W_{QK})_{i,j}\,X_{s,j}, \qquad
@@ -224,23 +445,24 @@ X = torch.einsum("pv, dv -> pd", T, W_E)</code></pre>
 <pre><code># S: [n_ctx, n_ctx] scores; W_QK: [d_model, d_model]
 S = torch.einsum("di, ij, sj -> ds", X, W_QK, X)
 
-# causal mask, then softmax over the source axis
+# causal mask (look backwards only), then softmax over the source axis
 A = torch.softmax(S.masked_fill(mask == 0, -1e9) / d_head**0.5, dim=-1)</code></pre>
 					<p>
-						\(A_{d,s}\) is the kernel of the <a href="../">kernel-estimator page</a>: for each destination it is
-						a probability distribution over sources. On the poster, the heatmap is one row of this matrix per
-						head, \(d = \) the <code>return</code> position, for every head in the model.
+						Each row of \(A\) is a probability distribution over sources; the
+						<a href="../">kernel-estimator page</a> shows it is a kernel weight. The poster's heatmap is one
+						such row per head, \(d = \) the <code>return</code> position, for every head in the model.
 					</p>
 				</div>
 			</section>
 
-			<!-- ============================ 4. OV ============================ -->
+			<!-- ============================ 5. OV ============================ -->
 			<section id="ov">
 				<div class="wrap">
-					<h2>4. The OV circuit: what to move</h2>
+					<h2>5. The OV circuit in general: what to move</h2>
 					<p>
-						Once \(A\) is fixed, the head reads a value from each source, mixes the values with the attention
-						weights, and writes the result back into the destination's residual stream:
+						<strong>In words.</strong> Step 2 of the example, with the sizes left open. Each source offers a
+						value; the destination takes the attention-weighted average of the values and writes it back
+						through \(W_O\); the two weight matrices collapse into the OV circuit.
 					</p>
 					\[
 					V_{s,h} = X_{s,i}\,(W_V)_{h,i}, \qquad
@@ -248,8 +470,8 @@ A = torch.softmax(S.masked_fill(mask == 0, -1e9) / d_head**0.5, dim=-1)</code></
 					H_{d,o} = R_{d,h}\,(W_O)_{o,h}.
 					\]
 					<p>
-						Again the two weight matrices only appear as a pair, \((W_{OV})_{o,i} = (W_O)_{o,h}(W_V)_{h,i}\), the
-						<strong>OV circuit</strong>; the head dimension \(h\) is contracted away:
+						With \((W_{OV})_{o,i} = (W_O)_{o,h}(W_V)_{h,i}\) the head coordinate \(h\) disappears and what
+						is left is
 					</p>
 					\[
 					H_{d,o} = A_{d,s}\,X_{s,i}\,(W_{OV})_{o,i}.
@@ -260,23 +482,27 @@ H = torch.einsum("ds, si, oi -> do", A, X, W_OV)</code></pre>
 					<div class="callout">
 						<p>
 							Read the index string: <code>ds</code> moves information along the <em>position</em> axis
-							(\(s \to d\)); <code>oi</code> transforms it along the <em>feature</em> axis (\(i \to o\)). The two
+							(\(s \to d\)); <code>oi</code> transforms it along the <em>slot</em> axis (\(i \to o\)). They
 							never touch each other's axis. The paper writes this as a tensor product,
-							\(H = (A \otimes W_{OV})\cdot X\), and it is the whole reason the poster can ask "where" and
-							"what" as separate questions.
+							\(H = (A \otimes W_{OV})\cdot X\). It is the same separation the callout in step 2 pointed at.
 						</p>
 					</div>
 				</div>
 			</section>
 
-			<!-- ============================ 5. End to end ============================ -->
+			<!-- ============================ 6. End to end ============================ -->
 			<section id="logits">
 				<div class="wrap">
-					<h2>5. End to end: from one-hot input to logits</h2>
+					<h2>6. End to end: from tokens to logits</h2>
 					<p>
-						Substitute the embedding for \(X\) and push the head's output through the unembedding
-						\((W_U)_{v_{\text{out}},o}\). Writing \(v_{\text{src}}\) for the source token's vocabulary index and
-						\(v_{\text{out}}\) for the predicted token's:
+						<strong>In words.</strong> Step 3 of the example, with the sizes left open. Feed the head's
+						write-back through the unembedding and substitute the one-hot input for \(X\). What comes out
+						is a matrix from source token to output token, the end-to-end OV circuit, and in the example
+						it was the copying matrix with a 2 on each name.
+					</p>
+					<p>
+						Writing \((W_U)_{v_{\text{out}},o}\) for the unembedding, \(v_{\text{src}}\) for the source
+						token's vocabulary index and \(v_{\text{out}}\) for the predicted token's:
 					</p>
 					\[
 					\Delta L_{d,v_{\text{out}}}
@@ -287,7 +513,7 @@ H = torch.einsum("ds, si, oi -> do", A, X, W_OV)</code></pre>
 # M_OV: [n_vocab, n_vocab] = W_U @ W_OV @ W_E   (the end-to-end OV circuit)
 delta_logits = torch.einsum("ds, sv, ov -> do", A, T, M_OV)</code></pre>
 					<p>
-						A one-layer attention-only model is now two separately readable matrices:
+						A one-layer attention-only model is now two matrices that can be read separately:
 					</p>
 					<table>
 						<thead><tr><th>circuit</th><th>matrix</th><th>what it decides</th></tr></thead>
@@ -298,159 +524,9 @@ delta_logits = torch.einsum("ds, sv, ov -> do", A, T, M_OV)</code></pre>
 					</table>
 					<p>
 						Together they implement the paper's <strong>skip-trigram</strong>,
-						<code>[source] ... [destination] [out]</code>: a lookup table with a gap in it.
+						<code>[source] ... [destination] [out]</code>: a lookup table with a gap in it. In the example the
+						table said "<code>return</code> ... <code>result</code> raises <code>result</code>".
 					</p>
-				</div>
-			</section>
-
-			<!-- ============================ 6. Worked example ============================ -->
-			<section id="example">
-				<div class="wrap">
-					<h2>6. A worked example: five tokens, numbers you can check by hand</h2>
-					<p>
-						Everything above in one toy head, small enough to multiply out on paper. Take the five
-						tokens <code>result = 0 ans return</code>, a residual stream of width
-						\(d_{\text{model}} = 4\), one head with \(d_{\text{head}} = 2\), and the row convention
-						\(X \in \mathbb{R}^{5 \times 4}\). The four residual dimensions are given meanings so that
-						the weights can be read: dimension 1 says "this token is a variable name", dimension 2
-						carries the name's identity (\(+1\) for <code>result</code>, \(-1\) for <code>ans</code>),
-						dimension 3 marks operators and literals, dimension 4 marks <code>return</code>. A trained
-						model does not hand out axes this cleanly; that is what superposition and the dictionaries
-						on the timeline are about. The arithmetic is the same.
-					</p>
-					\[
-					X = \begin{bmatrix} 1 & 1 & 0 & 0 \\ 0 & 0 & 1 & 0 \\ 0 & 0 & 1 & 0 \\ 1 & -1 & 0 & 0 \\ 0 & 0 & 0 & 1 \end{bmatrix}
-					\begin{matrix} \texttt{result} \\ \texttt{=} \\ \texttt{0} \\ \texttt{ans} \\ \texttt{return} \end{matrix}
-					\]
-
-					<h3>QK: the query asks for a name, and prefers <code>result</code></h3>
-					<p>Choose \(W_Q, W_K \in \mathbb{R}^{2 \times 4}\), head dimension first as in section 3:</p>
-					\[
-					W_Q = \begin{bmatrix} 0 & 0 & 0 & 2 \\ 0 & 0 & 0 & 1 \end{bmatrix}, \qquad
-					W_K = \begin{bmatrix} 1 & 0 & 0 & 0 \\ 0 & 1 & 0 & 0 \end{bmatrix}.
-					\]
-					<p>
-						\(W_Q\) reads only dimension 4, so only the <code>return</code> position gets a non-zero query,
-						\(q_5 = (2, 1)\); every other row of \(Q = X W_Q^{\top}\) is zero. \(W_K\) reads dimensions 1
-						and 2, so the names get keys \(k_1 = (1, 1)\) for <code>result</code> and \(k_4 = (1, -1)\) for
-						<code>ans</code>, and the other three keys are zero. The scores \(S = Q K^{\top}\) are all zero
-						except the last row:
-					</p>
-					\[
-					S_{5,\cdot} = \big(\,3,\ 0,\ 0,\ 1,\ 0\,\big).
-					\]
-					<p>
-						Fold the two matrices together and the same numbers come out of one \(4 \times 4\) matrix,
-						the QK circuit \(W_{QK} = W_Q^{\top} W_K\), which has exactly two non-zero entries:
-					</p>
-					\[
-					(W_{QK})_{4,1} = 2, \quad (W_{QK})_{4,2} = 1, \qquad S_{d,s} = x_d^{\top}\, W_{QK}\, x_s.
-					\]
-					<p>
-						Read it as a rule: a destination that carries "return" scores each source by
-						\(2 \times\) (is a name) \(+\, 1 \times\) (identity). For <code>result</code> that is
-						\(2 + 1 = 3\); for <code>ans</code> it is \(2 - 1 = 1\). Divide by
-						\(\sqrt{d_{\text{head}}} = \sqrt 2\) and take the softmax over the five sources (the causal
-						mask hides nothing from position 5):
-					</p>
-					\[
-					\frac{S_{5,\cdot}}{\sqrt 2} = (2.12,\ 0,\ 0,\ 0.71,\ 0), \qquad
-					e^{(\cdot)} = (8.34,\ 1,\ 1,\ 2.03,\ 1), \qquad \textstyle\sum = 13.37,
-					\]
-					\[
-					A_{5,\cdot} = (0.62,\ 0.07,\ 0.07,\ 0.15,\ 0.07).
-					\]
-					<p>
-						That row is one row of the poster's heatmap: from <code>return</code>, 62% of the attention
-						goes to <code>result</code>, 15% to <code>ans</code>, and the rest is spread thinly. The other
-						four destinations have zero queries, so their rows are uniform over whatever the causal mask
-						allows; row 3, for instance, is \((\tfrac13, \tfrac13, \tfrac13, 0, 0)\).
-					</p>
-
-					<h3>OV: what the attended tokens write back</h3>
-					<p>Now the value and output matrices, \(W_V \in \mathbb{R}^{2 \times 4}\) and \(W_O \in \mathbb{R}^{4 \times 2}\):</p>
-					\[
-					W_V = \begin{bmatrix} 0 & 1 & 0 & 0 \\ 1 & 0 & 0 & 0 \end{bmatrix}, \qquad
-					W_O = \begin{bmatrix} 0 & 1 \\ 1 & 0 \\ 0 & 0 \\ 0 & 0 \end{bmatrix}.
-					\]
-					<p>
-						\(V = X W_V^{\top}\) picks up the identity and the name bit of each source:
-						\(v_1 = (1, 1)\) for <code>result</code>, \(v_4 = (-1, 1)\) for <code>ans</code>, zero
-						elsewhere. Mixing them with the attention row gives the head's read at <code>return</code>:
-					</p>
-					\[
-					r_5 = \sum_s A_{5,s}\, v_s = 0.62\,(1, 1) + 0.15\,(-1, 1) = (0.47,\ 0.78).
-					\]
-					<p>\(W_O\) writes the two head coordinates back into residual dimensions 2 and 1:</p>
-					\[
-					h_5 = W_O\, r_5 = (0.78,\ 0.47,\ 0,\ 0).
-					\]
-					<p>
-						So the head adds 0.78 of "a name" and \(+0.47\) of identity, leaning toward
-						<code>result</code>, into the residual stream at <code>return</code>. The OV circuit
-						\(W_{OV} = W_O W_V\) is again a single \(4 \times 4\) matrix, and here it is the identity on
-						the name subspace and zero elsewhere:
-					</p>
-					\[
-					W_{OV} = \begin{bmatrix} 1 & 0 & 0 & 0 \\ 0 & 1 & 0 & 0 \\ 0 & 0 & 0 & 0 \\ 0 & 0 & 0 & 0 \end{bmatrix}, \qquad
-					h_d = \sum_s A_{d,s}\, W_{OV}\, x_s.
-					\]
-					<p>
-						The row of \(A\) moved information from positions 1 and 4 to position 5; \(W_{OV}\) decided
-						which coordinates travel. Neither touched the other's axis.
-					</p>
-
-					<h3>To the logits</h3>
-					<p>
-						Let the unembedding \(W_U \in \mathbb{R}^{5 \times 4}\) score <code>result</code> as
-						(name \(+\) identity) and <code>ans</code> as (name \(-\) identity), with the other three output
-						tokens reading dimensions 3 and 4:
-					</p>
-					\[
-					W_U = \begin{bmatrix} 1 & 1 & 0 & 0 \\ 0 & 0 & 1 & 0 \\ 0 & 0 & 1 & 0 \\ 1 & -1 & 0 & 0 \\ 0 & 0 & 0 & 1 \end{bmatrix}
-					\begin{matrix} \texttt{result} \\ \texttt{=} \\ \texttt{0} \\ \texttt{ans} \\ \texttt{return} \end{matrix},
-					\qquad
-					\Delta L_5 = W_U\, h_5 = (1.25,\ 0,\ 0,\ 0.30,\ 0).
-					\]
-					<p>
-						The head raises the <code>result</code> logit by 1.25 and the <code>ans</code> logit by 0.30.
-						The end-to-end OV matrix \(M_{OV} = W_U W_{OV} W_E\) of section 5, evaluated on these five
-						tokens, is
-					</p>
-					\[
-					(M_{OV})_{v_{\text{out}},\, v_{\text{src}}} =
-					\begin{bmatrix} 2 & 0 & 0 & 0 & 0 \\ 0 & 0 & 0 & 0 & 0 \\ 0 & 0 & 0 & 0 & 0 \\ 0 & 0 & 0 & 2 & 0 \\ 0 & 0 & 0 & 0 & 0 \end{bmatrix}.
-					\]
-					<p>
-						Attending to <code>result</code> raises the <code>result</code> logit, attending to
-						<code>ans</code> raises the <code>ans</code> logit, and nothing else moves. That is a copying
-						matrix, the shape section 8 needs for an induction head, and it is why the split in
-						\(A_{5,\cdot}\) (0.62 against 0.15) becomes a split in the logits (1.25 against 0.30, twice the
-						attention weights). Check: \(\Delta L_5 = \sum_s A_{5,s}\,(M_{OV})_{\cdot,\,s}\).
-					</p>
-<pre><code>import torch
-X   = torch.tensor([[1,1,0,0],[0,0,1,0],[0,0,1,0],[1,-1,0,0],[0,0,0,1.]])   # result = 0 ans return
-W_Q = torch.tensor([[0,0,0,2],[0,0,0,1.]]);  W_K = torch.tensor([[1,0,0,0],[0,1,0,0.]])
-W_V = torch.tensor([[0,1,0,0],[1,0,0,0.]]);  W_O = torch.tensor([[0,1],[1,0],[0,0],[0,0.]])
-W_U = torch.tensor([[1,1,0,0],[0,0,1,0],[0,0,1,0],[1,-1,0,0],[0,0,0,1.]])
-
-W_QK = W_Q.T @ W_K                     # [4, 4], two non-zero entries
-W_OV = W_O @ W_V                       # [4, 4], identity on the name subspace
-S = torch.einsum("di, ij, sj -> ds", X, W_QK, X)
-mask = torch.tril(torch.ones(5, 5))
-A = torch.softmax(S.masked_fill(mask == 0, -1e9) / 2**0.5, dim=-1)
-H = torch.einsum("ds, si, oi -> do", A, X, W_OV)
-print(A[4])            # tensor([0.624, 0.075, 0.075, 0.152, 0.075])
-print(H[4] @ W_U.T)    # tensor([1.248, 0.000, 0.000, 0.303, 0.000])</code></pre>
-					<div class="callout">
-						<p>
-							<strong>What the example is not.</strong> The axes were chosen by hand so that every
-							matrix is readable. A trained head spreads "is a name" and "which name" across many
-							directions and shares them with other features; that is why the poster reads its heads
-							through learned dictionaries (transcoder features) rather than hand-picked coordinates.
-							The arithmetic that turns an attention row into a logit increment is the one above.
-						</p>
-					</div>
 				</div>
 			</section>
 
@@ -459,10 +535,15 @@ print(H[4] @ W_U.T)    # tensor([1.248, 0.000, 0.000, 0.303, 0.000])</code></pre
 				<div class="wrap">
 					<h2>7. Two layers: composition and virtual heads</h2>
 					<p>
-						With a second layer, expand every path from input to logits. Besides the direct path \(W_U W_E\)
-						(bigram statistics) and each head's own path, there are <em>compositional</em> paths where a
-						layer-2 head \(h_2\) reads what a layer-1 head \(h_1\) wrote into the residual stream. It can read it
-						through any of its three input matrices:
+						<strong>In words.</strong> A head in layer 2 does not see the raw tokens; it sees notepads that
+						layer-1 heads have already written on. So a layer-2 head can build its query, its key, or its
+						value out of what a layer-1 head left behind. That is composition, and it is what lets two
+						layers do things one layer cannot.
+					</p>
+					<p>
+						Expand every path from input to logits. Besides the direct path \(W_U W_E\) (bigram statistics)
+						and each head's own path, there are <em>compositional</em> paths where a layer-2 head \(h_2\)
+						reads what a layer-1 head \(h_1\) wrote. It can read it through any of its three input matrices:
 					</p>
 					<table>
 						<thead><tr><th>composition</th><th>which matrix of \(h_2\) reads \(h_1\)'s output</th><th>what changes</th></tr></thead>
@@ -473,8 +554,8 @@ print(H[4] @ W_U.T)    # tensor([1.248, 0.000, 0.000, 0.303, 0.000])</code></pre
 						</tbody>
 					</table>
 					<p>
-						V-composition is the tidy one, because moving information twice is still just moving information.
-						Compose the two tensor-product operators and use the mixed-product rule
+						V-composition is the tidy one, because moving information twice is still just moving
+						information. Compose the two tensor-product operators and use the mixed-product rule
 						\((A \otimes B)(C \otimes D) = (AC) \otimes (BD)\):
 					</p>
 					\[
@@ -488,7 +569,7 @@ print(H[4] @ W_U.T)    # tensor([1.248, 0.000, 0.000, 0.303, 0.000])</code></pre
 						pattern: if \(h_1\) moves position \(k\) to \(m\) and \(h_2\) moves \(m\) to \(d\), the product
 						moves \(k\) to \(d\) in one hop. Inside the composite OV matrix the middle factor
 						\(W_V^{h_2} W_O^{h_1}\) is the paper's <em>virtual weight</em>: how much of \(h_1\)'s output
-						subspace \(h_2\) actually reads.
+						\(h_2\) actually reads.
 					</p>
 <pre><code># composite pattern: [n_ctx, n_ctx]
 A_virtual = torch.einsum("dm, ms -> ds", A_h2, A_h1)
@@ -506,8 +587,9 @@ H_virtual = torch.einsum("ds, si, oi -> do", A_virtual, X, W_OV_virtual)</code><
 				<div class="wrap">
 					<h2>8. The induction head, step by step</h2>
 					<p>
-						Q- and K-composition change the pattern itself, and that is what lets a two-layer model do
-						something a lookup table cannot: in-context learning. The sequence is
+						<strong>In words.</strong> Q- and K-composition change the attention pattern itself, and that
+						is what lets a two-layer model do something a lookup table cannot: notice that a token has
+						appeared before and predict what followed it last time. The sequence is
 					</p>
 					\[
 					\dots \underbrace{[A]}_{\text{pos } i}\ \underbrace{[B]}_{\text{pos } i+1} \dots\dots \underbrace{[A]}_{\text{pos } d}
@@ -517,13 +599,13 @@ H_virtual = torch.einsum("ds, si, oi -> do", A_virtual, X, W_OV_virtual)</code><
 					<h3>Step 1. A layer-1 previous-token head tags \([B]\) with "the token before me is \([A]\)"</h3>
 					<p>
 						Its QK circuit attends one position back, so at \(i+1\) it looks at \(i\). Its OV circuit copies
-						\([A]\)'s features into the residual stream at \(i+1\). Position \(i+1\) now carries both "I am
-						\([B]\)" and, in a separate subspace, "the token before me is \([A]\)".
+						\([A]\)'s features into the notepad at \(i+1\). Position \(i+1\) now carries both "I am
+						\([B]\)" and, in a separate set of slots, "the token before me is \([A]\)".
 					</p>
 
 					<h3>Step 2. The layer-2 induction head builds its key from that tag (K-composition)</h3>
 					<p>
-						\(W_K^{h_2}\) reads the subspace the previous-token head wrote, not the raw embedding. So the key at
+						\(W_K^{h_2}\) reads the slots the previous-token head wrote, not the raw embedding. So the key at
 						\(i+1\) means \(k_{i+1} \approx \text{Key}(\text{"the token before me is } [A]\text{"})\): position
 						\(i+1\) is broadcasting "if the token you are looking at is \([A]\), look at me".
 					</p>
@@ -533,15 +615,15 @@ H_virtual = torch.einsum("ds, si, oi -> do", A_virtual, X, W_OV_virtual)</code><
 						At the destination \(d\) the query is built from the current token,
 						\(q_d \approx \text{Query}(\text{"my token is } [A]\text{"})\). The score
 						\(S_{d,i+1} = q_d^{\top} k_{i+1}\) is large exactly where the tag matches, and after the softmax
-						\(A_{d,i+1}\) carries almost all the weight: the kernel has a single sharp peak on the position
+						\(A_{d,i+1}\) carries almost all the weight: the row has a single sharp peak on the position
 						<em>after</em> the previous \([A]\).
 					</p>
 
 					<h3>Step 4. The OV circuit copies \([B]\) into the prediction</h3>
 					<p>
 						\(W_V^{h_2}\) reads position \(i+1\)'s own token features, \([B]\). The end-to-end OV matrix
-						\(W_U W_{OV}^{h_2} W_E\) of an induction head is a <em>copying</em> matrix (large positive
-						eigenvalues, diagonal-dominant): whatever token it attends to, it raises that token's own logit.
+						\(W_U W_{OV}^{h_2} W_E\) of an induction head is a <em>copying</em> matrix, like the one in the
+						example with its 2 on each name: whatever token it attends to, it raises that token's own logit.
 						So \(\Delta L_d \approx W_U W_{OV}^{h_2} x_{i+1} \propto \text{logit}([B])\).
 					</p>
 
@@ -563,9 +645,9 @@ H_virtual = torch.einsum("ds, si, oi -> do", A_virtual, X, W_OV_virtual)</code><
 							<strong>On the poster.</strong> The <code>return</code> position holds a query; the earlier
 							occurrences of each variable name hold the keys. Of the ten heads with the most attention on
 							the variable names, L18H6 and L21H5 score 0.79 and 0.67 on the repeated-random-sequence
-							induction test, among the highest in <code>gemma-2-2b</code>. Their kernel is step 3 above;
-							what they copy, and whether it decides the answer, is the attribution graph and the steering
-							experiment on the <a href="../../../practice/">practice</a> pages.
+							induction test, among the highest in <code>gemma-2-2b</code>. Their attention row is step 3
+							above; what they copy, and whether it decides the answer, is the attribution graph and the
+							steering experiment on the <a href="../../../practice/">practice</a> pages.
 						</p>
 					</div>
 				</div>
