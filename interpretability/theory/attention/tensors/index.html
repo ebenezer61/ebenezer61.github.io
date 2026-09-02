@@ -157,17 +157,28 @@
 						be non-zero only at <code>return</code>, and the keys should be non-zero only at names.
 					</p>
 					<p>
-						Both are made from the notepad by a small matrix with two rows (the head is two numbers wide):
+						Each position turns its notepad into a <em>query</em> by one small matrix, \(W_Q\); the query is
+						what that position is looking for. We want only <code>return</code> to look, so \(W_Q\) should
+						read slot 4 and nothing else. Give it two coordinates, with weights 2 and 1; the 2 : 1 split is
+						what will later make <code>result</code> beat <code>ans</code>. Each position also turns its
+						notepad into a <em>key</em> by another small matrix, \(W_K\); the key is what that position
+						advertises about itself. We want names to be findable, so \(W_K\) should read slots 1 and 2,
+						one coordinate each. The smallest matrices that do exactly that are
 					</p>
 					\[
 					W_Q = \begin{bmatrix} 0 & 0 & 0 & 2 \\ 0 & 0 & 0 & 1 \end{bmatrix}, \qquad
 					W_K = \begin{bmatrix} 1 & 0 & 0 & 0 \\ 0 & 1 & 0 & 0 \end{bmatrix}.
 					\]
 					<p>
-						\(W_Q\) reads only slot 4, so only <code>return</code> gets a query, \(q_5 = (2, 1)\); the
-						other four queries are zero. \(W_K\) reads slots 1 and 2, so <code>result</code> gets the key
-						\(k_1 = (1, 1)\), <code>ans</code> gets \(k_4 = (1, -1)\), and the rest get zero. A score is a
-						query dotted with a key. From <code>return</code>, the five scores are
+						Two rows because the head is two numbers wide, four columns because the notepad has four slots.
+						A position's query is \(q = W_Q\, x\) and its key is \(k = W_K\, x\), where \(x\) is its row
+						of \(X\). So \(W_Q\) gives only <code>return</code> a query, \(q_5 = (2, 1)\), and the other
+						four queries are zero; \(W_K\) gives <code>result</code> the key \(k_1 = (1, 1)\),
+						<code>ans</code> the key \(k_4 = (1, -1)\), and the rest zero.
+					</p>
+					<p>
+						A <em>score</em> says how well a query matches a key: multiply coordinate by coordinate and
+						add, \(q \cdot k\). From <code>return</code>, the five scores are
 					</p>
 					\[
 					S_{5,\cdot} = \big(\,3,\ 0,\ 0,\ 1,\ 0\,\big):
@@ -188,11 +199,17 @@
 					<p>
 						That is the head's <em>where</em> rule in one line: "a position carrying <code>return</code>
 						scores each earlier position by \(2 \times\) (is a name) \(+\, 1 \times\) (which name)".
-						This matrix is the <strong>QK circuit</strong>. Section 4 gives its general form.
+						This matrix is the <strong>QK circuit</strong>. The split into \(W_Q\) and \(W_K\) is not
+						unique: \(W_Q = \big[\begin{smallmatrix} 0 & 0 & 0 & 1 \\ 0 & 0 & 0 & 1 \end{smallmatrix}\big]\)
+						with \(W_K = \big[\begin{smallmatrix} 2 & 0 & 0 & 0 \\ 0 & 1 & 0 & 0 \end{smallmatrix}\big]\)
+						gives the same \(W_{QK}\) and the same scores, which is why the pair is read as one matrix.
+						Section 4 gives its general form.
 					</p>
 					<p>
-						Scores become weights through a softmax: divide by \(\sqrt{2}\) (the head's width), take
-						\(e^{x}\), and normalise so the five weights add to one.
+						Scores are not yet weights. A <em>softmax</em> turns the five scores into five numbers that
+						are positive and add up to one, so that the head can take a weighted average in the next step:
+						divide each score by \(\sqrt{2}\) (the head's width; this keeps scores from growing with the
+						head size), take \(e^{x}\), and divide by the sum.
 					</p>
 					\[
 					\frac{S_{5,\cdot}}{\sqrt 2} = (2.12,\ 0,\ 0,\ 0.71,\ 0), \qquad
@@ -203,29 +220,37 @@
 						From <code>return</code>, 62% of the attention goes to <code>result</code>, 15% to
 						<code>ans</code>, and the rest is spread thinly. <strong>That row is what one row of the
 						poster's heatmap is</strong>: one head, one query position, a weight for every earlier token.
+						The two matrices here were chosen by hand for the toy; in a trained model \(W_Q\) and
+						\(W_K\) are learned parameters of each head, and the poster reads their effect straight off
+						the attention row.
 					</p>
 
 					<h3>Step 2. What to move: value and output</h3>
 					<p>
 						<strong>In words.</strong> Attention weights only say where to look. The head still has to
 						decide what to carry back from the places it looked at, and where on the notepad to write it.
-						The value matrix picks what leaves each source; the output matrix decides where it lands at
-						the destination.
+						Two more small matrices do that. \(W_V\) turns a source's notepad into its <em>value</em>,
+						what it hands over if chosen; \(W_O\) decides which slots of the destination's notepad the
+						result is written to. We want the name bits to travel, so \(W_V\) should read slots 2 and 1
+						and \(W_O\) should write them back into slots 2 and 1. The smallest matrices that do that are
 					</p>
 					\[
 					W_V = \begin{bmatrix} 0 & 1 & 0 & 0 \\ 1 & 0 & 0 & 0 \end{bmatrix}, \qquad
 					W_O = \begin{bmatrix} 0 & 1 \\ 1 & 0 \\ 0 & 0 \\ 0 & 0 \end{bmatrix}.
 					\]
 					<p>
-						\(W_V\) reads slots 2 and 1, the name bits, so <code>result</code> offers the value
-						\(v_1 = (1, 1)\), <code>ans</code> offers \(v_4 = (-1, 1)\), and the other three offer nothing.
-						The head mixes the values with the weights from step 1:
+						\(W_V\) is two rows by four slots, like \(W_Q\); \(W_O\) goes the other way, four slots by two.
+						A source's value is \(v = W_V\, x\), so <code>result</code> offers \(v_1 = (1, 1)\),
+						<code>ans</code> offers \(v_4 = (-1, 1)\), and the other three offer nothing. The head's
+						<em>read</em> at <code>return</code>, call it \(r_5\), is the weighted average of the values with
+						the attention row from step 1 as the weights:
 					</p>
 					\[
 					r_5 = 0.62\,(1, 1) + 0.15\,(-1, 1) = (0.47,\ 0.78).
 					\]
 					<p>
-						\(W_O\) writes those two numbers into slots 2 and 1 of the notepad at <code>return</code>:
+						\(W_O\) writes those two numbers into slots 2 and 1 of the notepad at <code>return</code>. The
+						result, \(h_5\), is what the head adds to <code>return</code>'s notepad:
 					</p>
 					\[
 					h_5 = W_O\, r_5 = (0.78,\ 0.47,\ 0,\ 0).
@@ -251,9 +276,12 @@
 					<h3>Step 3. What it does to the prediction</h3>
 					<p>
 						<strong>In words.</strong> The model's guess for the next token is a score per vocabulary
-						entry, the logits, read off the last notepad by the unembedding. Let the unembedding score
-						<code>result</code> as (name \(+\) which-name), <code>ans</code> as (name \(-\) which-name), and
-						the other three tokens from slots 3 and 4. Then the head's write-back changes the logits by
+						entry, the <em>logits</em>. They are read off the last notepad by the <em>unembedding</em>
+						\(W_U\), a fixed table with one row per vocabulary entry: the logit for a token is that
+						token's row dotted with the notepad. Let the row for <code>result</code> be (name \(+\)
+						which-name), the row for <code>ans</code> be (name \(-\) which-name), and the other three rows
+						read slots 3 and 4. The head added \(h_5\) to the notepad, so it changes each logit by
+						\(W_U\) applied to \(h_5\); call that \(\Delta L_5\):
 					</p>
 					\[
 					\Delta L_5 = \big(\,1.25,\ 0,\ 0,\ 0.30,\ 0\,\big)
@@ -299,8 +327,8 @@ print(H[4] @ W_U.T)    # tensor([1.248, 0.000, 0.000, 0.303, 0.000])</code></pre
 					</details>
 					<div class="callout">
 						<p>
-							<strong>What the example is not.</strong> The slots were chosen by hand so that every matrix
-							is readable. A trained head spreads "is a name" and "which name" across many directions and
+							<strong>What the example is not.</strong> The slots and the weights were chosen by hand so
+							that every matrix is readable. A trained head spreads "is a name" and "which name" across many directions and
 							shares them with other features; that is why the poster reads its heads through learned
 							dictionaries (transcoder features) rather than hand-picked slots. What does carry over is
 							the arithmetic: a row of attention weights, a copy matrix, and a logit increment that is
