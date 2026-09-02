@@ -263,22 +263,51 @@
 					W_O = \begin{bmatrix} 0 & 1 \\ 1 & 0 \\ 0 & 0 \\ 0 & 0 \end{bmatrix}.
 					\]
 					<p>
-						\(W_V\) is two rows by four slots, like \(W_Q\); \(W_O\) goes the other way, four slots by two.
-						A source's value is \(v = W_V\, x\), so <code>result</code> offers \(v_1 = (1, 1)\),
-						<code>ans</code> offers \(v_4 = (-1, 1)\), and the other three offer nothing. The head's
-						<em>read</em> at <code>return</code>, call it \(r_5\), is the weighted average of the values with
-						the attention row from step 1 as the weights:
+						\(W_V\) is two rows by four slots, like \(W_Q\): it <em>reads</em> a notepad (four slots in)
+						and produces a value (two numbers out). \(W_O\) goes the other way, four slots by two,
+						because it <em>writes</em>: two numbers from the head go in, four slots come out, so the result
+						has the shape of a notepad and can be added to one. The values of all five positions at once
+						are \(V = X W_V^{\top}\), the same product as for \(Q\) and \(K\):
 					</p>
 					\[
-					r_5 = 0.62\,(1, 1) + 0.15\,(-1, 1) = (0.47,\ 0.78).
+					V = X W_V^{\top} =
+					\begin{bmatrix} 1 & 1 & 0 & 0 \\ 0 & 0 & 1 & 0 \\ 0 & 0 & 1 & 0 \\ 1 & -1 & 0 & 0 \\ 0 & 0 & 0 & 1 \end{bmatrix}
+					\begin{bmatrix} 0 & 1 \\ 1 & 0 \\ 0 & 0 \\ 0 & 0 \end{bmatrix}
+					= \begin{bmatrix} 1 & 1 \\ 0 & 0 \\ 0 & 0 \\ -1 & 1 \\ 0 & 0 \end{bmatrix},
+					\qquad v_1 = (1,\ 1),\quad v_4 = (-1,\ 1).
+					\]
+					<p>
+						Only the two names offer anything. The head's <em>read</em> at <code>return</code>, call it
+						\(r_5\), is the attention row from step 1 times \(V\): a \(1 \times 5\) times a
+						\(5 \times 2\), which is the weighted average of the five values.
+					</p>
+					\[
+					r_5 = A_{5,\cdot}\, V = (0.62,\ 0.07,\ 0.07,\ 0.15,\ 0.07)
+					\begin{bmatrix} 1 & 1 \\ 0 & 0 \\ 0 & 0 \\ -1 & 1 \\ 0 & 0 \end{bmatrix}
+					= 0.62\,(1, 1) + 0.15\,(-1, 1) = (0.47,\ 0.78).
 					\]
 					<p>
 						\(W_O\) writes those two numbers into slots 2 and 1 of the notepad at <code>return</code>. The
-						result, \(h_5\), is what the head adds to <code>return</code>'s notepad:
+						result, \(h_5\), is what the head adds to <code>return</code>'s notepad; in the row convention
+						it is \(r_5 W_O^{\top}\), a \(1 \times 2\) times a \(2 \times 4\):
 					</p>
 					\[
-					h_5 = W_O\, r_5 = (0.78,\ 0.47,\ 0,\ 0).
+					h_5 = r_5\, W_O^{\top} = (0.47,\ 0.78)
+					\begin{bmatrix} 0 & 1 & 0 & 0 \\ 1 & 0 & 0 & 0 \end{bmatrix}
+					= (0.78,\ 0.47,\ 0,\ 0).
 					\]
+					<table>
+						<thead><tr><th>step</th><th>product</th><th>shapes</th></tr></thead>
+						<tbody>
+							<tr><td>values</td><td>\(V = X W_V^{\top}\)</td><td>\((5 \times 4)(4 \times 2) \to 5 \times 2\)</td></tr>
+							<tr><td>weighted average</td><td>\(R = A V\)</td><td>\((5 \times 5)(5 \times 2) \to 5 \times 2\)</td></tr>
+							<tr><td>write back</td><td>\(H = R W_O^{\top}\)</td><td>\((5 \times 2)(2 \times 4) \to 5 \times 4\), the shape of \(X\)</td></tr>
+						</tbody>
+					</table>
+					<p>
+						The chain only closes because \(W_O\) is transposed relative to \(W_V\): the head's width, 2,
+						is what gets multiplied away in the middle, and the output comes back with four slots.
+					</p>
 					<p>
 						So <code>return</code>'s notepad gains 0.78 of "a name is here" and \(+0.47\) of "and it leans
 						toward <code>result</code>". As before, \(W_V\) and \(W_O\) only ever act as a pair. Their product
