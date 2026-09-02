@@ -732,7 +732,10 @@ delta_logits = torch.einsum("ds, sv, ov -> do", A, T, M_OV)</code></pre>
 					<p>
 						Expand every path from input to logits. Besides the direct path \(W_U W_E\) (bigram statistics)
 						and each head's own path, there are <em>compositional</em> paths where a layer-2 head \(h_2\)
-						reads what a layer-1 head \(h_1\) wrote. It can read it through any of its three input matrices:
+						reads what a layer-1 head \(h_1\) wrote. It can read it through any of its three input matrices;
+						the three names below are from the framework paper's section
+						<a href="https://transformer-circuits.pub/2021/framework/index.html#three-kinds-of-composition" target="_blank" rel="noopener">Three kinds of composition</a>
+						(Elhage et al., 2021):
 					</p>
 					<table>
 						<thead><tr><th>composition</th><th>which matrix of \(h_2\) reads \(h_1\)'s output</th><th>what changes</th></tr></thead>
@@ -811,7 +814,7 @@ H_virtual = torch.einsum("ds, si, oi -> do", A_virtual, X, W_OV_virtual)</code><
 						\([B]\)" and, in a separate set of slots, "the token before me is \([A]\)".
 					</p>
 
-					<h3>Step 2. The layer-2 induction head builds its key from that tag (K-composition)</h3>
+					<h3>Step 2. The layer-2 induction head builds its key from that tag (<a href="https://transformer-circuits.pub/2021/framework/index.html#three-kinds-of-composition" target="_blank" rel="noopener">K-composition</a>)</h3>
 					<p>
 						\(W_K^{h_2}\) reads the slots the previous-token head wrote, not the raw embedding. So the key at
 						\(i+1\) means \(k_{i+1} \approx \text{Key}(\text{"the token before me is } [A]\text{"})\): position
@@ -845,7 +848,9 @@ H_virtual = torch.einsum("ds, si, oi -> do", A_virtual, X, W_OV_virtual)</code><
 					</table>
 					<p>
 						The pair never needed to see this particular \([A][B]\) in training; one occurrence in the context is
-						enough. That is the difference between a skip-trigram table and an algorithm.
+						enough. That is the difference between a skip-trigram table and an algorithm. The four steps
+						are the ones the framework paper describes; for a version drawn out head by head, see
+						<a href="https://www.lesswrong.com/posts/TvrfY4c9eaGLeyDkE/induction-heads-illustrated" target="_blank" rel="noopener">Induction heads, illustrated</a> (McDougall, 2023).
 					</p>
 
 					<div class="callout">
@@ -891,6 +896,10 @@ H_virtual = torch.einsum("ds, si, oi -> do", A_virtual, X, W_OV_virtual)</code><
 						<li>
 							<span class="entry-title"><a href="https://transformer-circuits.pub/2022/in-context-learning-and-induction-heads/index.html" target="_blank" rel="noopener">In-context Learning and Induction Heads</a></span>
 							<p class="entry-meta">Olsson, Elhage, Nanda et al., 2022. The induction score used for the numbers quoted on the poster.</p>
+						</li>
+						<li>
+							<span class="entry-title"><a href="https://www.lesswrong.com/posts/TvrfY4c9eaGLeyDkE/induction-heads-illustrated" target="_blank" rel="noopener">Induction heads, illustrated</a></span>
+							<p class="entry-meta">Callum McDougall, 2023 (LessWrong). The two-head mechanism of section 8 as diagrams: the previous-token head, K-composition, and the copying OV circuit, one picture per step.</p>
 						</li>
 						<li>
 							<span class="entry-title"><a href="../">Attention as a kernel estimator</a></span>
