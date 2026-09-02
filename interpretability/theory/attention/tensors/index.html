@@ -171,22 +171,46 @@
 					\]
 					<p>
 						Two rows because the head is two numbers wide, four columns because the notepad has four slots.
-						A position's query is \(q = W_Q\, x\) and its key is \(k = W_K\, x\), where \(x\) is its row
-						of \(X\). So \(W_Q\) gives only <code>return</code> a query, \(q_5 = (2, 1)\), and the other
-						four queries are zero; \(W_K\) gives <code>result</code> the key \(k_1 = (1, 1)\),
-						<code>ans</code> the key \(k_4 = (1, -1)\), and the rest zero.
+						\(X\) holds one row per position, so the queries of all five positions at once are
+						\(Q = X W_Q^{\top}\): a \(5 \times 4\) times a \(4 \times 2\) gives a \(5 \times 2\), one
+						query per row. For a single position that is \(q_p = W_Q\, x_p\). The keys are the same
+						product with \(W_K\): \(K = X W_K^{\top}\).
+					</p>
+					\[
+					Q = X W_Q^{\top} =
+					\begin{bmatrix} 1 & 1 & 0 & 0 \\ 0 & 0 & 1 & 0 \\ 0 & 0 & 1 & 0 \\ 1 & -1 & 0 & 0 \\ 0 & 0 & 0 & 1 \end{bmatrix}
+					\begin{bmatrix} 0 & 0 \\ 0 & 0 \\ 0 & 0 \\ 2 & 1 \end{bmatrix}
+					= \begin{bmatrix} 0 & 0 \\ 0 & 0 \\ 0 & 0 \\ 0 & 0 \\ 2 & 1 \end{bmatrix},
+					\qquad q_5 = (2,\ 1).
+					\]
+					<p>
+						Only row 5 of \(Q\) is non-zero, because only <code>return</code> has slot 4 set and
+						\(W_Q\) reads nothing else.
+					</p>
+					\[
+					K = X W_K^{\top} =
+					\begin{bmatrix} 1 & 1 & 0 & 0 \\ 0 & 0 & 1 & 0 \\ 0 & 0 & 1 & 0 \\ 1 & -1 & 0 & 0 \\ 0 & 0 & 0 & 1 \end{bmatrix}
+					\begin{bmatrix} 1 & 0 \\ 0 & 1 \\ 0 & 0 \\ 0 & 0 \end{bmatrix}
+					= \begin{bmatrix} 1 & 1 \\ 0 & 0 \\ 0 & 0 \\ 1 & -1 \\ 0 & 0 \end{bmatrix},
+					\qquad k_1 = (1,\ 1),\quad k_4 = (1,\ -1).
+					\]
+					<p>
+						Only rows 1 and 4 of \(K\) are non-zero, because only the two names have slot 1 or slot 2 set.
 					</p>
 					<p>
 						A <em>score</em> says how well a query matches a key: multiply coordinate by coordinate and
-						add, \(q \cdot k\). From <code>return</code>, the five scores are
+						add, \(q \cdot k\). All twenty-five scores at once are \(S = Q K^{\top}\), a \(5 \times 5\)
+						matrix with one row per destination. From <code>return</code>, the row is
 					</p>
 					\[
-					S_{5,\cdot} = \big(\,3,\ 0,\ 0,\ 1,\ 0\,\big):
+					S_{5,\cdot} = q_5\, K^{\top} = (2,\ 1)
+					\begin{bmatrix} 1 & 0 & 0 & 1 & 0 \\ 1 & 0 & 0 & -1 & 0 \end{bmatrix}
+					= \big(\,3,\ 0,\ 0,\ 1,\ 0\,\big):
 					\]
 					<p>
 						\(2 \cdot 1 + 1 \cdot 1 = 3\) for <code>result</code>, \(2 \cdot 1 + 1 \cdot (-1) = 1\) for
-						<code>ans</code>, zero for the rest. Every other position has a zero query and scores zero
-						everywhere.
+						<code>ans</code>, zero for the rest. The other four rows of \(S\) are zero, because the other
+						four rows of \(Q\) are.
 					</p>
 					<p>
 						Here is the first thing the notation is for. \(W_Q\) and \(W_K\) never act alone; only their
