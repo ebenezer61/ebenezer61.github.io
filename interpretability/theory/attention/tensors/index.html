@@ -303,10 +303,161 @@ delta_logits = torch.einsum("ds, sv, ov -> do", A, T, M_OV)</code></pre>
 				</div>
 			</section>
 
-			<!-- ============================ 6. Two layers ============================ -->
+			<!-- ============================ 6. Worked example ============================ -->
+			<section id="example">
+				<div class="wrap">
+					<h2>6. A worked example: five tokens, numbers you can check by hand</h2>
+					<p>
+						Everything above in one toy head, small enough to multiply out on paper. Take the five
+						tokens <code>result = 0 ans return</code>, a residual stream of width
+						\(d_{\text{model}} = 4\), one head with \(d_{\text{head}} = 2\), and the row convention
+						\(X \in \mathbb{R}^{5 \times 4}\). The four residual dimensions are given meanings so that
+						the weights can be read: dimension 1 says "this token is a variable name", dimension 2
+						carries the name's identity (\(+1\) for <code>result</code>, \(-1\) for <code>ans</code>),
+						dimension 3 marks operators and literals, dimension 4 marks <code>return</code>. A trained
+						model does not hand out axes this cleanly; that is what superposition and the dictionaries
+						on the timeline are about. The arithmetic is the same.
+					</p>
+					\[
+					X = \begin{bmatrix} 1 & 1 & 0 & 0 \\ 0 & 0 & 1 & 0 \\ 0 & 0 & 1 & 0 \\ 1 & -1 & 0 & 0 \\ 0 & 0 & 0 & 1 \end{bmatrix}
+					\begin{matrix} \texttt{result} \\ \texttt{=} \\ \texttt{0} \\ \texttt{ans} \\ \texttt{return} \end{matrix}
+					\]
+
+					<h3>QK: the query asks for a name, and prefers <code>result</code></h3>
+					<p>Choose \(W_Q, W_K \in \mathbb{R}^{2 \times 4}\), head dimension first as in section 3:</p>
+					\[
+					W_Q = \begin{bmatrix} 0 & 0 & 0 & 2 \\ 0 & 0 & 0 & 1 \end{bmatrix}, \qquad
+					W_K = \begin{bmatrix} 1 & 0 & 0 & 0 \\ 0 & 1 & 0 & 0 \end{bmatrix}.
+					\]
+					<p>
+						\(W_Q\) reads only dimension 4, so only the <code>return</code> position gets a non-zero query,
+						\(q_5 = (2, 1)\); every other row of \(Q = X W_Q^{\top}\) is zero. \(W_K\) reads dimensions 1
+						and 2, so the names get keys \(k_1 = (1, 1)\) for <code>result</code> and \(k_4 = (1, -1)\) for
+						<code>ans</code>, and the other three keys are zero. The scores \(S = Q K^{\top}\) are all zero
+						except the last row:
+					</p>
+					\[
+					S_{5,\cdot} = \big(\,3,\ 0,\ 0,\ 1,\ 0\,\big).
+					\]
+					<p>
+						Fold the two matrices together and the same numbers come out of one \(4 \times 4\) matrix,
+						the QK circuit \(W_{QK} = W_Q^{\top} W_K\), which has exactly two non-zero entries:
+					</p>
+					\[
+					(W_{QK})_{4,1} = 2, \quad (W_{QK})_{4,2} = 1, \qquad S_{d,s} = x_d^{\top}\, W_{QK}\, x_s.
+					\]
+					<p>
+						Read it as a rule: a destination that carries "return" scores each source by
+						\(2 \times\) (is a name) \(+\, 1 \times\) (identity). For <code>result</code> that is
+						\(2 + 1 = 3\); for <code>ans</code> it is \(2 - 1 = 1\). Divide by
+						\(\sqrt{d_{\text{head}}} = \sqrt 2\) and take the softmax over the five sources (the causal
+						mask hides nothing from position 5):
+					</p>
+					\[
+					\frac{S_{5,\cdot}}{\sqrt 2} = (2.12,\ 0,\ 0,\ 0.71,\ 0), \qquad
+					e^{(\cdot)} = (8.34,\ 1,\ 1,\ 2.03,\ 1), \qquad \textstyle\sum = 13.37,
+					\]
+					\[
+					A_{5,\cdot} = (0.62,\ 0.07,\ 0.07,\ 0.15,\ 0.07).
+					\]
+					<p>
+						That row is one row of the poster's heatmap: from <code>return</code>, 62% of the attention
+						goes to <code>result</code>, 15% to <code>ans</code>, and the rest is spread thinly. The other
+						four destinations have zero queries, so their rows are uniform over whatever the causal mask
+						allows; row 3, for instance, is \((\tfrac13, \tfrac13, \tfrac13, 0, 0)\).
+					</p>
+
+					<h3>OV: what the attended tokens write back</h3>
+					<p>Now the value and output matrices, \(W_V \in \mathbb{R}^{2 \times 4}\) and \(W_O \in \mathbb{R}^{4 \times 2}\):</p>
+					\[
+					W_V = \begin{bmatrix} 0 & 1 & 0 & 0 \\ 1 & 0 & 0 & 0 \end{bmatrix}, \qquad
+					W_O = \begin{bmatrix} 0 & 1 \\ 1 & 0 \\ 0 & 0 \\ 0 & 0 \end{bmatrix}.
+					\]
+					<p>
+						\(V = X W_V^{\top}\) picks up the identity and the name bit of each source:
+						\(v_1 = (1, 1)\) for <code>result</code>, \(v_4 = (-1, 1)\) for <code>ans</code>, zero
+						elsewhere. Mixing them with the attention row gives the head's read at <code>return</code>:
+					</p>
+					\[
+					r_5 = \sum_s A_{5,s}\, v_s = 0.62\,(1, 1) + 0.15\,(-1, 1) = (0.47,\ 0.78).
+					\]
+					<p>\(W_O\) writes the two head coordinates back into residual dimensions 2 and 1:</p>
+					\[
+					h_5 = W_O\, r_5 = (0.78,\ 0.47,\ 0,\ 0).
+					\]
+					<p>
+						So the head adds 0.78 of "a name" and \(+0.47\) of identity, leaning toward
+						<code>result</code>, into the residual stream at <code>return</code>. The OV circuit
+						\(W_{OV} = W_O W_V\) is again a single \(4 \times 4\) matrix, and here it is the identity on
+						the name subspace and zero elsewhere:
+					</p>
+					\[
+					W_{OV} = \begin{bmatrix} 1 & 0 & 0 & 0 \\ 0 & 1 & 0 & 0 \\ 0 & 0 & 0 & 0 \\ 0 & 0 & 0 & 0 \end{bmatrix}, \qquad
+					h_d = \sum_s A_{d,s}\, W_{OV}\, x_s.
+					\]
+					<p>
+						The row of \(A\) moved information from positions 1 and 4 to position 5; \(W_{OV}\) decided
+						which coordinates travel. Neither touched the other's axis.
+					</p>
+
+					<h3>To the logits</h3>
+					<p>
+						Let the unembedding \(W_U \in \mathbb{R}^{5 \times 4}\) score <code>result</code> as
+						(name \(+\) identity) and <code>ans</code> as (name \(-\) identity), with the other three output
+						tokens reading dimensions 3 and 4:
+					</p>
+					\[
+					W_U = \begin{bmatrix} 1 & 1 & 0 & 0 \\ 0 & 0 & 1 & 0 \\ 0 & 0 & 1 & 0 \\ 1 & -1 & 0 & 0 \\ 0 & 0 & 0 & 1 \end{bmatrix}
+					\begin{matrix} \texttt{result} \\ \texttt{=} \\ \texttt{0} \\ \texttt{ans} \\ \texttt{return} \end{matrix},
+					\qquad
+					\Delta L_5 = W_U\, h_5 = (1.25,\ 0,\ 0,\ 0.30,\ 0).
+					\]
+					<p>
+						The head raises the <code>result</code> logit by 1.25 and the <code>ans</code> logit by 0.30.
+						The end-to-end OV matrix \(M_{OV} = W_U W_{OV} W_E\) of section 5, evaluated on these five
+						tokens, is
+					</p>
+					\[
+					(M_{OV})_{v_{\text{out}},\, v_{\text{src}}} =
+					\begin{bmatrix} 2 & 0 & 0 & 0 & 0 \\ 0 & 0 & 0 & 0 & 0 \\ 0 & 0 & 0 & 0 & 0 \\ 0 & 0 & 0 & 2 & 0 \\ 0 & 0 & 0 & 0 & 0 \end{bmatrix}.
+					\]
+					<p>
+						Attending to <code>result</code> raises the <code>result</code> logit, attending to
+						<code>ans</code> raises the <code>ans</code> logit, and nothing else moves. That is a copying
+						matrix, the shape section 8 needs for an induction head, and it is why the split in
+						\(A_{5,\cdot}\) (0.62 against 0.15) becomes a split in the logits (1.25 against 0.30, twice the
+						attention weights). Check: \(\Delta L_5 = \sum_s A_{5,s}\,(M_{OV})_{\cdot,\,s}\).
+					</p>
+<pre><code>import torch
+X   = torch.tensor([[1,1,0,0],[0,0,1,0],[0,0,1,0],[1,-1,0,0],[0,0,0,1.]])   # result = 0 ans return
+W_Q = torch.tensor([[0,0,0,2],[0,0,0,1.]]);  W_K = torch.tensor([[1,0,0,0],[0,1,0,0.]])
+W_V = torch.tensor([[0,1,0,0],[1,0,0,0.]]);  W_O = torch.tensor([[0,1],[1,0],[0,0],[0,0.]])
+W_U = torch.tensor([[1,1,0,0],[0,0,1,0],[0,0,1,0],[1,-1,0,0],[0,0,0,1.]])
+
+W_QK = W_Q.T @ W_K                     # [4, 4], two non-zero entries
+W_OV = W_O @ W_V                       # [4, 4], identity on the name subspace
+S = torch.einsum("di, ij, sj -> ds", X, W_QK, X)
+mask = torch.tril(torch.ones(5, 5))
+A = torch.softmax(S.masked_fill(mask == 0, -1e9) / 2**0.5, dim=-1)
+H = torch.einsum("ds, si, oi -> do", A, X, W_OV)
+print(A[4])            # tensor([0.624, 0.075, 0.075, 0.152, 0.075])
+print(H[4] @ W_U.T)    # tensor([1.248, 0.000, 0.000, 0.303, 0.000])</code></pre>
+					<div class="callout">
+						<p>
+							<strong>What the example is not.</strong> The axes were chosen by hand so that every
+							matrix is readable. A trained head spreads "is a name" and "which name" across many
+							directions and shares them with other features; that is why the poster reads its heads
+							through learned dictionaries (transcoder features) rather than hand-picked coordinates.
+							The arithmetic that turns an attention row into a logit increment is the one above.
+						</p>
+					</div>
+				</div>
+			</section>
+
+			<!-- ============================ 7. Two layers ============================ -->
 			<section id="composition">
 				<div class="wrap">
-					<h2>6. Two layers: composition and virtual heads</h2>
+					<h2>7. Two layers: composition and virtual heads</h2>
 					<p>
 						With a second layer, expand every path from input to logits. Besides the direct path \(W_U W_E\)
 						(bigram statistics) and each head's own path, there are <em>compositional</em> paths where a
@@ -350,10 +501,10 @@ H_virtual = torch.einsum("ds, si, oi -> do", A_virtual, X, W_OV_virtual)</code><
 				</div>
 			</section>
 
-			<!-- ============================ 7. Induction head ============================ -->
+			<!-- ============================ 8. Induction head ============================ -->
 			<section id="induction">
 				<div class="wrap">
-					<h2>7. The induction head, step by step</h2>
+					<h2>8. The induction head, step by step</h2>
 					<p>
 						Q- and K-composition change the pattern itself, and that is what lets a two-layer model do
 						something a lookup table cannot: in-context learning. The sequence is

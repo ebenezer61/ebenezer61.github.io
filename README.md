@@ -29,7 +29,7 @@ not move.
 | Path | Purpose |
 | --- | --- |
 | `interpretability/index.html` | Hub: title, abstract, two cards (theory, practice), materials |
-| `interpretability/poster.pdf` | The PyCon TW 2026 poster, built from `circuit-tracer-python/poster/poster.tex` |
+| `interpretability/poster.pdf` | The PyCon TW 2026 poster, 78 x 109 cm, built from LaTeX with tectonic |
 | `interpretability/theory/index.html` | The timeline 2020 to 2025 in two tracks (how to think, how to look), with SAE and transcoder definitions |
 | `interpretability/theory/attention/` | Nadaraya-Watson to softmax attention to QK/OV, one step per screen |
 | `interpretability/theory/attention/tensors/` | Shapes, einsum, QK/OV, virtual heads, induction head (the one page that loads KaTeX from a CDN) |
