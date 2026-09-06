@@ -1,0 +1,44 @@
+{
+  "TW": {
+    "label": "Taiwan",
+    "exchange": "TWSE",
+    "currency": "TWD",
+    "index": "^TWII",
+    "index_name": "TAIEX",
+    "stocks": [
+      { "ticker": "2330.TW", "name": "台積電", "en": "TSMC" },
+      { "ticker": "2317.TW", "name": "鴻海",   "en": "Hon Hai (Foxconn)" },
+      { "ticker": "2454.TW", "name": "聯發科", "en": "MediaTek" },
+      { "ticker": "2308.TW", "name": "台達電", "en": "Delta Electronics" },
+      { "ticker": "2303.TW", "name": "聯電",   "en": "UMC" },
+      { "ticker": "2412.TW", "name": "中華電", "en": "Chunghwa Telecom" },
+      { "ticker": "2882.TW", "name": "國泰金", "en": "Cathay Financial" },
+      { "ticker": "2881.TW", "name": "富邦金", "en": "Fubon Financial" },
+      { "ticker": "2891.TW", "name": "中信金", "en": "CTBC Financial" },
+      { "ticker": "1301.TW", "name": "台塑",   "en": "Formosa Plastics" },
+      { "ticker": "1216.TW", "name": "統一",   "en": "Uni-President" },
+      { "ticker": "2002.TW", "name": "中鋼",   "en": "China Steel" }
+    ]
+  },
+  "US": {
+    "label": "United States",
+    "exchange": "NYSE / Nasdaq",
+    "currency": "USD",
+    "index": "^GSPC",
+    "index_name": "S&P 500",
+    "stocks": [
+      { "ticker": "AAPL",  "name": "Apple",              "en": "" },
+      { "ticker": "MSFT",  "name": "Microsoft",          "en": "" },
+      { "ticker": "BRK-B", "name": "Berkshire Hathaway", "en": "" },
+      { "ticker": "JPM",   "name": "JPMorgan Chase",     "en": "" },
+      { "ticker": "V",     "name": "Visa",               "en": "" },
+      { "ticker": "JNJ",   "name": "Johnson & Johnson",  "en": "" },
+      { "ticker": "PG",    "name": "Procter & Gamble",   "en": "" },
+      { "ticker": "KO",    "name": "Coca-Cola",          "en": "" },
+      { "ticker": "PEP",   "name": "PepsiCo",            "en": "" },
+      { "ticker": "WMT",   "name": "Walmart",            "en": "" },
+      { "ticker": "HD",    "name": "Home Depot",         "en": "" },
+      { "ticker": "XOM",   "name": "Exxon Mobil",        "en": "" }
+    ]
+  }
+}

@@ -11,11 +11,28 @@ Live at **<https://ebenezer61.github.io/>**, served by GitHub Pages from the `ma
 | `index.html` | The homepage: About, Research Interests, Projects, Publications, Teaching & Outreach |
 | `style.css` | All styling for the homepage. Light/dark aware, responsive, no external dependencies |
 | `interpretability/` | PyCon TW 2026 poster hub: `theory/` (timeline, attention as a kernel, the word "circuit") and `practice/` (the write-up, the graph, the probes) |
+| `stocks/` | Daily XGBoost direction forecasts for 12 Taiwan and 12 US blue chips; `data/` holds the JSON the page renders |
+| `tools/stocks/` | The pipeline behind `stocks/`: `predict.py`, the ticker basket, requirements, its own README |
+| `tools/figures/` | Scripts that generated the inline SVG charts on the interpretability pages |
+| `.github/workflows/stocks.yml` | Runs the stock pipeline every weekday and commits the refreshed JSON |
 | `.nojekyll` | Empty marker telling GitHub Pages to serve the files as-is, without a Jekyll pass |
 
 There is still no build step, no framework, and nothing to install: everything is plain
 HTML, CSS and static data, so opening a page in a browser shows exactly what visitors
-see.
+see. The one exception is `stocks/`, whose page fetches its JSON and so needs to be
+served over HTTP (`python -m http.server` from the repository root works).
+
+### `stocks/`
+
+<https://ebenezer61.github.io/stocks/> shows, for each stock, the probability that the
+adjusted close is higher one and five trading days ahead, the model's walk-forward
+accuracy over the last trading year against an always-majority baseline, and a track
+record of every forecast the page has ever published, scored once the target bar
+exists. The page is static; a GitHub Actions workflow does the work at 23:30 UTC every
+weekday (07:30 Taipei, after both markets close) and commits `stocks/data/*.json` back
+to `main` as `github-actions[bot]` with the message `stocks: daily update YYYY-MM-DD`.
+Model, features, validation and how to change the basket are documented in
+`tools/stocks/README.md`.
 
 ### `interpretability/`
 

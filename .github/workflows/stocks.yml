@@ -1,0 +1,47 @@
+name: Stocks daily update
+
+on:
+  schedule:
+    # 23:30 UTC, Monday to Friday = 07:30 Asia/Taipei the next morning,
+    # after both TWSE (13:30 Taipei) and NYSE (16:00 New York) have closed.
+    - cron: "30 23 * * 1-5"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: stocks-daily
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: tools/stocks/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r tools/stocks/requirements.txt
+
+      - name: Download data, retrain, forecast
+        run: python tools/stocks/predict.py
+
+      - name: Commit and push if anything changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add stocks/data
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+          git commit -m "stocks: daily update $(date -u +%Y-%m-%d)"
+          git pull --rebase origin main
+          git push origin HEAD:main

@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>Daily Stock Direction Forecasts &middot; Anna Liang</title>
+		<meta name="description" content="Next-day and five-day direction forecasts for twelve Taiwan and twelve US blue chips, from one XGBoost classifier per stock, retrained every trading day, with walk-forward accuracy and a live track record." />
+		<meta name="author" content="Anna Liang" />
+		<link rel="stylesheet" href="../style.css" />
+		<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90' font-family='Georgia,serif'>A</text></svg>" />
+
+		<style>
+			/* Page-local styles. The data-viz tokens mirror the interpretability pages. */
+
+			:root {
+				--viz-surface: #ffffff;
+				--viz-grid:    #ece9e3;
+				--viz-axis:    #b9b3a8;
+				--viz-ink-1:   #232323;
+				--viz-ink-2:   #52514e;
+				--viz-ink-3:   #6b6862;
+				--viz-up:      #2a78d6;   /* categorical slot 1, blue  */
+				--viz-down:    #d95926;   /* categorical slot 2, orange */
+				--viz-track:   #f0efec;   /* neutral midpoint */
+			}
+			@media (prefers-color-scheme: dark) {
+				:root:not([data-theme="light"]) {
+					color-scheme: dark;   /* so scrollbars and form chrome follow the page */
+					--viz-surface: #1f1e1b;
+					--viz-grid:    #302d28;
+					--viz-axis:    #5d574e;
+					--viz-ink-1:   #eae7e1;
+					--viz-ink-2:   #c0bbb2;
+					--viz-ink-3:   #a29d94;
+					--viz-up:      #3987e5;
+					--viz-down:    #eb6834;
+					--viz-track:   #383835;
+				}
+			}
+
+			.breadcrumb { font-size: .88rem; color: var(--text-muted); margin: 0 0 1.5rem; }
+			header.hero .subtitle { margin: .6rem 0 0; color: var(--text-muted); font-size: 1.05rem; }
+			header.hero .status { margin: .9rem 0 0; font-size: .88rem; color: var(--text-muted); }
+			header.hero .status strong { color: var(--text); font-weight: 600; }
+
+			code {
+				font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+				font-size: .88em;
+				background: var(--accent-soft);
+				padding: .1em .35em;
+				border-radius: 4px;
+			}
+
+			.callout {
+				background: var(--surface);
+				border: 1px solid var(--border);
+				border-left: 3px solid var(--accent);
+				border-radius: var(--radius);
+				padding: 1rem 1.15rem;
+				margin: 0 0 1.1rem;
+				font-size: .95rem;
+			}
+			.callout p:last-child { margin-bottom: 0; }
+
+			.section-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: .4rem 1rem; margin: 0 0 1rem; }
+			.section-head h2 { margin: 0; }
+			.section-head .idx { font-size: .88rem; color: var(--text-muted); }
+			.section-head .idx strong { color: var(--text); font-weight: 600; }
+
+			/* --- Forecast table --------------------------------------------- */
+
+			.tablewrap { overflow-x: auto; margin: 0 0 .6rem; -webkit-overflow-scrolling: touch; scrollbar-width: thin; }
+			/* Seven columns do not fit the 780px prose column, so on wide screens the
+			   forecast tables step out of it and centre on the page instead. */
+			@media (min-width: 900px) {
+				.breakout { width: min(1120px, calc(100vw - 2.5rem)); position: relative; left: 50%; transform: translateX(-50%); }
+			}
+			@media (min-width: 900px) and (max-width: 1150px) {
+				table.fc th, table.fc td { padding-left: .5rem; padding-right: .5rem; }
+			}
+			.scrollhint { display: none; font-size: .8rem; color: var(--text-muted); margin: 0 0 .5rem; }
+			@media (max-width: 899px) { .scrollhint { display: block; } }
+			table.fc {
+				width: 100%;
+				border-collapse: collapse;
+				font-size: .9rem;
+				background: var(--viz-surface);
+				border: 1px solid var(--border);
+				border-radius: var(--radius);
+			}
+			table.fc th, table.fc td {
+				text-align: left;
+				padding: .5rem .7rem;
+				border-bottom: 1px solid var(--border);
+				white-space: nowrap;
+				vertical-align: middle;
+			}
+			table.fc tbody tr:last-child > td { border-bottom: 0; }
+			table.fc th {
+				font-weight: 600;
+				color: var(--text-muted);
+				font-size: .76rem;
+				letter-spacing: .04em;
+				text-transform: uppercase;
+			}
+			table.fc th.sortable { cursor: pointer; user-select: none; }
+			table.fc th.sortable:hover { color: var(--accent); }
+			table.fc th.sortable[aria-sort="descending"]::after { content: " \2193"; }
+			table.fc th.sortable[aria-sort="ascending"]::after  { content: " \2191"; }
+			table.fc .num { text-align: right; font-variant-numeric: tabular-nums; }
+			table.fc tbody tr.row { cursor: pointer; }
+			table.fc tbody tr.row:hover > td { background: var(--accent-soft); }
+			table.fc tbody tr.row[aria-expanded="true"] > td { background: var(--accent-soft); border-bottom-color: transparent; }
+
+			.tk { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .84rem; color: var(--text-muted); margin-right: .45rem; }
+			.nm { font-weight: 600; }
+			.en { color: var(--text-muted); font-size: .84rem; margin-left: .4rem; }
+			.stale { display: block; font-size: .74rem; color: var(--text-muted); }
+
+			.delta { font-variant-numeric: tabular-nums; }
+			.glyph { font-size: .72em; margin-right: .2em; position: relative; top: -.05em; }
+			.glyph.up   { color: var(--viz-up); }
+			.glyph.down { color: var(--viz-down); }
+			.glyph.flat { color: var(--viz-axis); }
+
+			/* Diverging meter: 30% to 70% across the track, neutral tick at 50% */
+			.meter { display: inline-flex; align-items: center; gap: .55rem; }
+			.meter .track { position: relative; width: 80px; height: 8px; border-radius: 4px; background: var(--viz-track); overflow: hidden; }
+			.meter .fill { position: absolute; top: 0; bottom: 0; }
+			.meter .fill.up   { background: var(--viz-up);   border-radius: 0 4px 4px 0; }
+			.meter .fill.down { background: var(--viz-down); border-radius: 4px 0 0 4px; }
+			.meter .mid { position: absolute; top: -1px; bottom: -1px; left: 50%; width: 2px; margin-left: -1px; background: var(--viz-surface); }
+			.meter .pval { font-variant-numeric: tabular-nums; min-width: 3.6em; color: var(--text); }
+
+			.acc { font-variant-numeric: tabular-nums; line-height: 1.4; }
+			.acc .base { color: var(--text-muted); }
+			.acc .hz { display: inline-block; width: 1.7em; font-size: .76rem; color: var(--text-muted); }
+
+			svg.spark { display: block; overflow: visible; }
+			svg.spark path { fill: none; stroke: var(--viz-ink-3); stroke-width: 1.5; stroke-linejoin: round; stroke-linecap: round; }
+			svg.spark circle.last { fill: var(--accent); }
+			svg.spark circle.hover { fill: var(--viz-ink-1); }
+			svg.spark line.hover { stroke: var(--viz-axis); stroke-width: 1; }
+
+			/* Expanded detail row */
+			tr.detail > td { background: var(--viz-surface); padding: .6rem 1rem 1rem; white-space: normal; }
+			.detail-grid { display: grid; gap: 1rem 2rem; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); font-size: .86rem; }
+			.detail-grid h4 { margin: 0 0 .4rem; font-size: .76rem; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); font-family: var(--sans); }
+			.kv { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: .15rem .8rem; }
+			.kv dt { color: var(--text-muted); }
+			.kv dd { margin: 0; font-variant-numeric: tabular-nums; }
+			.fbar { display: grid; grid-template-columns: 7.5em 1fr 3em; align-items: center; gap: .5rem; margin: .15rem 0; }
+			.fbar .flabel { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .8rem; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; }
+			.fbar .ftrack { height: 6px; background: var(--viz-track); border-radius: 3px; overflow: hidden; }
+			.fbar .ffill { display: block; height: 100%; background: var(--viz-up); border-radius: 0 3px 3px 0; }
+			.fbar .fnum { text-align: right; font-variant-numeric: tabular-nums; font-size: .8rem; }
+
+			.legend { font-size: .82rem; color: var(--text-muted); margin: 0 0 1.4rem; }
+			.legend .sw { display: inline-block; width: .7em; height: .7em; border-radius: 2px; vertical-align: -.05em; margin-right: .25em; }
+			.legend .sw.up { background: var(--viz-up); }
+			.legend .sw.down { background: var(--viz-down); }
+
+			/* --- Track record ----------------------------------------------- */
+
+			.tiles { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); margin: 0 0 1.2rem; }
+			.tile { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: .9rem 1.1rem; }
+			.tile .label { font-size: .8rem; color: var(--text-muted); margin: 0 0 .25rem; }
+			.tile .value { font-size: 1.7rem; font-weight: 600; line-height: 1.15; margin: 0; font-family: var(--sans); }
+			.tile .sub { font-size: .8rem; color: var(--text-muted); margin: .25rem 0 0; font-variant-numeric: tabular-nums; }
+
+			table.rec { width: 100%; border-collapse: collapse; font-size: .9rem; margin: 0 0 1.1rem; }
+			table.rec th, table.rec td { text-align: left; padding: .45rem .7rem; border-bottom: 1px solid var(--border); white-space: nowrap; }
+			table.rec th { font-weight: 600; color: var(--text-muted); font-size: .76rem; letter-spacing: .04em; text-transform: uppercase; }
+			table.rec .num { text-align: right; font-variant-numeric: tabular-nums; }
+
+			/* --- Method ----------------------------------------------------- */
+
+			.method ul { padding-left: 1.2rem; margin: 0 0 1.1rem; }
+			.method li { margin: .25rem 0; }
+			details { margin: 0 0 1.1rem; }
+			summary { cursor: pointer; color: var(--accent); font-size: .95rem; }
+			pre.params {
+				background: var(--surface);
+				border: 1px solid var(--border);
+				border-radius: var(--radius);
+				padding: .9rem 1rem;
+				overflow-x: auto;
+				font-size: .82rem;
+				line-height: 1.5;
+				margin: .6rem 0 0;
+			}
+			.feat-list { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .8rem; color: var(--text-muted); line-height: 1.9; margin: .6rem 0 0; }
+			.feat-list span { background: var(--accent-soft); border-radius: 4px; padding: .05em .4em; margin-right: .3em; white-space: nowrap; }
+
+			#tooltip {
+				position: fixed;
+				pointer-events: none;
+				z-index: 10;
+				background: var(--viz-ink-1);
+				color: var(--viz-surface);
+				font-size: .78rem;
+				line-height: 1.35;
+				padding: .3rem .5rem;
+				border-radius: 6px;
+				font-variant-numeric: tabular-nums;
+				white-space: nowrap;
+				transform: translate(-50%, calc(-100% - 10px));
+			}
+			#tooltip[hidden] { display: none; }
+
+			.error { color: var(--viz-down); }
+			.muted { color: var(--text-muted); }
+			.loading { color: var(--text-muted); font-style: italic; }
+
+			@media (max-width: 560px) {
+				.meter .track { width: 60px; }
+			}
+		</style>
+	</head>
+	<body>
+
+		<!-- ============================ Header ============================ -->
+		<header class="hero">
+			<div class="wrap">
+				<p class="breadcrumb"><a href="../">&larr; Anna Liang</a></p>
+				<h1>Daily Stock Direction Forecasts</h1>
+				<p class="subtitle">
+					Twelve Taiwan and twelve US blue chips. One XGBoost classifier per stock and horizon,
+					retrained every trading day, with its out-of-sample accuracy printed next to every probability.
+				</p>
+				<p class="status" id="status"><span class="loading">Loading the latest run&hellip;</span></p>
+
+				<ul class="links">
+					<li><a href="#tw">Taiwan</a></li>
+					<li><a href="#us">United States</a></li>
+					<li><a href="#record">Track record</a></li>
+					<li><a href="#method">How it works</a></li>
+					<li><a href="data/predictions.json">predictions.json</a></li>
+					<li><a href="https://github.com/ebenezer61/ebenezer61.github.io/tree/main/tools/stocks" target="_blank" rel="noopener">Source</a></li>
+				</ul>
+			</div>
+		</header>
+
+		<main>
+
+			<section id="disclaimer">
+				<div class="wrap">
+					<div class="callout">
+						<p>
+							<strong>This is an experiment in calibration, not investment advice.</strong>
+							The next-day direction of a large-cap stock is close to a coin flip, and the
+							accuracies below are meant to show exactly how close. Every published probability
+							is kept in <a href="data/history.json">history.json</a> and scored against what the
+							market actually did, so the <a href="#record">track record</a> is the number to
+							watch, not any single forecast.
+						</p>
+					</div>
+					<p class="legend">
+						How to read a row: <span class="sw up"></span> blue bars grow to the right of the
+						centre tick as the probability of a higher close rises above 50%;
+						<span class="sw down"></span> orange bars grow to the left as it falls below. The
+						track spans 30% to 70%. <em>Holdout acc.</em> is walk-forward accuracy over the last
+						trading year, with the always-majority baseline in grey after the slash. Click a
+						row for the full validation numbers and the model's top features.
+					</p>
+				</div>
+			</section>
+
+			<!-- ============================ Taiwan ============================ -->
+			<section id="tw">
+				<div class="wrap">
+					<div class="section-head">
+						<h2>Taiwan</h2>
+						<span class="idx" data-market="TW"></span>
+					</div>
+					<p class="scrollhint">The table scrolls sideways on narrow screens.</p>
+					<div class="tablewrap breakout" data-market="TW"><p class="loading">Loading&hellip;</p></div>
+				</div>
+			</section>
+
+			<!-- ========================= United States ======================== -->
+			<section id="us">
+				<div class="wrap">
+					<div class="section-head">
+						<h2>United States</h2>
+						<span class="idx" data-market="US"></span>
+					</div>
+					<p class="scrollhint">The table scrolls sideways on narrow screens.</p>
+					<div class="tablewrap breakout" data-market="US"><p class="loading">Loading&hellip;</p></div>
+				</div>
+			</section>
+
+			<!-- ========================= Track record ========================= -->
+			<section id="record">
+				<div class="wrap">
+					<h2>Track record</h2>
+					<p class="muted" id="record-intro"></p>
+					<div class="tiles" id="record-tiles"></div>
+					<div id="record-table"></div>
+				</div>
+			</section>
+
+			<!-- ========================== How it works ======================== -->
+			<section id="method" class="method">
+				<div class="wrap">
+					<h2>How it works</h2>
+					<p>
+						<strong>Data.</strong> Daily bars from Yahoo Finance through <code>yfinance</code>,
+						from January 2014 to the latest close, for each stock and for its market index
+						(TAIEX for Taiwan, S&amp;P 500 for the US). Prices are adjusted for splits and
+						dividends before anything is computed; the close shown in the table is the raw one.
+					</p>
+					<p>
+						<strong>Features.</strong> About 35 numbers per day, all computable at the close:
+						the last five daily returns; cumulative returns over 5, 10, 20 and 60 days;
+						realised volatility over 5, 20 and 60 days; distance to the 5, 10, 20, 50 and
+						200-day moving averages; MACD and its histogram; RSI(14); Bollinger %B; volume
+						relative to its 20-day mean; the day's range and where the close sat inside it;
+						the overnight gap; distance to the 52-week high and low; the index's 1, 5 and
+						20-day returns and 20-day volatility; 20-day return relative to the index; and
+						the day of the week.
+					</p>
+					<p>
+						<strong>Model.</strong> One <code>XGBClassifier</code> per stock and horizon, predicting
+						whether the adjusted close will be higher one trading day ahead, and separately
+						five trading days ahead. Shallow trees, a small learning rate and heavy
+						regularisation; the exact parameters are below.
+					</p>
+					<p>
+						<strong>Validation.</strong> Walk-forward over the last 250 labelled trading days.
+						Every 21 days the model is refit on every row whose label was already known at
+						that point, then scores the next 21 rows. For the five-day horizon the last five
+						rows before each cut are excluded from training, since their labels were not yet
+						observable. The accuracy in the table is over those 250 out-of-sample rows, and the
+						grey baseline is what you get by always predicting the class that was more common
+						in the training data. AUC, Brier score and accuracy on the confident subset
+						(probability at least 10 points from 50%) are in each row's detail panel.
+					</p>
+					<p>
+						<strong>Schedule.</strong> A GitHub Actions workflow runs the whole pipeline at
+						23:30 UTC Monday to Friday, which is 07:30 in Taipei the next morning, after both
+						markets have closed. It commits <code>predictions.json</code> and
+						<code>history.json</code> back to this repository, and the page reads them on load.
+						Before appending the day's forecasts it fills in the outcome of every earlier
+						forecast whose target bar now exists, which is where the track record comes from.
+					</p>
+					<details id="model-details">
+						<summary>Model parameters and feature list from the latest run</summary>
+						<pre class="params" id="params"></pre>
+						<p class="feat-list" id="features"></p>
+					</details>
+					<p>
+						Source: <a href="https://github.com/ebenezer61/ebenezer61.github.io/blob/main/tools/stocks/predict.py" target="_blank" rel="noopener">tools/stocks/predict.py</a>,
+						basket in <a href="https://github.com/ebenezer61/ebenezer61.github.io/blob/main/tools/stocks/tickers.json" target="_blank" rel="noopener">tickers.json</a>,
+						schedule in <a href="https://github.com/ebenezer61/ebenezer61.github.io/blob/main/.github/workflows/stocks.yml" target="_blank" rel="noopener">stocks.yml</a>.
+					</p>
+				</div>
+			</section>
+
+		</main>
+
+		<footer>
+			<div class="wrap">
+				<p><a href="../">Chia-chun Liang (Anna)</a> &middot; Market data by Yahoo Finance via yfinance, for personal and educational use.</p>
+				<p>&copy; 2026 Chia-chun Liang</p>
+			</div>
+		</footer>
+
+		<div id="tooltip" hidden></div>
+
+		<script>
+		(function () {
+			"use strict";
+
+			var HORIZONS = ["1", "5"];
+			var tooltip = document.getElementById("tooltip");
+
+			/* ---------------- formatting ---------------- */
+
+			function pct(x, digits) {
+				if (x === null || x === undefined || isNaN(x)) return "–";
+				return (x * 100).toFixed(digits === undefined ? 0 : digits) + "%";
+			}
+			function signedPct(x) {
+				if (x === null || x === undefined || isNaN(x)) return "–";
+				var s = x > 0 ? "+" : (x < 0 ? "−" : "");
+				return s + Math.abs(x).toFixed(2) + "%";
+			}
+			function money(x) {
+				return Number(x).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+			}
+			function esc(s) {
+				return String(s).replace(/[&<>"]/g, function (c) {
+					return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
+				});
+			}
+			function glyph(x) {
+				if (x > 0) return '<span class="glyph up" aria-hidden="true">▲</span>';
+				if (x < 0) return '<span class="glyph down" aria-hidden="true">▼</span>';
+				return '<span class="glyph flat" aria-hidden="true">●</span>';
+			}
+			function relTime(iso) {
+				var ms = Date.now() - new Date(iso).getTime();
+				var h = Math.round(ms / 36e5);
+				if (h < 1) return "less than an hour ago";
+				if (h < 48) return h + (h === 1 ? " hour ago" : " hours ago");
+				return Math.round(h / 24) + " days ago";
+			}
+
+			/* ---------------- marks ---------------- */
+
+			function meter(p) {
+				var dev = Math.max(-0.2, Math.min(0.2, p - 0.5));
+				var w = Math.abs(dev) / 0.2 * 50;
+				var left = dev >= 0 ? 50 : 50 - w;
+				var cls = dev >= 0 ? "up" : "down";
+				var sign = p > 0.5 ? "▲" : (p < 0.5 ? "▼" : "●");
+				return '<span class="meter" role="img" aria-label="' + pct(p) + ' probability of a higher close">' +
+					'<span class="track"><span class="fill ' + cls + '" style="left:' + left + '%;width:' + w + '%"></span><span class="mid"></span></span>' +
+					'<span class="pval"><span class="glyph ' + (p > 0.5 ? "up" : (p < 0.5 ? "down" : "flat")) + '" aria-hidden="true">' + sign + '</span>' + pct(p) + '</span></span>';
+			}
+
+			function sparkline(closes, dates) {
+				var w = 110, h = 30, pad = 3, n = closes.length;
+				if (n < 2) return "";
+				var min = Math.min.apply(null, closes), max = Math.max.apply(null, closes), span = (max - min) || 1;
+				var pts = closes.map(function (c, i) {
+					return [pad + i * (w - 2 * pad) / (n - 1), pad + (h - 2 * pad) * (1 - (c - min) / span)];
+				});
+				var d = pts.map(function (p, i) { return (i ? "L" : "M") + p[0].toFixed(1) + " " + p[1].toFixed(1); }).join(" ");
+				var last = pts[n - 1];
+				return '<svg class="spark" viewBox="0 0 ' + w + ' ' + h + '" width="' + w + '" height="' + h + '" role="img" aria-label="Closing prices, last ' + n + ' trading days">' +
+					'<path d="' + d + '"/>' +
+					'<line class="hover" x1="0" y1="0" x2="0" y2="' + h + '" style="display:none"/>' +
+					'<circle class="hover" r="2.5" style="display:none"/>' +
+					'<circle class="last" cx="' + last[0].toFixed(1) + '" cy="' + last[1].toFixed(1) + '" r="2.5"/>' +
+					'</svg>';
+			}
+
+			function attachSparkHover(svg, closes, dates, currency) {
+				var w = 110, pad = 3, n = closes.length;
+				var min = Math.min.apply(null, closes), max = Math.max.apply(null, closes), span = (max - min) || 1;
+				var line = svg.querySelector("line.hover"), dot = svg.querySelector("circle.hover");
+				svg.addEventListener("mousemove", function (ev) {
+					var r = svg.getBoundingClientRect();
+					var x = (ev.clientX - r.left) / r.width * w;
+					var i = Math.max(0, Math.min(n - 1, Math.round((x - pad) / (w - 2 * pad) * (n - 1))));
+					var px = pad + i * (w - 2 * pad) / (n - 1);
+					var py = pad + (30 - 2 * pad) * (1 - (closes[i] - min) / span);
+					line.setAttribute("x1", px); line.setAttribute("x2", px); line.style.display = "";
+					dot.setAttribute("cx", px); dot.setAttribute("cy", py); dot.style.display = "";
+					tooltip.textContent = dates[i] + "  " + money(closes[i]) + " " + currency;
+					tooltip.hidden = false;
+					tooltip.style.left = ev.clientX + "px";
+					tooltip.style.top = ev.clientY + "px";
+				});
+				svg.addEventListener("mouseleave", function () {
+					line.style.display = "none"; dot.style.display = "none"; tooltip.hidden = true;
+				});
+			}
+
+			/* ---------------- forecast tables ---------------- */
+
+			function stockCell(s, market) {
+				var code = market === "TW" ? s.ticker.replace(/\.TW$/, "") : s.ticker;
+				var en = s.en ? '<span class="en">' + esc(s.en) + '</span>' : "";
+				return '<span class="tk">' + esc(code) + '</span><span class="nm">' + esc(s.name) + '</span>' + en;
+			}
+
+			function accCell(s) {
+				return HORIZONS.map(function (h) {
+					var f = s.forecast[h], e = f && f.eval;
+					if (!e) return "";
+					return '<div class="acc"><span class="hz">' + h + 'd</span>' + pct(e.acc) + ' <span class="base">/ ' + pct(e.baseline_acc) + '</span></div>';
+				}).join("");
+			}
+
+			function detailRow(s, market, colspan) {
+				var blocks = HORIZONS.map(function (h) {
+					var f = s.forecast[h], e = f.eval;
+					var feats = f.top_features || [];
+					var maxShare = feats.length ? feats[0][1] : 1;
+					return '<div><h4>' + (h === "1" ? "Next trading day" : "Five trading days") + '</h4>' +
+						'<dl class="kv">' +
+						'<dt>P(higher close)</dt><dd>' + pct(f.p_up, 1) + '</dd>' +
+						'<dt>Holdout window</dt><dd>' + esc(e.test_start) + ' to ' + esc(e.test_end) + ' (' + e.n + ' days, ' + e.fits + ' refits)</dd>' +
+						'<dt>Accuracy</dt><dd>' + pct(e.acc, 1) + ' vs ' + pct(e.baseline_acc, 1) + ' always-' + esc(e.baseline_label) + '</dd>' +
+						'<dt>Share of up days</dt><dd>' + pct(e.up_share, 1) + '</dd>' +
+						'<dt>AUC</dt><dd>' + (e.auc === null ? "–" : e.auc.toFixed(3)) + '</dd>' +
+						'<dt>Brier score</dt><dd>' + e.brier.toFixed(4) + ' <span class="muted">(0.25 = coin flip)</span></dd>' +
+						'<dt>Confident subset</dt><dd>' + (e.conf_acc === null ? "–" : pct(e.conf_acc, 1) + ' on ' + e.conf_n + ' days') + '</dd>' +
+						'<dt>Training rows</dt><dd>' + f.train_rows + '</dd>' +
+						'</dl>' +
+						'<h4 style="margin-top:.8rem">Top features by gain</h4>' +
+						feats.map(function (kv) {
+							return '<div class="fbar"><span class="flabel" title="' + esc(kv[0]) + '">' + esc(kv[0]) + '</span>' +
+								'<span class="ftrack"><span class="ffill" style="width:' + (kv[1] / maxShare * 100).toFixed(1) + '%"></span></span>' +
+								'<span class="fnum">' + pct(kv[1]) + '</span></div>';
+						}).join("") +
+						'</div>';
+				}).join("");
+				var span = '<p class="muted" style="margin:0 0 .7rem;font-size:.82rem">' + esc(s.ticker) + ' &middot; data from ' + esc(s.first_date) + ' to ' + esc(s.as_of) + ', ' + s.rows + ' rows after warm-up.</p>';
+				return '<tr class="detail" hidden><td colspan="' + colspan + '">' + span + '<div class="detail-grid">' + blocks + '</div></td></tr>';
+			}
+
+			function renderMarket(key, m) {
+				var wrap = document.querySelector('.tablewrap[data-market="' + key + '"]');
+				var idx = document.querySelector('.idx[data-market="' + key + '"]');
+				if (!wrap) return;
+				if (idx && m.index_close !== undefined) {
+					idx.innerHTML = esc(m.index_name) + ' <strong>' + money(m.index_close) + '</strong> ' + glyph(m.index_change_pct) + signedPct(m.index_change_pct) + ' <span class="muted">&middot; ' + esc(m.exchange) + ' &middot; close of ' + esc(m.as_of) + '</span>';
+				}
+				var stocks = m.stocks.slice();
+				var sortKey = null, sortDir = -1;
+
+				function build() {
+					var rows = stocks.slice();
+					if (sortKey) {
+						rows.sort(function (a, b) {
+							var va = sortKey === "chg" ? a.change_pct : a.forecast[sortKey].p_up;
+							var vb = sortKey === "chg" ? b.change_pct : b.forecast[sortKey].p_up;
+							return (va - vb) * sortDir;
+						});
+					}
+					var cols = 7;
+					var html = '<table class="fc"><thead><tr>' +
+						'<th>Stock</th>' +
+						'<th class="num">Close (' + esc(m.currency) + ')</th>' +
+						'<th class="num sortable" data-sort="chg"' + (sortKey === "chg" ? ' aria-sort="' + (sortDir < 0 ? "descending" : "ascending") + '"' : "") + '>Day</th>' +
+						'<th class="sortable" data-sort="1"' + (sortKey === "1" ? ' aria-sort="' + (sortDir < 0 ? "descending" : "ascending") + '"' : "") + '>Next day P(up)</th>' +
+						'<th class="sortable" data-sort="5"' + (sortKey === "5" ? ' aria-sort="' + (sortDir < 0 ? "descending" : "ascending") + '"' : "") + '>5 days P(up)</th>' +
+						'<th>Holdout acc. / base</th>' +
+						'<th>60 days</th>' +
+						'</tr></thead><tbody>';
+					rows.forEach(function (s, i) {
+						var stale = s.as_of !== m.as_of ? '<span class="stale">as of ' + esc(s.as_of) + '</span>' : "";
+						html += '<tr class="row" data-i="' + i + '" aria-expanded="false" tabindex="0">' +
+							'<td>' + stockCell(s, key) + stale + '</td>' +
+							'<td class="num">' + money(s.close) + '</td>' +
+							'<td class="num delta">' + glyph(s.change_pct) + signedPct(s.change_pct) + '</td>' +
+							'<td>' + meter(s.forecast["1"].p_up) + '</td>' +
+							'<td>' + meter(s.forecast["5"].p_up) + '</td>' +
+							'<td>' + accCell(s) + '</td>' +
+							'<td>' + sparkline(s.closes, s.dates) + '</td>' +
+							'</tr>' + detailRow(s, key, cols);
+					});
+					html += '</tbody></table>';
+					if (m.errors && m.errors.length) {
+						html += '<p class="error" style="font-size:.85rem">Skipped this run: ' + m.errors.map(function (e) { return esc(e.ticker) + ' (' + esc(e.error) + ')'; }).join(", ") + '.</p>';
+					}
+					wrap.innerHTML = html;
+
+					var trs = wrap.querySelectorAll("tr.row");
+					trs.forEach(function (tr, i) {
+						var s = rows[i];
+						var svg = tr.querySelector("svg.spark");
+						if (svg) attachSparkHover(svg, s.closes, s.dates, m.currency);
+						function toggle() {
+							var open = tr.getAttribute("aria-expanded") === "true";
+							tr.setAttribute("aria-expanded", open ? "false" : "true");
+							tr.nextElementSibling.hidden = open;
+						}
+						tr.addEventListener("click", function (ev) {
+							if (ev.target.closest("a")) return;
+							toggle();
+						});
+						tr.addEventListener("keydown", function (ev) {
+							if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); toggle(); }
+						});
+					});
+					wrap.querySelectorAll("th.sortable").forEach(function (th) {
+						th.addEventListener("click", function () {
+							var k = th.getAttribute("data-sort");
+							if (sortKey === k) { sortDir = -sortDir; } else { sortKey = k; sortDir = -1; }
+							build();
+						});
+					});
+				}
+				build();
+			}
+
+			/* ---------------- track record ---------------- */
+
+			function renderRecord(tr, markets) {
+				var intro = document.getElementById("record-intro");
+				var tiles = document.getElementById("record-tiles");
+				var table = document.getElementById("record-table");
+				var all = tr && tr.ALL;
+				if (!all || (!all.h1.n && !all.h5.n)) {
+					intro.textContent = tr && tr.first_forecast
+						? "Forecasts have been published since " + tr.first_forecast + ". The first outcomes appear one trading day after the first run; five-day outcomes a week after."
+						: "No forecasts have been published yet.";
+					tiles.innerHTML = "";
+					table.innerHTML = "";
+					return;
+				}
+				intro.textContent = "Every forecast published since " + tr.first_forecast + ", scored once its target bar existed. The baseline is the share of those days on which the stock actually closed higher, which is what an always-up forecast would have scored.";
+
+				function tile(label, value, sub) {
+					return '<div class="tile"><p class="label">' + label + '</p><p class="value">' + value + '</p><p class="sub">' + sub + '</p></div>';
+				}
+				tiles.innerHTML =
+					tile("Resolved forecasts", (all.h1.n + all.h5.n).toLocaleString(), all.h1.pending + " next-day and " + all.h5.pending + " five-day pending") +
+					tile("Next-day hit rate", pct(all.h1.hit_rate, 1), all.h1.n ? all.h1.hits + " of " + all.h1.n + " &middot; always-up " + pct(all.h1.up_share, 1) : "no outcomes yet") +
+					tile("Five-day hit rate", pct(all.h5.hit_rate, 1), all.h5.n ? all.h5.hits + " of " + all.h5.n + " &middot; always-up " + pct(all.h5.up_share, 1) : "no outcomes yet");
+
+				var html = '<div class="tablewrap"><table class="rec"><thead><tr><th>Market</th><th>Horizon</th><th class="num">Resolved</th><th class="num">Hits</th><th class="num">Hit rate</th><th class="num">Always-up</th><th class="num">Pending</th></tr></thead><tbody>';
+				Object.keys(markets).forEach(function (k) {
+					var g = tr[k];
+					if (!g) return;
+					HORIZONS.forEach(function (h) {
+						var r = g["h" + h];
+						html += '<tr><td>' + esc(markets[k].label) + '</td><td>' + (h === "1" ? "next day" : "five days") + '</td>' +
+							'<td class="num">' + r.n + '</td><td class="num">' + r.hits + '</td>' +
+							'<td class="num">' + pct(r.hit_rate, 1) + '</td><td class="num">' + pct(r.up_share, 1) + '</td>' +
+							'<td class="num">' + r.pending + '</td></tr>';
+					});
+				});
+				html += '</tbody></table></div>';
+				table.innerHTML = html;
+			}
+
+			/* ---------------- header + method ---------------- */
+
+			function renderStatus(d) {
+				var el = document.getElementById("status");
+				var when = new Date(d.generated_at);
+				var parts = Object.keys(d.markets).map(function (k) { return esc(d.markets[k].label) + " through <strong>" + esc(d.markets[k].as_of) + "</strong>"; });
+				el.innerHTML = "Last run <strong>" + relTime(d.generated_at) + "</strong> (" + when.toLocaleString() + "), data " + parts.join(", ") +
+					". xgboost " + esc(d.model.version) + ", " + d.runtime_seconds + " s" + (d.quick ? ' &middot; <span class="error">quick mode, not a full run</span>' : "") + ".";
+			}
+
+			function renderMethod(d) {
+				var p = d.model.params;
+				document.getElementById("params").textContent = JSON.stringify(p, null, 2) +
+					"\n\n# start " + d.model.start + ", warm-up " + d.model.warmup_rows + " rows, test window " + d.model.test_days + " days, refit every " + d.model.retrain_every + " days";
+				document.getElementById("features").innerHTML = d.model.features.map(function (f) { return "<span>" + esc(f) + "</span>"; }).join("");
+			}
+
+			/* ---------------- boot ---------------- */
+
+			fetch("data/predictions.json", { cache: "no-store" })
+				.then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+				.then(function (d) {
+					renderStatus(d);
+					Object.keys(d.markets).forEach(function (k) { renderMarket(k, d.markets[k]); });
+					renderRecord(d.track_record, d.markets);
+					renderMethod(d);
+				})
+				.catch(function (e) {
+					document.getElementById("status").innerHTML = '<span class="error">Could not load data/predictions.json (' + esc(e.message) + '). If you opened this file from disk, serve the folder over HTTP instead; browsers block fetch on file:// URLs.</span>';
+					document.querySelectorAll(".tablewrap").forEach(function (w) { w.innerHTML = ""; });
+				});
+		})();
+		</script>
+	</body>
+</html>
