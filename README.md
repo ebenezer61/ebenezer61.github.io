@@ -31,8 +31,11 @@ record of every forecast the page has ever published, scored once the target bar
 exists. The page is static; a GitHub Actions workflow does the work at 23:30 UTC every
 weekday (07:30 Taipei, after both markets close) and commits `stocks/data/*.json` back
 to `main` as `github-actions[bot]` with the message `stocks: daily update YYYY-MM-DD`.
-Model, features, validation and how to change the basket are documented in
-`tools/stocks/README.md`.
+Two of those files exist so the page can show predictions next to outcomes:
+`backtest.json` holds the walk-forward window's daily probabilities against what
+happened (drawn when a row is opened), and `log.json` the resolved forecasts of the
+last 60 trading days (the forecast log). Model, features, validation and how to
+change the basket are documented in `tools/stocks/README.md`.
 
 ### `interpretability/`
 

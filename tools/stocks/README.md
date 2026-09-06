@@ -10,6 +10,8 @@ Feeds the page at `/stocks/`. One script, one config file, one workflow.
 | `../../.github/workflows/stocks.yml` | Runs the script every weekday and commits the output |
 | `../../stocks/data/predictions.json` | Today's snapshot, rendered by `stocks/index.html` |
 | `../../stocks/data/history.json` | Every published forecast with its realised outcome |
+| `../../stocks/data/backtest.json` | Per ticker and horizon: the walk-forward window's daily predicted probability, actual outcome and realised return, drawn in each row's detail panel |
+| `../../stocks/data/log.json` | The resolved forecasts of the last 60 trading days, flattened for the page's forecast log |
 
 ## What the model does
 

@@ -11,11 +11,16 @@ For every ticker listed in tickers.json the script
   4. fits a final XGBoost classifier on every labelled row and scores the
      latest bar for each horizon (next trading day, five trading days),
 
-and writes two files into stocks/data/:
+and writes four files into stocks/data/:
 
   predictions.json   today's snapshot, the file the page renders
   history.json       every forecast ever published, with its realised
                      outcome filled in once the target bar exists
+  backtest.json      per ticker and horizon, the walk-forward window's daily
+                     predicted probability next to what happened (the chart
+                     in each row's detail panel)
+  log.json           the resolved forecasts of the last LOG_DAYS trading
+                     days, flattened for the page's forecast log
 
     python tools/stocks/predict.py            # full run, ~2 to 4 minutes
     python tools/stocks/predict.py --quick    # 2 tickers per market, smoke test
@@ -56,6 +61,7 @@ WARMUP = 260                  # rows dropped so 252-day features are defined
 MIN_ROWS = 800                # skip a ticker with less history than this
 SPARK_DAYS = 60               # closes shipped for the sparkline
 HISTORY_KEEP_DAYS = 3 * 366   # history.json is pruned beyond this
+LOG_DAYS = 60                 # trading days of resolved forecasts in log.json
 
 XGB_PARAMS = dict(
     n_estimators=400,
@@ -201,11 +207,16 @@ def make_target(close: pd.Series, h: int) -> pd.Series:
 # Model
 # --------------------------------------------------------------------------
 
-def walk_forward(X: pd.DataFrame, y: np.ndarray, h: int, params: dict, test_days: int) -> dict:
+def walk_forward(X: pd.DataFrame, y: np.ndarray, fwd: np.ndarray, h: int,
+                 params: dict, test_days: int) -> tuple[dict, dict]:
     """Rolling out-of-sample evaluation over the last `test_days` labelled rows.
 
     At forecast time s the label of row i is known only if i + h <= s, so each
     refit trains on rows [0, s - h] and scores rows [s, s + RETRAIN_EVERY).
+    `fwd` is the h-day forward log return of every row (NaN where unknown).
+
+    Returns the metrics dict and the per-day series of the test window
+    (dates, predicted probability, actual outcome, realised return).
     """
     labelled = np.flatnonzero(~np.isnan(y))
     last = int(labelled[-1])
@@ -228,7 +239,7 @@ def walk_forward(X: pd.DataFrame, y: np.ndarray, h: int, params: dict, test_days
     majority = 1.0 if np.nanmean(y[:test_start - h + 1]) >= 0.5 else 0.0
     conf = np.abs(pt - 0.5) >= 0.10
 
-    return {
+    metrics = {
         "test_start": X.index[test_start].date().isoformat(),
         "test_end": X.index[last].date().isoformat(),
         "n": int(len(yt)),
@@ -242,6 +253,13 @@ def walk_forward(X: pd.DataFrame, y: np.ndarray, h: int, params: dict, test_days
         "conf_acc": round(float(np.mean(pred[conf] == yt[conf])), 4) if conf.sum() else None,
         "fits": fits,
     }
+    series = {
+        "dates": [d.date().isoformat() for d in X.index[test_start:last + 1]],
+        "p": [round(float(v), 3) for v in pt],
+        "actual": [int(v) for v in yt],
+        "ret": [round(float(np.expm1(v)), 4) for v in fwd[test_start:last + 1]],
+    }
+    return metrics, series
 
 
 def final_fit(X: pd.DataFrame, y: np.ndarray, params: dict) -> dict:
@@ -260,19 +278,23 @@ def final_fit(X: pd.DataFrame, y: np.ndarray, params: dict) -> dict:
 
 
 def analyse(meta: dict, raw: pd.DataFrame | None, idx_close: pd.Series | None,
-            params: dict, test_days: int) -> tuple[dict, list[str], pd.Series]:
+            params: dict, test_days: int) -> tuple[dict, list[str], pd.Series, dict]:
+    """Returns (page record, feature names, adjusted close, backtest series by horizon)."""
     t = meta["ticker"]
     if raw is None or len(raw) < MIN_ROWS:
         raise ValueError(f"only {0 if raw is None else len(raw)} rows of history")
     px = adjust(raw)
     X = build_features(px, idx_close).iloc[WARMUP:]
 
-    forecast = {}
+    forecast, backtest = {}, {}
     for h in HORIZONS:
-        y = make_target(px["Close"], h).iloc[WARMUP:].to_numpy()
-        ev = walk_forward(X, y, h, params, test_days)
+        c = px["Close"]
+        fwd = np.log(c.shift(-h) / c).iloc[WARMUP:].to_numpy()
+        y = make_target(c, h).iloc[WARMUP:].to_numpy()
+        ev, series = walk_forward(X, y, fwd, h, params, test_days)
         fin = final_fit(X, y, params)
         forecast[str(h)] = {**fin, "eval": ev}
+        backtest[str(h)] = series
         log(f"{t}: h={h} p_up={fin['p_up']:.3f} acc={ev['acc']:.3f} base={ev['baseline_acc']:.3f} auc={ev['auc']}")
 
     rc = px["RawClose"]
@@ -289,7 +311,7 @@ def analyse(meta: dict, raw: pd.DataFrame | None, idx_close: pd.Series | None,
         "rows": int(len(X)),
         "forecast": forecast,
     }
-    return rec, list(X.columns), px["Close"]
+    return rec, list(X.columns), px["Close"], backtest
 
 
 # --------------------------------------------------------------------------
@@ -362,22 +384,53 @@ def summarise_history(hist: dict) -> dict:
             n = len(done)
             hits = sum(1 for f in done if (f[k] > 0.5) == (f[f"{k}_actual"] == 1))
             ups = sum(f[f"{k}_actual"] for f in done)
+            # per forecast date: [count, hits, actual ups], so the page can draw
+            # the cumulative hit rate against the always-up baseline
             by_date: dict[str, list[int]] = {}
             for f in done:
-                d = by_date.setdefault(f["as_of"], [0, 0])
+                d = by_date.setdefault(f["as_of"], [0, 0, 0])
                 d[0] += 1
                 d[1] += int((f[k] > 0.5) == (f[f"{k}_actual"] == 1))
+                d[2] += int(f[f"{k}_actual"])
             out[g][k] = {
                 "n": n,
                 "hits": hits,
                 "hit_rate": round(hits / n, 4) if n else None,
                 "up_share": round(ups / n, 4) if n else None,
                 "pending": sum(1 for f in fs if f.get(k) is not None and f.get(f"{k}_actual") is None),
-                "by_date": [[d, v[0], v[1]] for d, v in sorted(by_date.items())],
+                "by_date": [[d, v[0], v[1], v[2]] for d, v in sorted(by_date.items())],
             }
     first = min((f["as_of"] for f in hist.get("forecasts", [])), default=None)
     out["first_forecast"] = first
     return out
+
+
+def write_log(hist: dict, path: Path, now: datetime) -> int:
+    """Flatten the resolved forecasts of the last LOG_DAYS trading days, newest first."""
+    forecasts = hist.get("forecasts", [])
+    keep = set(sorted({f["as_of"] for f in forecasts})[-LOG_DAYS:])
+    rows = []
+    for f in forecasts:
+        if f["as_of"] not in keep:
+            continue
+        for h in HORIZONS:
+            k = f"h{h}"
+            if f.get(k) is None or f.get(f"{k}_actual") is None:
+                continue
+            rows.append({
+                "as_of": f["as_of"], "ticker": f["ticker"], "market": f["market"], "h": h,
+                "p": f[k], "actual": f[f"{k}_actual"],
+                "ret": f.get(f"{k}_ret"), "target_date": f.get(f"{k}_target_date"),
+            })
+    rows.sort(key=lambda r: (r["market"], r["ticker"], r["h"]))
+    rows.sort(key=lambda r: r["as_of"], reverse=True)
+    path.write_text(json.dumps({
+        "updated_at": now.isoformat(timespec="seconds"),
+        "window_days": LOG_DAYS,
+        "n_rows": len(rows),
+        "rows": rows,
+    }, ensure_ascii=False, separators=(",", ":")) + "\n", encoding="utf-8")
+    return len(rows)
 
 
 # --------------------------------------------------------------------------
@@ -408,6 +461,7 @@ def main() -> int:
     now = datetime.now(timezone.utc)
     markets_out: dict = {}
     adj_close: dict[str, pd.Series] = {}
+    backtest: dict[str, dict] = {}
     today: list[dict] = []
     feature_names: list[str] = []
 
@@ -425,13 +479,14 @@ def main() -> int:
         recs, errors = [], []
         for s in stocks:
             try:
-                rec, feature_names, ac = analyse(s, data.get(s["ticker"]), idx_close, params, test_days)
+                rec, feature_names, ac, bt = analyse(s, data.get(s["ticker"]), idx_close, params, test_days)
             except Exception as e:
                 log(f"{s['ticker']}: FAILED {e!r}")
                 errors.append({"ticker": s["ticker"], "error": str(e)})
                 continue
             recs.append(rec)
             adj_close[rec["ticker"]] = ac
+            backtest[rec["ticker"]] = bt
             today.append({
                 "ticker": rec["ticker"], "market": mkey, "as_of": rec["as_of"],
                 "close": rec["close"],
@@ -462,6 +517,15 @@ def main() -> int:
         return 1
 
     hist = update_history(out_dir / "history.json", adj_close, today, now)
+    n_log = write_log(hist, out_dir / "log.json", now)
+    log(f"log.json: {n_log} resolved forecasts in the last {LOG_DAYS} trading days")
+
+    (out_dir / "backtest.json").write_text(json.dumps({
+        "generated_at": now.isoformat(timespec="seconds"),
+        "test_days": test_days,
+        "horizons": list(HORIZONS),
+        "tickers": backtest,
+    }, separators=(",", ":")) + "\n", encoding="utf-8")
 
     snapshot = {
         "generated_at": now.isoformat(timespec="seconds"),

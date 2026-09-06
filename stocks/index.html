@@ -192,6 +192,57 @@
 			.feat-list { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .8rem; color: var(--text-muted); line-height: 1.9; margin: .6rem 0 0; }
 			.feat-list span { background: var(--accent-soft); border-radius: 4px; padding: .05em .4em; margin-right: .3em; white-space: nowrap; }
 
+			/* --- Time-series charts: backtest and cumulative record --------- */
+
+			svg.ts { display: block; width: 100%; height: auto; overflow: visible; }
+			svg.ts text { font-family: var(--sans); font-size: 11px; fill: var(--viz-ink-3); }
+			svg.ts .xlab { text-anchor: middle; }
+			svg.ts line.grid { stroke: var(--viz-grid); stroke-width: 1; }
+			svg.ts line.mid { stroke: var(--viz-axis); stroke-width: 1; }
+			svg.ts path.ln { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+			svg.ts path.ln.model { stroke: var(--viz-ink-2); }
+			svg.ts path.ln.base { stroke: var(--viz-axis); stroke-dasharray: 4 3; }
+			.chart-card svg.ts path.ln.model { stroke: var(--accent); }
+			svg.ts text.dlab.model { fill: var(--text); }
+			svg.ts text.dlab.base { fill: var(--viz-ink-3); }
+			svg.ts line.rug { stroke-width: 1.5; }
+			svg.ts line.rug.up { stroke: var(--viz-up); }
+			svg.ts line.rug.down { stroke: var(--viz-down); }
+			svg.ts line.hover { stroke: var(--viz-axis); }
+			svg.ts circle.hover { fill: var(--viz-ink-1); }
+
+			.bt { margin-top: 1.1rem; border-top: 1px solid var(--border); padding-top: .8rem; }
+			.bt h4 { margin: 0 0 .3rem; font-size: .76rem; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); font-family: var(--sans); }
+			.bt-note { font-size: .82rem; margin: 0 0 .8rem; color: var(--text-muted); }
+			.bt-note .sw { display: inline-block; width: .7em; height: .7em; border-radius: 2px; vertical-align: -.05em; }
+			.bt-note .sw.up { background: var(--viz-up); }
+			.bt-note .sw.down { background: var(--viz-down); }
+			.bt-block { margin: 0 0 1rem; }
+			.bt-grid { display: grid; gap: .6rem 1.5rem; grid-template-columns: minmax(0, 3fr) minmax(220px, 2fr); align-items: start; }
+			@media (max-width: 760px) { .bt-grid { grid-template-columns: 1fr; } }
+			.bt-title { margin: 0 0 .3rem; font-size: .88rem; font-weight: 600; }
+			.bt-sum { margin: .4rem 0 0; font-size: .82rem; color: var(--text-muted); }
+			table.cal { font-size: .84rem; margin: 0; }
+			table.cal th, table.cal td { padding: .3rem .5rem; }
+
+			.charts2 { display: grid; gap: 1rem; grid-template-columns: 1fr; margin: 0 0 1.4rem; }
+			.chart-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: .8rem .9rem; }
+			.chart-card h4 { margin: 0 0 .5rem; font-size: .76rem; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); font-family: var(--sans); }
+			.legend-inline { font-size: .82rem; color: var(--text-muted); margin: 0 0 .6rem; }
+			.legend-inline .lk { display: inline-block; width: 1.4em; height: 0; border-top: 2px solid var(--accent); vertical-align: middle; margin-right: .3em; }
+			.legend-inline .lk.base { border-top-style: dashed; border-top-color: var(--viz-axis); }
+
+			/* --- Forecast log ----------------------------------------------- */
+
+			.subhead { font-size: 1.15rem; margin: 1.6rem 0 .6rem; }
+			.filters { display: flex; flex-wrap: wrap; gap: .5rem 1.1rem; align-items: center; font-size: .88rem; margin: 0 0 .8rem; color: var(--text-muted); }
+			.filters select { font: inherit; font-size: .88rem; padding: .2rem .4rem; margin-left: .3rem; background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 6px; }
+			.btn { font: inherit; font-size: .85rem; padding: .35rem .9rem; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); color: var(--accent); cursor: pointer; }
+			.btn:hover { border-color: var(--accent); }
+			table.log td small { font-size: .78rem; }
+			.res.miss { font-weight: 600; }
+			.res.hit { color: var(--text-muted); }
+
 			#tooltip {
 				position: fixed;
 				pointer-events: none;
@@ -234,6 +285,7 @@
 					<li><a href="#tw">Taiwan</a></li>
 					<li><a href="#us">United States</a></li>
 					<li><a href="#record">Track record</a></li>
+					<li><a href="#log">Forecast log</a></li>
 					<li><a href="#method">How it works</a></li>
 					<li><a href="data/predictions.json">predictions.json</a></li>
 					<li><a href="https://github.com/ebenezer61/ebenezer61.github.io/tree/main/tools/stocks" target="_blank" rel="noopener">Source</a></li>
@@ -261,7 +313,8 @@
 						<span class="sw down"></span> orange bars grow to the left as it falls below. The
 						track spans 30% to 70%. <em>Holdout acc.</em> is walk-forward accuracy over the last
 						trading year, with the always-majority baseline in grey after the slash. Click a
-						row for the full validation numbers and the model's top features.
+						row for the full validation numbers, the model's top features, and the backtest chart:
+						the walk-forward model's daily probabilities drawn against what the stock actually did.
 					</p>
 				</div>
 			</section>
@@ -297,6 +350,10 @@
 					<p class="muted" id="record-intro"></p>
 					<div class="tiles" id="record-tiles"></div>
 					<div id="record-table"></div>
+					<div id="record-charts"></div>
+
+					<h3 class="subhead" id="log">Forecast log</h3>
+					<div id="log-body"><p class="loading">Loading&hellip;</p></div>
 				</div>
 			</section>
 
@@ -374,6 +431,7 @@
 
 			var HORIZONS = ["1", "5"];
 			var tooltip = document.getElementById("tooltip");
+			var stockInfo = {};   // ticker -> {label, cell}, filled at boot for the forecast log
 
 			/* ---------------- formatting ---------------- */
 
@@ -459,6 +517,141 @@
 				});
 			}
 
+			/* ---------------- time-series chart (backtest, cumulative record) ---------------- */
+
+			var MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+			// dates: ISO strings. lines: [{values, cls, label}]. rug: array of 0/1 per date or null.
+			// Values are clipped to the 30 to 70% band. Returns the markup plus the geometry
+			// a hover layer needs.
+			function tsChart(dates, lines, rug, opts) {
+				opts = opts || {};
+				var W = 600, H = 126, L = 36, R = opts.rightPad || 8, T = 10, B = 24;
+				var yMin = 0.3, yMax = 0.7;
+				var n = dates.length, pw = W - L - R, ph = H - T - B;
+				function x(i) { return L + (n > 1 ? i * pw / (n - 1) : pw / 2); }
+				function y(v) { v = Math.max(yMin, Math.min(yMax, v)); return T + (yMax - v) / (yMax - yMin) * ph; }
+				var s = '<svg class="ts" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + esc(opts.label || "") + '">';
+				[0.4, 0.5, 0.6].forEach(function (v) {
+					var yy = y(v).toFixed(1);
+					s += '<line class="' + (v === 0.5 ? "mid" : "grid") + '" x1="' + L + '" x2="' + (W - R) + '" y1="' + yy + '" y2="' + yy + '"/>';
+					s += '<text class="ylab" x="' + (L - 4) + '" y="' + (y(v) + 3.5).toFixed(1) + '" text-anchor="end">' + Math.round(v * 100) + '%</text>';
+				});
+				var months = [], prev = "";
+				for (var i = 0; i < n; i++) { var m = dates[i].slice(0, 7); if (m !== prev) { months.push(i); prev = m; } }
+				var every = Math.max(1, Math.ceil(months.length / 12));
+				months.forEach(function (i, k) {
+					if (k % every) return;
+					var mo = +dates[i].slice(5, 7) - 1;
+					var lab = MONTHS[mo] + ((mo === 0 || k === 0) ? " " + dates[i].slice(0, 4) : "");
+					var xx = x(i).toFixed(1);
+					s += '<line class="grid" x1="' + xx + '" x2="' + xx + '" y1="' + T + '" y2="' + (T + ph) + '"/>';
+					s += '<text class="xlab" x="' + xx + '" y="' + (H - 3) + '">' + lab + '</text>';
+				});
+				if (rug) {
+					for (var j = 0; j < n; j++) {
+						var rx = x(j).toFixed(1);
+						if (rug[j] === 1) s += '<line class="rug up" x1="' + rx + '" x2="' + rx + '" y1="1" y2="7"/>';
+						else s += '<line class="rug down" x1="' + rx + '" x2="' + rx + '" y1="' + (T + ph + 2) + '" y2="' + (T + ph + 8) + '"/>';
+					}
+				}
+				lines.forEach(function (ln) {
+					var d = "";
+					ln.values.forEach(function (v, i) { if (v === null || isNaN(v)) return; d += (d ? "L" : "M") + x(i).toFixed(1) + " " + y(v).toFixed(1); });
+					s += '<path class="ln ' + (ln.cls || "") + '" d="' + d + '"/>';
+					if (ln.label) {
+						var lv = ln.values[ln.values.length - 1];
+						s += '<text class="dlab ' + (ln.cls || "") + '" x="' + (W - R + 4) + '" y="' + (y(lv) + 3.5).toFixed(1) + '">' + esc(ln.label) + '</text>';
+					}
+				});
+				s += '<line class="hover" x1="0" x2="0" y1="' + T + '" y2="' + (T + ph) + '" style="display:none"/>';
+				s += '<circle class="hover" r="3" style="display:none"/>';
+				s += '<rect x="' + L + '" y="0" width="' + pw + '" height="' + H + '" fill="transparent"/>';
+				s += '</svg>';
+				return { html: s, x: x, y: y, W: W, L: L, pw: pw, n: n };
+			}
+
+			function attachTsHover(svg, g, primary, textAt) {
+				var line = svg.querySelector("line.hover"), dot = svg.querySelector("circle.hover");
+				svg.addEventListener("mousemove", function (ev) {
+					var r = svg.getBoundingClientRect();
+					var xv = (ev.clientX - r.left) / r.width * g.W;
+					var i = Math.max(0, Math.min(g.n - 1, Math.round((xv - g.L) / g.pw * (g.n - 1))));
+					var px = g.x(i), v = primary[i];
+					line.setAttribute("x1", px); line.setAttribute("x2", px); line.style.display = "";
+					if (v === null || isNaN(v)) { dot.style.display = "none"; }
+					else { dot.setAttribute("cx", px); dot.setAttribute("cy", g.y(v)); dot.style.display = ""; }
+					tooltip.textContent = textAt(i);
+					tooltip.hidden = false;
+					tooltip.style.left = ev.clientX + "px";
+					tooltip.style.top = ev.clientY + "px";
+				});
+				svg.addEventListener("mouseleave", function () { line.style.display = "none"; dot.style.display = "none"; tooltip.hidden = true; });
+			}
+
+			/* ---------------- backtest panel (lazy, from data/backtest.json) ---------------- */
+
+			var backtestPromise = null;
+			function loadBacktest() {
+				if (!backtestPromise) {
+					backtestPromise = fetch("data/backtest.json", { cache: "no-store" })
+						.then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); });
+				}
+				return backtestPromise;
+			}
+
+			var CAL_BINS = [[0, 0.4, "below 40%"], [0.4, 0.45, "40 to 45%"], [0.45, 0.5, "45 to 50%"], [0.5, 0.55, "50 to 55%"], [0.55, 0.6, "55 to 60%"], [0.6, 1.01, "60% and above"]];
+
+			function calibrationTable(p, actual) {
+				var rows = CAL_BINS.map(function (b) {
+					var n = 0, sp = 0, ups = 0;
+					p.forEach(function (v, i) { if (v >= b[0] && v < b[1]) { n++; sp += v; ups += actual[i]; } });
+					return n ? '<tr><td>' + b[2] + '</td><td class="num">' + n + '</td><td class="num">' + pct(sp / n) + '</td><td class="num">' + pct(ups / n) + '</td></tr>' : "";
+				}).join("");
+				return '<table class="rec cal"><thead><tr><th>Predicted P(up)</th><th class="num">Days</th><th class="num">Mean P(up)</th><th class="num">Actually up</th></tr></thead><tbody>' + rows + '</tbody></table>';
+			}
+
+			function renderBacktest(container, ticker) {
+				container.innerHTML = '<p class="muted bt-status">Loading backtest series&hellip;</p>';
+				loadBacktest().then(function (bt) {
+					var t = bt.tickers && bt.tickers[ticker];
+					if (!t) throw new Error("no series for " + ticker);
+					var geoms = {};
+					var html = '<h4>Backtest: predicted vs actual over the holdout window</h4>' +
+						'<p class="bt-note">The line is the probability the walk-forward model gave each day, clipped to the 30 to 70% band. ' +
+						'The ticks are what happened: <span class="sw up"></span> a higher close along the top edge, <span class="sw down"></span> a lower close along the bottom. ' +
+						'A tick on the same side as the line is a hit. Hover for the day.</p>';
+					HORIZONS.forEach(function (h) {
+						var s = t[h];
+						if (!s) return;
+						var hits = 0, hiN = 0, hiUp = 0, loN = 0, loDown = 0;
+						s.p.forEach(function (v, i) {
+							if ((v > 0.5) === (s.actual[i] === 1)) hits++;
+							if (v >= 0.6) { hiN++; hiUp += s.actual[i]; }
+							if (v <= 0.4) { loN++; loDown += 1 - s.actual[i]; }
+						});
+						var g = tsChart(s.dates, [{ values: s.p, cls: "model" }], s.actual, { label: "Predicted probability of a higher close by day, " + h + "-day horizon" });
+						geoms[h] = g;
+						html += '<div class="bt-block" data-h="' + h + '"><div class="bt-grid"><div>' +
+							'<p class="bt-title">' + (h === "1" ? "Next trading day" : "Five trading days") + ' <span class="muted">&middot; ' + esc(s.dates[0]) + ' to ' + esc(s.dates[s.dates.length - 1]) + '</span></p>' +
+							g.html +
+							'<p class="bt-sum">Hits ' + hits + ' of ' + s.p.length + ' (' + pct(hits / s.p.length, 1) + '). ' +
+							(hiN ? 'On the ' + hiN + ' days with P(up) at or above 60%, ' + hiUp + ' closed higher. ' : '') +
+							(loN ? 'On the ' + loN + ' days with P(up) at or below 40%, ' + loDown + ' closed lower.' : '') + '</p>' +
+							'</div><div>' + calibrationTable(s.p, s.actual) + '</div></div></div>';
+					});
+					container.innerHTML = html;
+					container.querySelectorAll(".bt-block").forEach(function (blk) {
+						var h = blk.getAttribute("data-h"), s = t[h];
+						attachTsHover(blk.querySelector("svg.ts"), geoms[h], s.p, function (i) {
+							return s.dates[i] + "  P(up) " + pct(s.p[i]) + "  actual " + (s.actual[i] ? "▲" : "▼") + " " + signedPct(s.ret[i] * 100);
+						});
+					});
+				}).catch(function (e) {
+					container.innerHTML = '<p class="muted bt-status">Backtest series not available (' + esc(e.message) + '). The next scheduled run writes it.</p>';
+				});
+			}
+
 			/* ---------------- forecast tables ---------------- */
 
 			function stockCell(s, market) {
@@ -500,7 +693,8 @@
 						'</div>';
 				}).join("");
 				var span = '<p class="muted" style="margin:0 0 .7rem;font-size:.82rem">' + esc(s.ticker) + ' &middot; data from ' + esc(s.first_date) + ' to ' + esc(s.as_of) + ', ' + s.rows + ' rows after warm-up.</p>';
-				return '<tr class="detail" hidden><td colspan="' + colspan + '">' + span + '<div class="detail-grid">' + blocks + '</div></td></tr>';
+				var bt = '<div class="bt" data-ticker="' + esc(s.ticker) + '"><p class="muted bt-status">Backtest chart loads when the row is opened.</p></div>';
+				return '<tr class="detail" hidden><td colspan="' + colspan + '">' + span + '<div class="detail-grid">' + blocks + '</div>' + bt + '</td></tr>';
 			}
 
 			function renderMarket(key, m) {
@@ -557,8 +751,14 @@
 						if (svg) attachSparkHover(svg, s.closes, s.dates, m.currency);
 						function toggle() {
 							var open = tr.getAttribute("aria-expanded") === "true";
+							var detail = tr.nextElementSibling;
 							tr.setAttribute("aria-expanded", open ? "false" : "true");
-							tr.nextElementSibling.hidden = open;
+							detail.hidden = open;
+							if (!open && !detail.dataset.loaded) {
+								detail.dataset.loaded = "1";
+								var bt = detail.querySelector(".bt");
+								renderBacktest(bt, bt.getAttribute("data-ticker"));
+							}
 						}
 						tr.addEventListener("click", function (ev) {
 							if (ev.target.closest("a")) return;
@@ -581,6 +781,40 @@
 
 			/* ---------------- track record ---------------- */
 
+			// by_date rows are [date, forecasts, hits, actual ups]; older files may lack the 4th.
+			function cumulative(byDate) {
+				var dates = [], model = [], base = [], n = 0, hits = 0, ups = 0, hasUps = true;
+				byDate.forEach(function (r) {
+					n += r[1]; hits += r[2];
+					if (r.length > 3) ups += r[3]; else hasUps = false;
+					dates.push(r[0]); model.push(hits / n); base.push(ups / n);
+				});
+				return { dates: dates, model: model, base: hasUps ? base : null };
+			}
+
+			function renderRecordCharts(all) {
+				var el = document.getElementById("record-charts");
+				var cums = {};
+				var cards = HORIZONS.map(function (h) {
+					var c = cumulative(all["h" + h].by_date || []);
+					cums[h] = c;
+					if (c.dates.length < 5) return "";
+					var lines = [{ values: c.model, cls: "model", label: "model " + pct(c.model[c.model.length - 1]) }];
+					if (c.base) lines.push({ values: c.base, cls: "base", label: "always up " + pct(c.base[c.base.length - 1]) });
+					var g = tsChart(c.dates, lines, null, { rightPad: 84, label: "Cumulative hit rate, " + h + "-day horizon" });
+					return '<div class="chart-card" data-h="' + h + '"><h4>' + (h === "1" ? "Next day" : "Five days") + ' &middot; cumulative hit rate</h4>' + g.html + '</div>';
+				}).join("");
+				if (!cards) { el.innerHTML = ""; return; }
+				el.innerHTML = '<p class="legend-inline"><span class="lk model"></span> model, all forecasts to that date &nbsp;&nbsp; <span class="lk base"></span> always up, same days</p><div class="charts2">' + cards + '</div>';
+				el.querySelectorAll(".chart-card").forEach(function (card) {
+					var h = card.getAttribute("data-h"), c = cums[h];
+					var g = tsChart(c.dates, [{ values: c.model }], null, { rightPad: 84 });
+					attachTsHover(card.querySelector("svg.ts"), g, c.model, function (i) {
+						return c.dates[i] + "  model " + pct(c.model[i], 1) + (c.base ? "  always up " + pct(c.base[i], 1) : "");
+					});
+				});
+			}
+
 			function renderRecord(tr, markets) {
 				var intro = document.getElementById("record-intro");
 				var tiles = document.getElementById("record-tiles");
@@ -592,6 +826,7 @@
 						: "No forecasts have been published yet.";
 					tiles.innerHTML = "";
 					table.innerHTML = "";
+					document.getElementById("record-charts").innerHTML = "";
 					return;
 				}
 				intro.textContent = "Every forecast published since " + tr.first_forecast + ", scored once its target bar existed. The baseline is the share of those days on which the stock actually closed higher, which is what an always-up forecast would have scored.";
@@ -618,6 +853,78 @@
 				});
 				html += '</tbody></table></div>';
 				table.innerHTML = html;
+				renderRecordCharts(all);
+			}
+
+			/* ---------------- forecast log (from data/log.json) ---------------- */
+
+			function renderLog(d) {
+				var body = document.getElementById("log-body");
+				var all = d.track_record && d.track_record.ALL;
+				if (!all || (!all.h1.n && !all.h5.n)) {
+					body.innerHTML = '<p class="muted">Nothing has resolved yet. Each forecast appears here the day its target bar exists, with what the model said and what the market did. The full record, including the forecasts still pending, is in <a href="data/history.json">history.json</a>.</p>';
+					return;
+				}
+				fetch("data/log.json", { cache: "no-store" })
+					.then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+					.then(function (log) {
+						var rows = log.rows || [];
+						var seen = {};
+						rows.forEach(function (r) { seen[r.ticker] = true; });
+						var stockOpts = Object.keys(seen).sort().map(function (t) {
+							var s = stockInfo[t];
+							return '<option value="' + esc(t) + '">' + esc(s ? s.label : t) + '</option>';
+						}).join("");
+						var marketOpts = Object.keys(d.markets).map(function (k) { return '<option value="' + esc(k) + '">' + esc(d.markets[k].label) + '</option>'; }).join("");
+						body.innerHTML =
+							'<div class="filters">' +
+							'<label>Market<select id="log-market"><option value="">All</option>' + marketOpts + '</select></label>' +
+							'<label>Horizon<select id="log-h"><option value="">Both</option><option value="1">Next day</option><option value="5">Five days</option></select></label>' +
+							'<label>Stock<select id="log-stock"><option value="">All</option>' + stockOpts + '</select></label>' +
+							'<label><input type="checkbox" id="log-miss"> Misses only</label>' +
+							'<span id="log-count"></span>' +
+							'</div>' +
+							'<div class="tablewrap"><table class="rec log"><thead><tr><th>As of</th><th>Stock</th><th>Horizon</th><th>Forecast</th><th>Actual</th><th>Result</th></tr></thead><tbody id="log-rows"></tbody></table></div>' +
+							'<p id="log-more-wrap"><button type="button" class="btn" id="log-more">Show 50 more</button></p>' +
+							'<p class="muted" style="font-size:.82rem">Resolved forecasts from the last ' + log.window_days + ' trading days, newest first. The full record, including the forecasts still pending, is in <a href="data/history.json">history.json</a>.</p>';
+						var shown = 50;
+						function isHit(r) { return (r.p > 0.5) === (r.actual === 1); }
+						function filtered() {
+							var mk = document.getElementById("log-market").value;
+							var hh = document.getElementById("log-h").value;
+							var st = document.getElementById("log-stock").value;
+							var miss = document.getElementById("log-miss").checked;
+							return rows.filter(function (r) {
+								if (mk && r.market !== mk) return false;
+								if (hh && String(r.h) !== hh) return false;
+								if (st && r.ticker !== st) return false;
+								if (miss && isHit(r)) return false;
+								return true;
+							});
+						}
+						function draw() {
+							var f = filtered();
+							document.getElementById("log-rows").innerHTML = f.slice(0, shown).map(function (r) {
+								var s = stockInfo[r.ticker];
+								var actual = r.ret === null || r.ret === undefined ? (r.actual ? "up" : "down") : signedPct(r.ret * 100);
+								return '<tr><td>' + esc(r.as_of) + '</td><td>' + (s ? s.cell : esc(r.ticker)) + '</td><td>' + r.h + 'd</td>' +
+									'<td>' + glyph(r.p - 0.5) + pct(r.p) + '</td>' +
+									'<td>' + glyph(r.actual ? 1 : -1) + actual + ' <small class="muted">on ' + esc(r.target_date || "") + '</small></td>' +
+									'<td>' + (isHit(r) ? '<span class="res hit">&#10003; hit</span>' : '<span class="res miss">&#10007; miss</span>') + '</td></tr>';
+							}).join("") || '<tr><td colspan="6" class="muted">No forecasts match these filters.</td></tr>';
+							var hits = f.filter(isHit).length;
+							document.getElementById("log-count").textContent = f.length ? f.length + " forecasts, " + hits + " hits (" + pct(hits / f.length, 1) + ")" : "";
+							document.getElementById("log-more-wrap").hidden = f.length <= shown;
+						}
+						["log-market", "log-h", "log-stock", "log-miss"].forEach(function (id) {
+							document.getElementById(id).addEventListener("change", function () { shown = 50; draw(); });
+						});
+						document.getElementById("log-more").addEventListener("click", function () { shown += 50; draw(); });
+						draw();
+					})
+					.catch(function (e) {
+						body.innerHTML = '<p class="muted">Could not load data/log.json (' + esc(e.message) + ').</p>';
+					});
 			}
 
 			/* ---------------- header + method ---------------- */
@@ -642,9 +949,16 @@
 			fetch("data/predictions.json", { cache: "no-store" })
 				.then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
 				.then(function (d) {
+					Object.keys(d.markets).forEach(function (k) {
+						d.markets[k].stocks.forEach(function (s) {
+							var code = k === "TW" ? s.ticker.replace(/\.TW$/, "") : s.ticker;
+							stockInfo[s.ticker] = { label: code + " " + s.name, cell: stockCell(s, k) };
+						});
+					});
 					renderStatus(d);
 					Object.keys(d.markets).forEach(function (k) { renderMarket(k, d.markets[k]); });
 					renderRecord(d.track_record, d.markets);
+					renderLog(d);
 					renderMethod(d);
 				})
 				.catch(function (e) {
