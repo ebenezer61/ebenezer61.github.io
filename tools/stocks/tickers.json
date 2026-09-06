@@ -29,6 +29,7 @@
     "stocks": [
       { "ticker": "AAPL",  "name": "Apple",              "en": "" },
       { "ticker": "MSFT",  "name": "Microsoft",          "en": "" },
+      { "ticker": "GOOGL", "name": "Alphabet (Google)",  "en": "" },
       { "ticker": "BRK-B", "name": "Berkshire Hathaway", "en": "" },
       { "ticker": "JPM",   "name": "JPMorgan Chase",     "en": "" },
       { "ticker": "V",     "name": "Visa",               "en": "" },
@@ -38,7 +39,8 @@
       { "ticker": "PEP",   "name": "PepsiCo",            "en": "" },
       { "ticker": "WMT",   "name": "Walmart",            "en": "" },
       { "ticker": "HD",    "name": "Home Depot",         "en": "" },
-      { "ticker": "XOM",   "name": "Exxon Mobil",        "en": "" }
+      { "ticker": "XOM",   "name": "Exxon Mobil",        "en": "" },
+      { "ticker": "TSLA",  "name": "Tesla",              "en": "" }
     ]
   }
 }

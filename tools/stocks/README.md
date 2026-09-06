@@ -5,7 +5,7 @@ Feeds the page at `/stocks/`. One script, one config file, one workflow.
 | File | Purpose |
 | --- | --- |
 | `predict.py` | Download daily bars, build features, walk-forward evaluate, fit, write JSON |
-| `tickers.json` | The basket: 12 Taiwan and 12 US blue chips plus the two market indices |
+| `tickers.json` | The basket: 12 Taiwan and 14 US blue chips plus the two market indices |
 | `requirements.txt` | xgboost, yfinance, pandas, numpy, scikit-learn |
 | `../../.github/workflows/stocks.yml` | Runs the script every weekday and commits the output |
 | `../../stocks/data/predictions.json` | Today's snapshot, rendered by `stocks/index.html` |

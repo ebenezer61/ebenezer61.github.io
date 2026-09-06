@@ -11,7 +11,7 @@ Live at **<https://ebenezer61.github.io/>**, served by GitHub Pages from the `ma
 | `index.html` | The homepage: About, Research Interests, Projects, Publications, Teaching & Outreach |
 | `style.css` | All styling for the homepage. Light/dark aware, responsive, no external dependencies |
 | `interpretability/` | PyCon TW 2026 poster hub: `theory/` (timeline, attention as a kernel, the word "circuit") and `practice/` (the write-up, the graph, the probes) |
-| `stocks/` | Daily XGBoost direction forecasts for 12 Taiwan and 12 US blue chips; `data/` holds the JSON the page renders |
+| `stocks/` | Daily XGBoost direction forecasts for 12 Taiwan and 14 US blue chips; `data/` holds the JSON the page renders |
 | `tools/stocks/` | The pipeline behind `stocks/`: `predict.py`, the ticker basket, requirements, its own README |
 | `tools/figures/` | Scripts that generated the inline SVG charts on the interpretability pages |
 | `.github/workflows/stocks.yml` | Runs the stock pipeline every weekday and commits the refreshed JSON |
