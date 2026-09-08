@@ -2,10 +2,18 @@ name: Stocks daily update
 
 on:
   schedule:
-    # 23:30 UTC, Monday to Friday = 07:30 Asia/Taipei the next morning,
+    # 23:47 UTC, Monday to Friday = 07:47 Asia/Taipei the next morning,
     # after both TWSE (13:30 Taipei) and NYSE (16:00 New York) have closed.
-    - cron: "30 23 * * 1-5"
+    # Off the :00/:30 marks: GitHub delays or drops schedules at busy minutes.
+    - cron: "47 23 * * 1-5"
   workflow_dispatch:
+  # Run once on every change to the pipeline itself, so a broken step shows up
+  # right away instead of at the next morning's schedule.
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/stocks.yml"
+      - "tools/stocks/**"
 
 permissions:
   contents: write
