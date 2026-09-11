@@ -1,0 +1,70 @@
+name: Stocks feature experiment
+
+# Compares feature groups on the walk-forward evaluation and commits the
+# report to tools/stocks/experiments/. Runs on demand and whenever the
+# experiment or feature code changes; it does not touch stocks/data.
+
+on:
+  workflow_dispatch:
+    inputs:
+      configs:
+        description: "Configs: base, a group, groups joined with '+', or all (comma-separated)"
+        default: "base,us_lead,macro,xsec,twse,risk,earnings,us_lead+macro+xsec,all"
+      test_days:
+        description: "Walk-forward window per ticker (trading days)"
+        default: "500"
+  push:
+    branches: [main]
+    paths:
+      - "tools/stocks/experiment.py"
+      - "tools/stocks/predict.py"
+      - "tools/stocks/twse.py"
+      - "tools/stocks/earnings.py"
+      - "tools/stocks/tickers.json"
+      - ".github/workflows/stocks-experiment.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: stocks-experiment
+  cancel-in-progress: true
+
+jobs:
+  experiment:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: tools/stocks/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r tools/stocks/requirements.txt
+
+      - name: Run the experiment
+        run: |
+          python tools/stocks/experiment.py \
+            --configs "${{ github.event.inputs.configs || 'base,us_lead,macro,xsec,twse,risk,earnings,us_lead+macro+xsec,all' }}" \
+            --test-days "${{ github.event.inputs.test_days || '500' }}" \
+            --jobs 4
+
+      - name: Summary
+        run: cat tools/stocks/experiments/latest.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Commit the report
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tools/stocks/experiments
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+          git commit -m "stocks: feature experiment $(date -u +%Y-%m-%d)"
+          git pull --rebase origin main
+          git push origin HEAD:main

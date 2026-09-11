@@ -377,6 +377,7 @@
 						20-day returns and 20-day volatility; 20-day return relative to the index; and
 						the day of the week.
 					</p>
+					<p id="feature-groups" hidden></p>
 					<p>
 						<strong>Model.</strong> One <code>XGBClassifier</code> per stock and horizon, predicting
 						whether the adjusted close will be higher one trading day ahead, and separately
@@ -395,7 +396,7 @@
 					</p>
 					<p>
 						<strong>Schedule.</strong> A GitHub Actions workflow runs the whole pipeline at
-						23:30 UTC Monday to Friday, which is 07:30 in Taipei the next morning, after both
+						23:47 UTC Monday to Friday, which is 07:47 in Taipei the next morning, after both
 						markets have closed. It commits <code>predictions.json</code> and
 						<code>history.json</code> back to this repository, and the page reads them on load.
 						Before appending the day's forecasts it fills in the outcome of every earlier
@@ -951,6 +952,24 @@
 				document.getElementById("params").textContent = JSON.stringify(p, null, 2) +
 					"\n\n# start " + d.model.start + ", warm-up " + d.model.warmup_rows + " rows, test window " + d.model.test_days + " days, refit every " + d.model.retrain_every + " days";
 				document.getElementById("features").innerHTML = d.model.features.map(function (f) { return "<span>" + esc(f) + "</span>"; }).join("");
+				var groupText = {
+					us_lead: "<strong>US session, for Taiwan stocks:</strong> the S&amp;P 500, the SOX semiconductor index and the TSMC ADR on the same calendar date, and the ADR's premium over the Taipei close. That session closes at 04:00 Taipei the next morning, after the Taipei close it is paired with and before the Taipei target bar opens, so the forecast may use it.",
+					macro: "<strong>Macro:</strong> VIX level, daily change and 20-day z-score; 1- and 20-day changes in the US 10-year yield, the dollar index, USD/TWD, crude oil and gold.",
+					xsec: "<strong>Cross-section:</strong> the mean return, breadth and dispersion of the other stocks in the same basket over 1, 5 and 20 days, this stock's return relative to them, and for US stocks the sector ETF.",
+					twse: "<strong>Institutional flows, for Taiwan stocks:</strong> foreign, investment-trust and dealer net buying from the TWSE T86 report, in units of the stock's 20-day volume, over 1, 5 and 20 days, plus the length of the current foreign buying or selling streak and the basket-wide foreign flow.",
+					risk: "<strong>Risk appetite:</strong> VVIX, VIX relative to realised S&amp;P 500 volatility, high-yield versus investment-grade credit, small versus large caps, utilities versus the market, copper versus gold, and the slope of the yield curve.",
+					earnings: "<strong>Earnings calendar:</strong> trading days until and since the stock's earnings reaction, whether the next bar is the reaction bar, the last EPS surprise, and the surprise of a report released after today's close."
+				};
+				var groups = (d.model.feature_groups || []).filter(function (g) { return groupText[g]; });
+				var fg = document.getElementById("feature-groups");
+				if (groups.length) {
+					fg.innerHTML = "<strong>Extra feature groups.</strong> On top of the base set, this run also used " +
+						groups.length + (groups.length === 1 ? " group" : " groups") + ", chosen after comparing each one on the same walk-forward window (" +
+						'<a href="https://github.com/ebenezer61/ebenezer61.github.io/blob/main/tools/stocks/experiments/latest.md" target="_blank" rel="noopener">report</a>). ' +
+						groups.map(function (g) { return groupText[g]; }).join(" ") +
+						" Every feature is aligned to what was known at 07:47 Taipei the morning after the as-of date, when the forecast is made, and the same code builds the training rows and the row being scored.";
+					fg.hidden = false;
+				}
 			}
 
 			/* ---------------- boot ---------------- */

@@ -5,9 +5,16 @@ Feeds the page at `/stocks/`. One script, one config file, one workflow.
 | File | Purpose |
 | --- | --- |
 | `predict.py` | Download daily bars, build features, walk-forward evaluate, fit, write JSON |
-| `tickers.json` | The basket: 12 Taiwan and 14 US blue chips plus the two market indices |
-| `requirements.txt` | xgboost, yfinance, pandas, numpy, scikit-learn |
+| `experiment.py` | Compare optional feature groups on the same walk-forward evaluation |
+| `twse.py` | TWSE T86 institutional net-buying fetcher and its CSV cache |
+| `earnings.py` | Yahoo earnings-calendar fetcher and its CSV cache |
+| `tickers.json` | The basket: 12 Taiwan and 14 US blue chips plus the two market indices; US entries carry a `sector_etf` |
+| `requirements.txt` | xgboost, yfinance, pandas, numpy, scikit-learn, requests |
+| `cache/twse_t86.csv` | Daily foreign / trust / dealer net shares for the Taiwan basket since 2014 |
+| `cache/earnings.csv` | Earnings dates, times and EPS surprises for every ticker |
+| `experiments/` | Reports written by `experiment.py` (`latest.md` is the one to read) |
 | `../../.github/workflows/stocks.yml` | Runs the script every weekday and commits the output |
+| `../../.github/workflows/stocks-experiment.yml` | Runs `experiment.py` on demand or when the feature code changes |
 | `../../stocks/data/predictions.json` | Today's snapshot, rendered by `stocks/index.html` |
 | `../../stocks/data/history.json` | Every published forecast with its realised outcome |
 | `../../stocks/data/backtest.json` | Per ticker and horizon: the walk-forward window's daily predicted probability, actual outcome and realised return, drawn in each row's detail panel |
@@ -34,6 +41,34 @@ to a coin flip, and the point of the page is to show that honestly.
 The final model is refit on every labelled row and scores the latest bar. Its
 gain-based feature importances are shipped as `top_features`.
 
+## Optional feature groups
+
+`predict.py --features us_lead,macro` (or `all`, or `none`) adds groups on top
+of the base set; `DEFAULT_FEATURES` in `predict.py` is what the daily run uses.
+Every feature is aligned to what is known at 07:47 Taipei the morning after
+`as_of`, when the workflow runs, and the same code builds the training rows
+and the row being scored, so a group is either in both or in neither.
+
+| Group | Scope | What it adds | Why it is legitimate |
+| --- | --- | --- | --- |
+| `us_lead` | TW only | S&P 500, SOX and TSMC ADR returns of the same calendar date, ADR premium over the Taipei close | The US session dated `d` closes at 04:00 Taipei on `d+1`, after the Taipei close it is paired with and before the Taipei target bar opens |
+| `macro` | both | VIX level, change and 20-day z-score; US 10-year yield, dollar index, USD/TWD, crude oil, gold changes over 1 and 20 days | All dated `d` and final before the run; for Taiwan the same overnight argument as above |
+| `xsec` | both | Mean return, breadth and dispersion of the other stocks in the basket over 1, 5, 20 days, this stock relative to them; for US stocks the sector ETF in `tickers.json` | Same-day closes of the same market |
+| `twse` | TW only | Foreign, investment-trust and dealer net buying from the TWSE T86 report, scaled by the stock's 20-day volume, over 1, 5, 20 days; foreign buying streak; basket-wide foreign flow | TWSE publishes T86 for `d` around 15:00 on `d` |
+| `risk` | both | VVIX change and z-score; VIX over realised S&P 500 volatility; 5- and 20-day changes of HYG/LQD, IWM/SPY, XLU/SPY and copper/gold; yield-curve slope (10y minus 3m) and its 20-day change | US-session closes dated `d` |
+| `earnings` | both | From the stock's Yahoo earnings calendar (`cache/earnings.csv`, refreshed daily by `earnings.py`): whether the next bar or this bar is the reaction bar, trading days since and until the reaction bar (capped at 70), the last EPS surprise, and the surprise of a report released after today's close whose reaction is tomorrow | A report before 16:00 New York moves that day's bar, one at or after 16:00 moves the next bar; the forecast at 18:47 New York knows both. Yahoo's Taiwan timestamps are less reliable, so the group mainly matters for US stocks |
+
+`experiment.py` scores every configuration on the same walk-forward window
+(500 trading days by default, pooled across the basket so one standard error
+of accuracy is about 0.65 pp) and writes `experiments/latest.md`. Run it
+before changing `DEFAULT_FEATURES`; the `all` row versus the best single
+group shows whether the groups interfere.
+
+The T86 cache is filled once with `python tools/stocks/twse.py --backfill`
+(about 3100 requests at 4 s each; resumable) and topped up by the daily run,
+which fetches at most `TWSE_DAILY_REQUESTS` missing days. TWSE data starts
+2012-05-02.
+
 ## Running it
 
 ```
@@ -48,13 +83,39 @@ example `python -m http.server 8000` and open <http://localhost:8000/stocks/>.
 Opening `stocks/index.html` directly from disk does not work: the page fetches
 its JSON, and browsers block `fetch` on `file://`.
 
+### macOS (Apple Silicon)
+
+The pipeline runs comfortably on an 8-core MacBook Air: `predict.py` in one to
+two minutes, `experiment.py --jobs 8` in about 30 to 40 minutes for six
+configurations at 500 days (the Air is fanless and throttles under sustained
+load, but finishes). Memory stays under 1 GB. Setup:
+
+```
+brew install libomp                        # xgboost's wheel needs OpenMP; without it import fails
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r tools/stocks/requirements.txt
+```
+
+Pushes go out as `ebenezer61` with a fine-grained token (Contents: read and
+write on this repository). On macOS let the keychain hold it and pin the
+username for this repository so the right token is picked:
+
+```
+git config --global credential.helper osxkeychain
+git config credential.https://github.com.username ebenezer61   # inside the repo
+git push origin main                                            # prompts once for the token
+```
+
+The daily update and the site stay on GitHub Actions and GitHub Pages; nothing
+needs to be scheduled on the laptop.
+
 ## Schedule
 
-The workflow runs at 23:30 UTC Monday to Friday (07:30 Taipei the next
+The workflow runs at 23:47 UTC Monday to Friday (07:47 Taipei the next
 morning), after both markets have closed, and can also be started by hand from
-the Actions tab (`workflow_dispatch`). It commits as `github-actions[bot]` with
-the message `stocks: daily update YYYY-MM-DD`; a day with no new bars produces
-no commit. To hide those commits when reading history:
+the Actions tab (`workflow_dispatch`). It commits `stocks/data` and the T86
+cache as `github-actions[bot]` with the message `stocks: daily update
+YYYY-MM-DD`; a day with no new bars produces no commit. To hide those commits when reading history:
 
 ```
 git log --invert-grep --grep='^stocks: daily update'

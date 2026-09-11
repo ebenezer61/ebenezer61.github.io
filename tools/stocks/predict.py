@@ -4,7 +4,9 @@
 For every ticker listed in tickers.json the script
 
   1. downloads daily bars from Yahoo Finance (via yfinance) back to START,
-  2. builds ~35 features from price, volume and the market index,
+     plus whatever extra series the enabled feature groups need,
+  2. builds the base features (~35, from price, volume and the market index)
+     and the enabled optional groups (see FEATURE_GROUPS),
   3. runs a walk-forward evaluation over the last TEST_DAYS trading days
      (retrain every RETRAIN_EVERY days; labels are embargoed by the horizon,
      so nothing the model trains on was unknown at forecast time),
@@ -25,9 +27,35 @@ and writes four files into stocks/data/:
     python tools/stocks/predict.py            # full run, ~2 to 4 minutes
     python tools/stocks/predict.py --quick    # 2 tickers per market, smoke test
     python tools/stocks/predict.py --out DIR  # write somewhere else
+    python tools/stocks/predict.py --features us_lead,macro   # enable groups
+
+Feature groups (all off by default; experiment.py compares them):
+
+  us_lead   Taiwan only. The US session of the same calendar date closes at
+            04:00 Taipei the next morning, before the forecast is made and
+            before the Taiwan target bar opens: S&P 500, SOX and TSMC ADR
+            returns, and the ADR premium over the Taipei close.
+  macro     VIX, US 10-year yield, dollar index, USD/TWD, crude oil, gold:
+            daily and 20-day changes, VIX z-score.
+  xsec      Cross-section of the same market's basket: mean return of the
+            other stocks, share of them up, dispersion, this stock relative
+            to the basket; for US stocks also the sector ETF from tickers.json.
+  twse      Taiwan only. Institutional net buying (foreign, investment trust,
+            dealer) from the TWSE T86 report, cached by twse.py, scaled by
+            the stock's 20-day volume.
+  risk      Market internals from the US session: VVIX, VIX over realised
+            S&P 500 volatility, high-yield versus investment-grade credit,
+            small versus large caps, utilities versus the market, the yield
+            curve slope, copper versus gold.
+  earnings  The stock's own earnings calendar from Yahoo, cached by
+            earnings.py: bars until and since the reaction bar, whether the
+            next bar is the reaction bar, the last and the pending EPS surprise.
+
+Every feature must be known at 07:47 Taipei the morning after `as_of`, when
+the workflow runs, and is aligned the same way in training and inference.
 
 The GitHub Actions workflow .github/workflows/stocks.yml runs the full
-command once per weekday and commits the two files back to main.
+command once per weekday and commits the output back to main.
 """
 
 from __future__ import annotations
@@ -37,6 +65,7 @@ import json
 import sys
 import time
 import warnings
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -45,6 +74,10 @@ import pandas as pd
 import xgboost as xgb
 import yfinance as yf
 from sklearn.metrics import brier_score_loss, roc_auc_score
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import earnings  # noqa: E402
+import twse  # noqa: E402
 
 warnings.filterwarnings("ignore")
 
@@ -62,6 +95,19 @@ MIN_ROWS = 800                # skip a ticker with less history than this
 SPARK_DAYS = 60               # closes shipped for the sparkline
 HISTORY_KEEP_DAYS = 3 * 366   # history.json is pruned beyond this
 LOG_DAYS = 60                 # trading days of resolved forecasts in log.json
+TWSE_DAILY_REQUESTS = 10      # cap on TWSE fetches inside the daily run
+
+FEATURE_GROUPS = ("us_lead", "macro", "xsec", "twse", "risk", "earnings")
+DEFAULT_FEATURES: tuple[str, ...] = ()   # base only, until experiment.py says otherwise
+
+# Yahoo symbols each group needs beyond the basket and the market index.
+EXTRA_SYMBOLS = {
+    "us_lead": ["^GSPC", "^SOX", "TSM", "TWD=X"],
+    "macro": ["^VIX", "^TNX", "DX-Y.NYB", "TWD=X", "CL=F", "GC=F"],
+    "risk": ["^VVIX", "^VIX", "^GSPC", "HYG", "LQD", "IWM", "SPY", "XLU", "^TNX", "^IRX", "HG=F", "GC=F"],
+}
+ADR_SHARES = 5                # one TSM ADR = five 2330.TW shares
+EARNINGS_CAP = 70             # trading days; "no report in sight" beyond this
 
 XGB_PARAMS = dict(
     n_estimators=400,
@@ -83,12 +129,29 @@ def log(msg: str) -> None:
     print(f"[stocks] {msg}", file=sys.stderr, flush=True)
 
 
+def parse_groups(spec: str | None) -> tuple[str, ...]:
+    """'us_lead,macro' -> ('us_lead', 'macro'); 'all' -> every group; 'none'/'' -> ()."""
+    if spec is None:
+        return DEFAULT_FEATURES
+    spec = spec.strip().lower()
+    if spec in ("", "none", "base"):
+        return ()
+    if spec == "all":
+        return FEATURE_GROUPS
+    groups = tuple(g.strip() for g in spec.split(",") if g.strip())
+    bad = [g for g in groups if g not in FEATURE_GROUPS]
+    if bad:
+        raise SystemExit(f"unknown feature group(s) {bad}; choose from {FEATURE_GROUPS}")
+    return tuple(g for g in FEATURE_GROUPS if g in groups)
+
+
 # --------------------------------------------------------------------------
 # Data
 # --------------------------------------------------------------------------
 
 def download(tickers: list[str], start: str) -> dict[str, pd.DataFrame]:
     """Download raw OHLCV (+ Adj Close) for every ticker; skip the ones Yahoo drops."""
+    tickers = list(dict.fromkeys(tickers))
     last_err: Exception | None = None
     for attempt in range(1, 4):
         try:
@@ -138,6 +201,46 @@ def adjust(raw: pd.DataFrame) -> pd.DataFrame:
     }, index=raw.index)
 
 
+@dataclass
+class Context:
+    """Everything one market's feature builder needs besides the stock's own bars."""
+    market: str
+    groups: tuple[str, ...]
+    idx_close: pd.Series | None = None
+    extra: dict[str, pd.DataFrame] = field(default_factory=dict)     # symbol -> adjust()ed bars
+    px: dict[str, pd.DataFrame] = field(default_factory=dict)        # basket ticker -> adjust()ed bars
+    sector: dict[str, str] = field(default_factory=dict)             # ticker -> sector ETF symbol
+    twse: dict[str, pd.DataFrame] = field(default_factory=dict)      # ticker -> T86 frame
+    earnings: dict[str, pd.DataFrame] = field(default_factory=dict)  # ticker -> earnings events
+    basket_ret: pd.DataFrame | None = None                           # daily log returns, one column per ticker
+    basket_fi: pd.DataFrame | None = None                            # foreign net / 20d volume, per ticker
+
+    def finish(self) -> "Context":
+        if self.px:
+            self.basket_ret = pd.DataFrame({t: np.log(p["Close"]).diff() for t, p in self.px.items()})
+        if self.twse:
+            cols = {}
+            for t, p in self.px.items():
+                f = self.twse.get(t)
+                if f is None:
+                    continue
+                v20 = p["Volume"].rolling(20).mean()
+                cols[t] = f["foreign"].reindex(p.index) / v20
+            if cols:
+                self.basket_fi = pd.DataFrame(cols)
+        return self
+
+
+def needed_symbols(groups: tuple[str, ...], cfg: dict) -> list[str]:
+    syms: list[str] = []
+    for g in groups:
+        syms += EXTRA_SYMBOLS.get(g, [])
+    if "xsec" in groups:
+        for m in cfg.values():
+            syms += [s["sector_etf"] for s in m["stocks"] if s.get("sector_etf")]
+    return list(dict.fromkeys(syms))
+
+
 # --------------------------------------------------------------------------
 # Features and targets
 # --------------------------------------------------------------------------
@@ -149,7 +252,20 @@ def rsi(close: pd.Series, n: int = 14) -> pd.Series:
     return 100 - 100 / (1 + up / dn)
 
 
-def build_features(px: pd.DataFrame, idx_close: pd.Series | None) -> pd.DataFrame:
+def aligned(s: pd.Series | None, index: pd.Index) -> pd.Series | None:
+    """`s` on the stock's calendar: exact date where it exists, else the last earlier value.
+
+    A US bar dated d closes after the Taiwan bar dated d and before the Taiwan
+    bar d+1 opens, so for a Taiwan stock the value dated d is what the forecast
+    for d+1 may use. Bars after the stock's last date are dropped, which also
+    discards the partial bar Yahoo returns for a session still in progress.
+    """
+    if s is None:
+        return None
+    return s.reindex(index).ffill()
+
+
+def base_features(px: pd.DataFrame, idx_close: pd.Series | None) -> pd.DataFrame:
     c, o, h, l, v = px["Close"], px["Open"], px["High"], px["Low"], px["Volume"]
     r = np.log(c).diff()
     f = pd.DataFrame(index=px.index)
@@ -183,7 +299,7 @@ def build_features(px: pd.DataFrame, idx_close: pd.Series | None) -> pd.DataFram
     f["lo252_gap"] = c / c.rolling(252).min() - 1
     # Market context
     if idx_close is not None:
-        ic = idx_close.reindex(px.index).ffill()
+        ic = aligned(idx_close, px.index)
         ir = np.log(ic).diff()
         f["idx_ret_1d"] = ir
         f["idx_ret_5d"] = np.log(ic / ic.shift(5))
@@ -192,7 +308,213 @@ def build_features(px: pd.DataFrame, idx_close: pd.Series | None) -> pd.DataFram
         f["idx_sma50_gap"] = ic / ic.rolling(50).mean() - 1
         f["rel_ret_20d"] = f["ret_20d"] - f["idx_ret_20d"]
     f["dow"] = px.index.dayofweek
+    return f
 
+
+def us_lead_features(px: pd.DataFrame, ctx: Context) -> pd.DataFrame:
+    """US session of the same date, for Taiwan stocks: closes after Taipei, before Taipei reopens."""
+    f = pd.DataFrame(index=px.index)
+    for name, sym in (("spx", "^GSPC"), ("sox", "^SOX"), ("adr", "TSM")):
+        s = ctx.extra.get(sym)
+        if s is None:
+            continue
+        c = aligned(s["Close"], px.index)
+        f[f"us_{name}_1d"] = np.log(c).diff()
+        f[f"us_{name}_5d"] = np.log(c / c.shift(5))
+    tsm, fx, tw = ctx.extra.get("TSM"), ctx.extra.get("TWD=X"), ctx.px.get("2330.TW")
+    if tsm is not None and fx is not None and tw is not None:
+        adr_twd = aligned(tsm["RawClose"], px.index) * aligned(fx["RawClose"], px.index) / ADR_SHARES
+        prem = adr_twd / aligned(tw["RawClose"], px.index) - 1
+        f["adr_prem"] = prem
+        f["adr_prem_chg"] = prem.diff()
+    return f
+
+
+def macro_features(px: pd.DataFrame, ctx: Context) -> pd.DataFrame:
+    f = pd.DataFrame(index=px.index)
+    vix = ctx.extra.get("^VIX")
+    if vix is not None:
+        v = aligned(vix["Close"], px.index)
+        f["vix"] = v
+        f["vix_chg_1d"] = np.log(v).diff()
+        f["vix_z20"] = (v - v.rolling(20).mean()) / v.rolling(20).std()
+    tnx = ctx.extra.get("^TNX")
+    if tnx is not None:
+        y = aligned(tnx["Close"], px.index)
+        f["tnx_chg_1d"] = y.diff()
+        f["tnx_chg_20d"] = y.diff(20)
+    for name, sym in (("dxy", "DX-Y.NYB"), ("twd", "TWD=X"), ("oil", "CL=F"), ("gold", "GC=F")):
+        s = ctx.extra.get(sym)
+        if s is None:
+            continue
+        c = aligned(s["Close"], px.index)
+        f[f"{name}_1d"] = np.log(c).diff()
+        f[f"{name}_20d"] = np.log(c / c.shift(20))
+    return f
+
+
+def xsec_features(px: pd.DataFrame, ctx: Context, ticker: str) -> pd.DataFrame:
+    """The rest of the basket, and the sector ETF where one is configured."""
+    f = pd.DataFrame(index=px.index)
+    r = np.log(px["Close"]).diff()
+    if ctx.basket_ret is not None and ctx.basket_ret.shape[1] > 1:
+        others = ctx.basket_ret.drop(columns=[ticker], errors="ignore").reindex(px.index)
+        bk = others.mean(axis=1)
+        f["bk_ret_1d"] = bk
+        f["bk_ret_5d"] = bk.rolling(5).sum()
+        f["bk_ret_20d"] = bk.rolling(20).sum()
+        f["bk_up_share"] = (others > 0).sum(axis=1) / others.notna().sum(axis=1).replace(0, np.nan)
+        f["bk_disp"] = others.std(axis=1)
+        f["rel_bk_1d"] = r - bk
+        f["rel_bk_20d"] = r.rolling(20).sum() - f["bk_ret_20d"]
+    etf = ctx.extra.get(ctx.sector.get(ticker, ""))
+    if etf is not None:
+        c = aligned(etf["Close"], px.index)
+        f["sec_ret_1d"] = np.log(c).diff()
+        f["sec_ret_5d"] = np.log(c / c.shift(5))
+        f["sec_ret_20d"] = np.log(c / c.shift(20))
+        f["sec_sma50_gap"] = c / c.rolling(50).mean() - 1
+        f["rel_sec_20d"] = r.rolling(20).sum() - f["sec_ret_20d"]
+    return f
+
+
+def twse_features(px: pd.DataFrame, ctx: Context, ticker: str) -> pd.DataFrame:
+    """Institutional net buying, in units of the stock's 20-day average volume."""
+    f = pd.DataFrame(index=px.index)
+    t86 = ctx.twse.get(ticker)
+    if t86 is None:
+        return f
+    t86 = t86.reindex(px.index)
+    v20 = px["Volume"].rolling(20).mean()
+    for name, col in (("fi", "foreign"), ("it", "trust"), ("dl", "dealer"), ("inst", "total")):
+        s = t86[col]
+        f[f"{name}_net_1d"] = s / v20
+        f[f"{name}_net_5d"] = s.rolling(5, min_periods=1).sum() / v20
+        if name in ("fi", "it", "inst"):
+            f[f"{name}_net_20d"] = s.rolling(20, min_periods=5).sum() / v20
+    # Consecutive days of foreign net buying (+) or selling (-), capped at 10
+    sign = np.sign(t86["foreign"].fillna(0)).to_numpy()
+    streak, run = np.zeros(len(sign)), 0.0
+    for i, s in enumerate(sign):
+        run = run + s if s and np.sign(run) in (0, s) else s
+        streak[i] = max(-10, min(10, run))
+    f["fi_streak"] = streak
+    if ctx.basket_fi is not None:
+        others = ctx.basket_fi.drop(columns=[ticker], errors="ignore").reindex(px.index)
+        f["bk_fi_net_1d"] = others.mean(axis=1)
+        f["bk_fi_net_5d"] = f["bk_fi_net_1d"].rolling(5, min_periods=1).sum()
+    return f
+
+
+def risk_features(px: pd.DataFrame, ctx: Context) -> pd.DataFrame:
+    """Risk appetite gauges from the US session, all dated d and final before the run."""
+    f = pd.DataFrame(index=px.index)
+
+    def close(sym: str) -> pd.Series | None:
+        s = ctx.extra.get(sym)
+        return aligned(s["Close"], px.index) if s is not None else None
+
+    vvix = close("^VVIX")
+    if vvix is not None:
+        f["vvix_1d"] = np.log(vvix).diff()
+        f["vvix_z20"] = (vvix - vvix.rolling(20).mean()) / vvix.rolling(20).std()
+    vix, spx = close("^VIX"), close("^GSPC")
+    if vix is not None and spx is not None:
+        realised = np.log(spx).diff().rolling(20).std() * np.sqrt(252) * 100
+        f["vrp"] = vix / realised                       # implied over realised: >1 means fear priced in
+    for name, a, b in (("hy_ig", "HYG", "LQD"), ("iwm_spy", "IWM", "SPY"),
+                       ("xlu_spy", "XLU", "SPY"), ("cu_au", "HG=F", "GC=F")):
+        ca, cb = close(a), close(b)
+        if ca is None or cb is None:
+            continue
+        ratio = np.log(ca / cb)
+        f[f"{name}_5d"] = ratio.diff(5)
+        f[f"{name}_20d"] = ratio.diff(20)
+    tnx, irx = close("^TNX"), close("^IRX")
+    if tnx is not None and irx is not None:
+        curve = tnx - irx
+        f["curve"] = curve
+        f["curve_chg_20d"] = curve.diff(20)
+    return f
+
+
+def earnings_features(px: pd.DataFrame, ctx: Context, ticker: str) -> pd.DataFrame:
+    """Where each bar sits relative to the stock's earnings reports.
+
+    A report before 16:00 New York moves the bar of that date, one at or after
+    16:00 moves the next bar. At the close of bar i the forecast knows every
+    report announced up to 16:00 that day, including one released after the
+    close whose reaction bar is i+1 (`pending_surprise`); the scheduled date
+    of the next report is public well in advance.
+    """
+    f = pd.DataFrame(index=px.index)
+    ev = ctx.earnings.get(ticker)
+    if ev is None or ev.empty:
+        return f
+    n = len(px)
+    dates = px.index.normalize()
+    day_of = ev["when"].dt.normalize().to_numpy()
+    after_close = (ev["when"].dt.hour >= 16).to_numpy()
+    # react[i]: position of the first bar whose close reflects report i. Reports
+    # after the last bar have no position yet; count business days past it.
+    react = np.searchsorted(dates.to_numpy(), day_of, side="left") + after_close.astype(int)
+    beyond = day_of > dates[-1].to_numpy()
+    if beyond.any():
+        ahead = np.busday_count(dates[-1].date(), day_of[beyond].astype("datetime64[D]"))
+        react[beyond] = n - 1 + ahead + after_close[beyond].astype(int)
+    known = react - after_close.astype(int)         # first bar at whose close the report is known
+    surprise = ev["surprise_pct"].clip(-100, 100).to_numpy(dtype=float)
+
+    react_next = np.zeros(n)
+    react_today = np.zeros(n)
+    for r in react:
+        if 0 <= r < n:
+            react_today[r] = 1
+        if 1 <= r <= n:
+            react_next[r - 1] = 1
+    pos = np.arange(n)
+    # last reaction at or before i, next reaction after i
+    react_sorted = np.sort(react)
+    last_idx = np.searchsorted(react_sorted, pos, side="right") - 1
+    days_since = np.where(last_idx >= 0, pos - react_sorted[np.clip(last_idx, 0, None)], EARNINGS_CAP)
+    next_idx = np.searchsorted(react_sorted, pos, side="right")
+    days_to = np.where(next_idx < len(react_sorted),
+                       react_sorted[np.clip(next_idx, None, len(react_sorted) - 1)] - pos, EARNINGS_CAP)
+    # last report known at the close of i, and its surprise if the reaction is still to come
+    order = np.argsort(known, kind="stable")
+    known_sorted, surprise_sorted, react_by_known = known[order], surprise[order], react[order]
+    k_idx = np.searchsorted(known_sorted, pos, side="right") - 1
+    valid = k_idx >= 0
+    kk = np.clip(k_idx, 0, None)
+    last_surprise = np.where(valid, surprise_sorted[kk], np.nan)
+    pending = np.where(valid & (react_by_known[kk] > pos), surprise_sorted[kk], 0.0)
+
+    f["earn_react_next"] = react_next
+    f["earn_react_today"] = react_today
+    f["days_since_earn"] = np.minimum(days_since, EARNINGS_CAP)
+    f["days_to_earn"] = np.minimum(days_to, EARNINGS_CAP)
+    f["last_surprise"] = last_surprise
+    f["pending_surprise"] = np.nan_to_num(pending, nan=0.0)
+    return f
+
+
+def build_features(px: pd.DataFrame, ctx: Context, ticker: str,
+                   groups: tuple[str, ...] | None = None) -> pd.DataFrame:
+    groups = ctx.groups if groups is None else groups
+    parts = [base_features(px, ctx.idx_close)]
+    if "us_lead" in groups and ctx.market == "TW":
+        parts.append(us_lead_features(px, ctx))
+    if "macro" in groups:
+        parts.append(macro_features(px, ctx))
+    if "xsec" in groups:
+        parts.append(xsec_features(px, ctx, ticker))
+    if "twse" in groups and ctx.market == "TW":
+        parts.append(twse_features(px, ctx, ticker))
+    if "risk" in groups:
+        parts.append(risk_features(px, ctx))
+    if "earnings" in groups:
+        parts.append(earnings_features(px, ctx, ticker))
+    f = pd.concat([p for p in parts if len(p.columns)], axis=1)
     return f.replace([np.inf, -np.inf], np.nan)
 
 
@@ -277,14 +599,13 @@ def final_fit(X: pd.DataFrame, y: np.ndarray, params: dict) -> dict:
     }
 
 
-def analyse(meta: dict, raw: pd.DataFrame | None, idx_close: pd.Series | None,
+def analyse(meta: dict, px: pd.DataFrame | None, ctx: Context,
             params: dict, test_days: int) -> tuple[dict, list[str], pd.Series, dict]:
     """Returns (page record, feature names, adjusted close, backtest series by horizon)."""
     t = meta["ticker"]
-    if raw is None or len(raw) < MIN_ROWS:
-        raise ValueError(f"only {0 if raw is None else len(raw)} rows of history")
-    px = adjust(raw)
-    X = build_features(px, idx_close).iloc[WARMUP:]
+    if px is None or len(px) < MIN_ROWS:
+        raise ValueError(f"only {0 if px is None else len(px)} rows of history")
+    X = build_features(px, ctx, t).iloc[WARMUP:]
 
     forecast, backtest = {}, {}
     for h in HORIZONS:
@@ -312,6 +633,65 @@ def analyse(meta: dict, raw: pd.DataFrame | None, idx_close: pd.Series | None,
         "forecast": forecast,
     }
     return rec, list(X.columns), px["Close"], backtest
+
+
+# --------------------------------------------------------------------------
+# Loading everything a run needs (shared with experiment.py)
+# --------------------------------------------------------------------------
+
+def load_market(mkey: str, m: dict, stocks: list[dict], extra: dict[str, pd.DataFrame],
+                groups: tuple[str, ...], start: str, twse_requests: int | None) -> tuple[Context, dict[str, pd.DataFrame]]:
+    """Download one market's bars and build its Context. Returns (context, raw bars by ticker)."""
+    tickers = [s["ticker"] for s in stocks] + [m["index"]]
+    log(f"{mkey}: downloading {len(tickers)} series from {start}")
+    data = download(tickers, start)
+
+    idx_raw = data.get(m["index"])
+    idx_close = adjust(idx_raw)["Close"] if idx_raw is not None else None
+    if idx_close is None:
+        log(f"{mkey}: index {m['index']} missing, market features skipped")
+
+    ctx = Context(market=mkey, groups=groups, idx_close=idx_close, extra=extra,
+                  sector={s["ticker"]: s["sector_etf"] for s in stocks if s.get("sector_etf")})
+    for s in stocks:
+        raw = data.get(s["ticker"])
+        if raw is not None and len(raw) >= MIN_ROWS:
+            ctx.px[s["ticker"]] = adjust(raw)
+
+    if mkey == "TW" and ("twse" in groups or twse.CACHE.exists()):
+        # Keep the T86 cache current (the daily run fetches at most a few days;
+        # the backfill is twse.py --backfill). Needed as features only when enabled.
+        ref = ctx.px.get("2330.TW")
+        if ref is not None:
+            days = [d.date().isoformat() for d in ref.index if d.date().isoformat() >= start]
+            try:
+                twse.update(days, list(ctx.px), max_requests=twse_requests)
+            except Exception as e:
+                log(f"TWSE update failed, using the cache as is: {e!r}")
+        if "twse" in groups:
+            for t in ctx.px:
+                fr = twse.frame(t)
+                if fr is None:
+                    log(f"{t}: no T86 rows cached, twse features will be NaN")
+                else:
+                    ctx.twse[t] = fr
+
+    if "earnings" in groups or (earnings.CACHE.exists() and twse_requests):
+        # Refresh the earnings calendar on the daily run (twse_requests == 0
+        # means "cache only", which experiment.py uses); read it when enabled.
+        if twse_requests:
+            try:
+                earnings.update(list(ctx.px))
+            except Exception as e:
+                log(f"earnings update failed, using the cache as is: {e!r}")
+        if "earnings" in groups:
+            for t in ctx.px:
+                ev = earnings.events(t)
+                if ev is None:
+                    log(f"{t}: no earnings rows cached, earnings features skipped")
+                else:
+                    ctx.earnings[t] = ev
+    return ctx.finish(), data
 
 
 # --------------------------------------------------------------------------
@@ -442,6 +822,11 @@ def parse_args() -> argparse.Namespace:
     ap.add_argument("--out", default=str(DEFAULT_OUT), help="output directory (default: stocks/data)")
     ap.add_argument("--start", default=START, help=f"first bar to request (default: {START})")
     ap.add_argument("--quick", action="store_true", help="2 tickers per market, small model, short test window")
+    ap.add_argument("--features", default=None,
+                    help=f"comma-separated feature groups from {FEATURE_GROUPS}, or 'all'/'none' "
+                         f"(default: {','.join(DEFAULT_FEATURES) or 'none'})")
+    ap.add_argument("--twse-requests", type=int, default=TWSE_DAILY_REQUESTS,
+                    help=f"max TWSE T86 fetches to refresh the cache (default {TWSE_DAILY_REQUESTS}; 0 = cache only)")
     return ap.parse_args()
 
 
@@ -450,6 +835,7 @@ def main() -> int:
     cfg = json.loads(CONFIG.read_text(encoding="utf-8"))
     out_dir = Path(args.out)
     out_dir.mkdir(parents=True, exist_ok=True)
+    groups = parse_groups(args.features)
 
     params = dict(XGB_PARAMS)
     test_days = TEST_DAYS
@@ -465,25 +851,25 @@ def main() -> int:
     today: list[dict] = []
     feature_names: list[str] = []
 
+    extra_syms = needed_symbols(groups, cfg)
+    extra = {}
+    if extra_syms:
+        log(f"extra: downloading {len(extra_syms)} series for {groups}: {extra_syms}")
+        extra = {s: adjust(df) for s, df in download(extra_syms, args.start).items()}
+
     for mkey, m in cfg.items():
         stocks = m["stocks"][:2] if args.quick else m["stocks"]
-        tickers = [s["ticker"] for s in stocks] + [m["index"]]
-        log(f"{mkey}: downloading {len(tickers)} series from {args.start}")
-        data = download(tickers, args.start)
-
-        idx_raw = data.get(m["index"])
-        idx_close = adjust(idx_raw)["Close"] if idx_raw is not None else None
-        if idx_close is None:
-            log(f"{mkey}: index {m['index']} missing, market features skipped")
+        ctx, data = load_market(mkey, m, stocks, extra, groups, args.start, args.twse_requests)
 
         recs, errors = [], []
         for s in stocks:
             try:
-                rec, feature_names, ac, bt = analyse(s, data.get(s["ticker"]), idx_close, params, test_days)
+                rec, names, ac, bt = analyse(s, ctx.px.get(s["ticker"]), ctx, params, test_days)
             except Exception as e:
                 log(f"{s['ticker']}: FAILED {e!r}")
                 errors.append({"ticker": s["ticker"], "error": str(e)})
                 continue
+            feature_names = names if len(names) > len(feature_names) else feature_names
             recs.append(rec)
             adj_close[rec["ticker"]] = ac
             backtest[rec["ticker"]] = bt
@@ -504,6 +890,7 @@ def main() -> int:
             "stocks": recs,
             "errors": errors,
         }
+        idx_raw = data.get(m["index"])
         if idx_raw is not None and len(idx_raw) >= 2:
             ic = idx_raw["Close"].astype(float)
             market["index_close"] = round(float(ic.iloc[-1]), 2)
@@ -537,11 +924,13 @@ def main() -> int:
             "params": params,
             "horizons": list(HORIZONS),
             "features": feature_names,
+            "feature_groups": list(groups),
             "start": args.start,
             "warmup_rows": WARMUP,
             "test_days": test_days,
             "retrain_every": RETRAIN_EVERY,
-            "data_source": "Yahoo Finance via yfinance " + yf.__version__,
+            "data_source": "Yahoo Finance via yfinance " + yf.__version__
+                           + (", TWSE T86" if "twse" in groups else ""),
         },
         "markets": markets_out,
         "track_record": summarise_history(hist),

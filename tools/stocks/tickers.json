@@ -27,20 +27,20 @@
     "index": "^GSPC",
     "index_name": "S&P 500",
     "stocks": [
-      { "ticker": "AAPL",  "name": "Apple",              "en": "" },
-      { "ticker": "MSFT",  "name": "Microsoft",          "en": "" },
-      { "ticker": "GOOGL", "name": "Alphabet (Google)",  "en": "" },
-      { "ticker": "BRK-B", "name": "Berkshire Hathaway", "en": "" },
-      { "ticker": "JPM",   "name": "JPMorgan Chase",     "en": "" },
-      { "ticker": "V",     "name": "Visa",               "en": "" },
-      { "ticker": "JNJ",   "name": "Johnson & Johnson",  "en": "" },
-      { "ticker": "PG",    "name": "Procter & Gamble",   "en": "" },
-      { "ticker": "KO",    "name": "Coca-Cola",          "en": "" },
-      { "ticker": "PEP",   "name": "PepsiCo",            "en": "" },
-      { "ticker": "WMT",   "name": "Walmart",            "en": "" },
-      { "ticker": "HD",    "name": "Home Depot",         "en": "" },
-      { "ticker": "XOM",   "name": "Exxon Mobil",        "en": "" },
-      { "ticker": "TSLA",  "name": "Tesla",              "en": "" }
+      { "ticker": "AAPL",  "name": "Apple",              "en": "", "sector_etf": "XLK" },
+      { "ticker": "MSFT",  "name": "Microsoft",          "en": "", "sector_etf": "XLK" },
+      { "ticker": "GOOGL", "name": "Alphabet (Google)",  "en": "", "sector_etf": "XLK" },
+      { "ticker": "BRK-B", "name": "Berkshire Hathaway", "en": "", "sector_etf": "XLF" },
+      { "ticker": "JPM",   "name": "JPMorgan Chase",     "en": "", "sector_etf": "XLF" },
+      { "ticker": "V",     "name": "Visa",               "en": "", "sector_etf": "XLF" },
+      { "ticker": "JNJ",   "name": "Johnson & Johnson",  "en": "", "sector_etf": "XLV" },
+      { "ticker": "PG",    "name": "Procter & Gamble",   "en": "", "sector_etf": "XLP" },
+      { "ticker": "KO",    "name": "Coca-Cola",          "en": "", "sector_etf": "XLP" },
+      { "ticker": "PEP",   "name": "PepsiCo",            "en": "", "sector_etf": "XLP" },
+      { "ticker": "WMT",   "name": "Walmart",            "en": "", "sector_etf": "XLP" },
+      { "ticker": "HD",    "name": "Home Depot",         "en": "", "sector_etf": "XLY" },
+      { "ticker": "XOM",   "name": "Exxon Mobil",        "en": "", "sector_etf": "XLE" },
+      { "ticker": "TSLA",  "name": "Tesla",              "en": "", "sector_etf": "XLY" }
     ]
   }
 }
