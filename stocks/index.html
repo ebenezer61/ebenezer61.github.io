@@ -876,8 +876,15 @@
 							return '<option value="' + esc(t) + '">' + esc(s ? s.label : t) + '</option>';
 						}).join("");
 						var marketOpts = Object.keys(d.markets).map(function (k) { return '<option value="' + esc(k) + '">' + esc(d.markets[k].label) + '</option>'; }).join("");
+						// One option per forecast date, newest first; the newest is selected on load
+						// so the log opens on the latest resolved forecasts instead of the whole window.
+						var dates = Object.keys(rows.reduce(function (m, r) { m[r.as_of] = true; return m; }, {})).sort().reverse();
+						var dateOpts = dates.map(function (dt, i) {
+							return '<option value="' + esc(dt) + '"' + (i === 0 ? ' selected' : '') + '>' + esc(dt) + (i === 0 ? ' (latest)' : '') + '</option>';
+						}).join("") + '<option value="">All ' + dates.length + ' days</option>';
 						body.innerHTML =
 							'<div class="filters">' +
+							'<label>As of<select id="log-date">' + dateOpts + '</select></label>' +
 							'<label>Market<select id="log-market"><option value="">All</option>' + marketOpts + '</select></label>' +
 							'<label>Horizon<select id="log-h"><option value="">Both</option><option value="1">Next day</option><option value="5">Five days</option></select></label>' +
 							'<label>Stock<select id="log-stock"><option value="">All</option>' + stockOpts + '</select></label>' +
@@ -886,15 +893,17 @@
 							'</div>' +
 							'<div class="tablewrap"><table class="rec log"><thead><tr><th>As of</th><th>Stock</th><th>Horizon</th><th>Forecast</th><th>Actual</th><th>Result</th></tr></thead><tbody id="log-rows"></tbody></table></div>' +
 							'<p id="log-more-wrap"><button type="button" class="btn" id="log-more">Show 50 more</button></p>' +
-							'<p class="muted" style="font-size:.82rem">Resolved forecasts from the last ' + log.window_days + ' trading days, newest first. The full record, including the forecasts still pending, is in <a href="data/history.json">history.json</a>.</p>';
+							'<p class="muted" style="font-size:.82rem">Showing the latest forecast date by default; pick another date, or all ' + log.window_days + ' trading days, from the first menu. The full record, including the forecasts still pending, is in <a href="data/history.json">history.json</a>.</p>';
 						var shown = 50;
 						function isHit(r) { return (r.p > 0.5) === (r.actual === 1); }
 						function filtered() {
+							var dt = document.getElementById("log-date").value;
 							var mk = document.getElementById("log-market").value;
 							var hh = document.getElementById("log-h").value;
 							var st = document.getElementById("log-stock").value;
 							var miss = document.getElementById("log-miss").checked;
 							return rows.filter(function (r) {
+								if (dt && r.as_of !== dt) return false;
 								if (mk && r.market !== mk) return false;
 								if (hh && String(r.h) !== hh) return false;
 								if (st && r.ticker !== st) return false;
@@ -916,7 +925,7 @@
 							document.getElementById("log-count").textContent = f.length ? f.length + " forecasts, " + hits + " hits (" + pct(hits / f.length, 1) + ")" : "";
 							document.getElementById("log-more-wrap").hidden = f.length <= shown;
 						}
-						["log-market", "log-h", "log-stock", "log-miss"].forEach(function (id) {
+						["log-date", "log-market", "log-h", "log-stock", "log-miss"].forEach(function (id) {
 							document.getElementById(id).addEventListener("change", function () { shown = 50; draw(); });
 						});
 						document.getElementById("log-more").addEventListener("click", function () { shown += 50; draw(); });
