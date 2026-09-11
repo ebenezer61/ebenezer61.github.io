@@ -29,7 +29,7 @@ and writes four files into stocks/data/:
     python tools/stocks/predict.py --out DIR  # write somewhere else
     python tools/stocks/predict.py --features us_lead,macro   # enable groups
 
-Feature groups (all off by default; experiment.py compares them):
+Feature groups (DEFAULT_FEATURES sets them per market; experiment.py compares them):
 
   us_lead   Taiwan only. The US session of the same calendar date closes at
             04:00 Taipei the next morning, before the forecast is made and
@@ -98,7 +98,16 @@ LOG_DAYS = 60                 # trading days of resolved forecasts in log.json
 TWSE_DAILY_REQUESTS = 10      # cap on TWSE fetches inside the daily run
 
 FEATURE_GROUPS = ("us_lead", "macro", "xsec", "twse", "risk", "earnings")
-DEFAULT_FEATURES: tuple[str, ...] = ()   # base only, until experiment.py says otherwise
+# What the daily run uses per market, decided from experiments/latest.md
+# (2026-09-11, 500-day walk-forward pooled over the basket): every group for
+# Taiwan lifts next-day accuracy from 53% to 61%, with no interference between
+# groups; for US stocks no group moved accuracy by more than one standard
+# error, so they keep the base set. Whenever a market has groups, the run also
+# fits a base-only shadow model so the live track record shows both.
+DEFAULT_FEATURES: dict[str, tuple[str, ...]] = {
+    "TW": FEATURE_GROUPS,
+    "US": (),
+}
 
 # Yahoo symbols each group needs beyond the basket and the market index.
 EXTRA_SYMBOLS = {
@@ -129,10 +138,11 @@ def log(msg: str) -> None:
     print(f"[stocks] {msg}", file=sys.stderr, flush=True)
 
 
-def parse_groups(spec: str | None) -> tuple[str, ...]:
-    """'us_lead,macro' -> ('us_lead', 'macro'); 'all' -> every group; 'none'/'' -> ()."""
+def parse_groups(spec: str | None) -> tuple[str, ...] | None:
+    """'us_lead,macro' -> ('us_lead', 'macro'); 'all' -> every group; 'none'/'' -> ();
+    None (flag not given) -> None, meaning "use DEFAULT_FEATURES per market"."""
     if spec is None:
-        return DEFAULT_FEATURES
+        return None
     spec = spec.strip().lower()
     if spec in ("", "none", "base"):
         return ()
@@ -606,6 +616,9 @@ def analyse(meta: dict, px: pd.DataFrame | None, ctx: Context,
     if px is None or len(px) < MIN_ROWS:
         raise ValueError(f"only {0 if px is None else len(px)} rows of history")
     X = build_features(px, ctx, t).iloc[WARMUP:]
+    # Shadow model on the base features alone, so the live track record can
+    # show what the extra groups add on the same days (only when there are any).
+    X_base = build_features(px, ctx, t, ()).iloc[WARMUP:] if ctx.groups else None
 
     forecast, backtest = {}, {}
     for h in HORIZONS:
@@ -615,8 +628,11 @@ def analyse(meta: dict, px: pd.DataFrame | None, ctx: Context,
         ev, series = walk_forward(X, y, fwd, h, params, test_days)
         fin = final_fit(X, y, params)
         forecast[str(h)] = {**fin, "eval": ev}
+        if X_base is not None:
+            forecast[str(h)]["p_up_base"] = final_fit(X_base, y, params)["p_up"]
         backtest[str(h)] = series
-        log(f"{t}: h={h} p_up={fin['p_up']:.3f} acc={ev['acc']:.3f} base={ev['baseline_acc']:.3f} auc={ev['auc']}")
+        log(f"{t}: h={h} p_up={fin['p_up']:.3f} acc={ev['acc']:.3f} base={ev['baseline_acc']:.3f} auc={ev['auc']}"
+            + (f" shadow={forecast[str(h)]['p_up_base']:.3f}" if X_base is not None else ""))
 
     rc = px["RawClose"]
     rec = {
@@ -764,24 +780,40 @@ def summarise_history(hist: dict) -> dict:
             n = len(done)
             hits = sum(1 for f in done if (f[k] > 0.5) == (f[f"{k}_actual"] == 1))
             ups = sum(f[f"{k}_actual"] for f in done)
-            # per forecast date: [count, hits, actual ups], so the page can draw
-            # the cumulative hit rate against the always-up baseline
+            # The base-feature shadow forecast; before extra groups existed (or
+            # for a market without any) the production forecast is the base one.
+            base_hits = sum(1 for f in done if (f.get(f"{k}_base", f[k]) > 0.5) == (f[f"{k}_actual"] == 1))
+            shadow_n = sum(1 for f in done if f.get(f"{k}_base") is not None)
+            # per forecast date: [count, hits, actual ups, base-feature hits], so
+            # the page can draw the cumulative hit rate of both models against
+            # the always-up baseline
             by_date: dict[str, list[int]] = {}
             for f in done:
-                d = by_date.setdefault(f["as_of"], [0, 0, 0])
+                d = by_date.setdefault(f["as_of"], [0, 0, 0, 0])
                 d[0] += 1
                 d[1] += int((f[k] > 0.5) == (f[f"{k}_actual"] == 1))
                 d[2] += int(f[f"{k}_actual"])
+                d[3] += int((f.get(f"{k}_base", f[k]) > 0.5) == (f[f"{k}_actual"] == 1))
             out[g][k] = {
                 "n": n,
                 "hits": hits,
                 "hit_rate": round(hits / n, 4) if n else None,
                 "up_share": round(ups / n, 4) if n else None,
+                "base_hits": base_hits,
+                "base_hit_rate": round(base_hits / n, 4) if n else None,
+                "shadow_n": shadow_n,
                 "pending": sum(1 for f in fs if f.get(k) is not None and f.get(f"{k}_actual") is None),
-                "by_date": [[d, v[0], v[1], v[2]] for d, v in sorted(by_date.items())],
+                "by_date": [[d, v[0], v[1], v[2], v[3]] for d, v in sorted(by_date.items())],
             }
     first = min((f["as_of"] for f in hist.get("forecasts", [])), default=None)
     out["first_forecast"] = first
+    # First forecast date made with extra feature groups, per market: the page
+    # marks it on the charts, since the record before it is the base model's.
+    since: dict[str, str] = {}
+    for f in hist.get("forecasts", []):
+        if any(f.get(f"h{h}_base") is not None for h in HORIZONS):
+            since[f["market"]] = min(since.get(f["market"], f["as_of"]), f["as_of"])
+    out["features_since"] = since
     return out
 
 
@@ -799,7 +831,7 @@ def write_log(hist: dict, path: Path, now: datetime) -> int:
                 continue
             rows.append({
                 "as_of": f["as_of"], "ticker": f["ticker"], "market": f["market"], "h": h,
-                "p": f[k], "actual": f[f"{k}_actual"],
+                "p": f[k], "p_base": f.get(f"{k}_base"), "actual": f[f"{k}_actual"],
                 "ret": f.get(f"{k}_ret"), "target_date": f.get(f"{k}_target_date"),
             })
     rows.sort(key=lambda r: (r["market"], r["ticker"], r["h"]))
@@ -823,8 +855,8 @@ def parse_args() -> argparse.Namespace:
     ap.add_argument("--start", default=START, help=f"first bar to request (default: {START})")
     ap.add_argument("--quick", action="store_true", help="2 tickers per market, small model, short test window")
     ap.add_argument("--features", default=None,
-                    help=f"comma-separated feature groups from {FEATURE_GROUPS}, or 'all'/'none' "
-                         f"(default: {','.join(DEFAULT_FEATURES) or 'none'})")
+                    help=f"comma-separated feature groups from {FEATURE_GROUPS}, or 'all'/'none', applied to "
+                         f"every market (default: per market, {DEFAULT_FEATURES})")
     ap.add_argument("--twse-requests", type=int, default=TWSE_DAILY_REQUESTS,
                     help=f"max TWSE T86 fetches to refresh the cache (default {TWSE_DAILY_REQUESTS}; 0 = cache only)")
     return ap.parse_args()
@@ -835,7 +867,9 @@ def main() -> int:
     cfg = json.loads(CONFIG.read_text(encoding="utf-8"))
     out_dir = Path(args.out)
     out_dir.mkdir(parents=True, exist_ok=True)
-    groups = parse_groups(args.features)
+    override = parse_groups(args.features)
+    groups_by_market = {mk: (override if override is not None else DEFAULT_FEATURES.get(mk, ())) for mk in cfg}
+    all_groups = tuple(g for g in FEATURE_GROUPS if any(g in gs for gs in groups_by_market.values()))
 
     params = dict(XGB_PARAMS)
     test_days = TEST_DAYS
@@ -849,16 +883,18 @@ def main() -> int:
     adj_close: dict[str, pd.Series] = {}
     backtest: dict[str, dict] = {}
     today: list[dict] = []
-    feature_names: list[str] = []
+    feature_names: dict[str, list[str]] = {}
 
-    extra_syms = needed_symbols(groups, cfg)
+    extra_syms = needed_symbols(all_groups, cfg)
     extra = {}
     if extra_syms:
-        log(f"extra: downloading {len(extra_syms)} series for {groups}: {extra_syms}")
+        log(f"extra: downloading {len(extra_syms)} series for {all_groups}: {extra_syms}")
         extra = {s: adjust(df) for s, df in download(extra_syms, args.start).items()}
 
     for mkey, m in cfg.items():
         stocks = m["stocks"][:2] if args.quick else m["stocks"]
+        groups = groups_by_market[mkey]
+        log(f"{mkey}: feature groups {list(groups) or 'base only'}")
         ctx, data = load_market(mkey, m, stocks, extra, groups, args.start, args.twse_requests)
 
         recs, errors = [], []
@@ -869,7 +905,8 @@ def main() -> int:
                 log(f"{s['ticker']}: FAILED {e!r}")
                 errors.append({"ticker": s["ticker"], "error": str(e)})
                 continue
-            feature_names = names if len(names) > len(feature_names) else feature_names
+            if len(names) > len(feature_names.get(mkey, [])):
+                feature_names[mkey] = names
             recs.append(rec)
             adj_close[rec["ticker"]] = ac
             backtest[rec["ticker"]] = bt
@@ -877,6 +914,8 @@ def main() -> int:
                 "ticker": rec["ticker"], "market": mkey, "as_of": rec["as_of"],
                 "close": rec["close"],
                 **{f"h{h}": rec["forecast"][str(h)]["p_up"] for h in HORIZONS},
+                **{f"h{h}_base": rec["forecast"][str(h)]["p_up_base"] for h in HORIZONS
+                   if "p_up_base" in rec["forecast"][str(h)]},
                 **{f"h{h}_actual": None for h in HORIZONS},
             })
 
@@ -924,13 +963,13 @@ def main() -> int:
             "params": params,
             "horizons": list(HORIZONS),
             "features": feature_names,
-            "feature_groups": list(groups),
+            "feature_groups": {mk: list(gs) for mk, gs in groups_by_market.items()},
             "start": args.start,
             "warmup_rows": WARMUP,
             "test_days": test_days,
             "retrain_every": RETRAIN_EVERY,
             "data_source": "Yahoo Finance via yfinance " + yf.__version__
-                           + (", TWSE T86" if "twse" in groups else ""),
+                           + (", TWSE T86" if "twse" in all_groups else ""),
         },
         "markets": markets_out,
         "track_record": summarise_history(hist),

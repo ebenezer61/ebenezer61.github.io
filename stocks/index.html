@@ -205,6 +205,12 @@
 			.chart-card svg.ts path.ln.model { stroke: var(--accent); }
 			svg.ts text.dlab.model { fill: var(--text); }
 			svg.ts text.dlab.base { fill: var(--viz-ink-3); }
+			svg.ts path.ln.shadow { stroke: var(--viz-ink-3); stroke-dasharray: 2 3; }
+			svg.ts text.dlab.shadow { fill: var(--viz-ink-3); }
+			svg.ts line.mark { stroke: var(--accent); stroke-width: 1; stroke-dasharray: 3 3; }
+			svg.ts text.mlab { fill: var(--accent); font-size: 10px; }
+			.legend-inline .lk.shadow { border-top-style: dotted; border-top-width: 3px; border-top-color: var(--viz-ink-3); }
+			.legend-inline .lk.mark { border-top-style: dashed; border-top-color: var(--accent); }
 			svg.ts line.rug { stroke-width: 1.5; }
 			svg.ts line.rug.up { stroke: var(--viz-up); }
 			svg.ts line.rug.down { stroke: var(--viz-down); }
@@ -394,6 +400,7 @@
 						in the training data. AUC, Brier score and accuracy on the confident subset
 						(probability at least 10 points from 50%) are in each row's detail panel.
 					</p>
+					<div id="ablation" hidden></div>
 					<p>
 						<strong>Schedule.</strong> A GitHub Actions workflow runs the whole pipeline at
 						23:47 UTC Monday to Friday, which is 07:47 in Taipei the next morning, after both
@@ -556,6 +563,12 @@
 						else s += '<line class="rug down" x1="' + rx + '" x2="' + rx + '" y1="' + (T + ph + 2) + '" y2="' + (T + ph + 8) + '"/>';
 					}
 				}
+				(opts.marks || []).forEach(function (mk) {
+					if (mk.i < 0 || mk.i >= n) return;
+					var mx = x(mk.i).toFixed(1);
+					s += '<line class="mark" x1="' + mx + '" x2="' + mx + '" y1="' + T + '" y2="' + (T + ph) + '"/>';
+					if (mk.label) s += '<text class="mlab" x="' + (x(mk.i) + 3).toFixed(1) + '" y="' + (T + 9) + '">' + esc(mk.label) + '</text>';
+				});
 				lines.forEach(function (ln) {
 					var d = "";
 					ln.values.forEach(function (v, i) { if (v === null || isNaN(v)) return; d += (d ? "L" : "M") + x(i).toFixed(1) + " " + y(v).toFixed(1); });
@@ -782,36 +795,49 @@
 
 			/* ---------------- track record ---------------- */
 
-			// by_date rows are [date, forecasts, hits, actual ups]; older files may lack the 4th.
+			// by_date rows are [date, forecasts, hits, actual ups, base-feature hits]; older files may lack the last ones.
 			function cumulative(byDate) {
-				var dates = [], model = [], base = [], n = 0, hits = 0, ups = 0, hasUps = true;
+				var dates = [], model = [], base = [], shadow = [], n = 0, hits = 0, ups = 0, bhits = 0, hasUps = true, hasShadow = true;
 				byDate.forEach(function (r) {
 					n += r[1]; hits += r[2];
 					if (r.length > 3) ups += r[3]; else hasUps = false;
-					dates.push(r[0]); model.push(hits / n); base.push(ups / n);
+					if (r.length > 4) bhits += r[4]; else hasShadow = false;
+					dates.push(r[0]); model.push(hits / n); base.push(ups / n); shadow.push(bhits / n);
 				});
-				return { dates: dates, model: model, base: hasUps ? base : null };
+				return { dates: dates, model: model, base: hasUps ? base : null, shadow: hasShadow ? shadow : null };
 			}
 
-			function renderRecordCharts(all) {
+			function renderRecordCharts(all, since) {
 				var el = document.getElementById("record-charts");
 				var cums = {};
+				// The base-feature shadow line only means something once a market has
+				// extra groups; before that it coincides with the model line.
+				var shadowOn = (all.h1.shadow_n || 0) + (all.h5.shadow_n || 0) > 0;
 				var cards = HORIZONS.map(function (h) {
 					var c = cumulative(all["h" + h].by_date || []);
 					cums[h] = c;
 					if (c.dates.length < 5) return "";
 					var lines = [{ values: c.model, cls: "model", label: "model " + pct(c.model[c.model.length - 1]) }];
+					if (shadowOn && c.shadow) lines.push({ values: c.shadow, cls: "shadow", label: "base " + pct(c.shadow[c.shadow.length - 1]) });
 					if (c.base) lines.push({ values: c.base, cls: "base", label: "always up " + pct(c.base[c.base.length - 1]) });
-					var g = tsChart(c.dates, lines, null, { rightPad: 84, label: "Cumulative hit rate, " + h + "-day horizon" });
+					var marks = [];
+					if (since) {
+						var mi = c.dates.findIndex(function (dt) { return dt >= since; });
+						if (mi > 0) marks.push({ i: mi, label: "extra features" });
+					}
+					var g = tsChart(c.dates, lines, null, { rightPad: 84, marks: marks, label: "Cumulative hit rate, " + h + "-day horizon" });
 					return '<div class="chart-card" data-h="' + h + '"><h4>' + (h === "1" ? "Next day" : "Five days") + ' &middot; cumulative hit rate</h4>' + g.html + '</div>';
 				}).join("");
 				if (!cards) { el.innerHTML = ""; return; }
-				el.innerHTML = '<p class="legend-inline"><span class="lk model"></span> model, all forecasts to that date &nbsp;&nbsp; <span class="lk base"></span> always up, same days</p><div class="charts2">' + cards + '</div>';
+				el.innerHTML = '<p class="legend-inline"><span class="lk model"></span> model, all forecasts to that date &nbsp;&nbsp; ' +
+					(shadowOn ? '<span class="lk shadow"></span> base features only, same days &nbsp;&nbsp; ' : '') +
+					'<span class="lk base"></span> always up, same days' +
+					(since ? ' &nbsp;&nbsp; <span class="lk mark"></span> extra feature groups from ' + esc(since) : '') + '</p><div class="charts2">' + cards + '</div>';
 				el.querySelectorAll(".chart-card").forEach(function (card) {
 					var h = card.getAttribute("data-h"), c = cums[h];
 					var g = tsChart(c.dates, [{ values: c.model }], null, { rightPad: 84 });
 					attachTsHover(card.querySelector("svg.ts"), g, c.model, function (i) {
-						return c.dates[i] + "  model " + pct(c.model[i], 1) + (c.base ? "  always up " + pct(c.base[i], 1) : "");
+						return c.dates[i] + "  model " + pct(c.model[i], 1) + (shadowOn && c.shadow ? "  base " + pct(c.shadow[i], 1) : "") + (c.base ? "  always up " + pct(c.base[i], 1) : "");
 					});
 				});
 			}
@@ -830,17 +856,22 @@
 					document.getElementById("record-charts").innerHTML = "";
 					return;
 				}
-				intro.textContent = "Every forecast published since " + tr.first_forecast + ", scored once its target bar existed. The baseline is the share of those days on which the stock actually closed higher, which is what an always-up forecast would have scored.";
+				var sinceAll = null;
+				Object.keys(tr.features_since || {}).forEach(function (k) { var v = tr.features_since[k]; if (!sinceAll || v < sinceAll) sinceAll = v; });
+				var shadowOn = (all.h1.shadow_n || 0) + (all.h5.shadow_n || 0) > 0;
+				intro.textContent = "Every forecast published since " + tr.first_forecast + ", scored once its target bar existed. The baseline is the share of those days on which the stock actually closed higher, which is what an always-up forecast would have scored." +
+					(sinceAll ? " Since " + sinceAll + " the Taiwan forecasts use extra feature groups; a shadow model on the base features alone runs on the same days, so both can be compared live. Forecasts before that date came from the base model." : "");
 
 				function tile(label, value, sub) {
 					return '<div class="tile"><p class="label">' + label + '</p><p class="value">' + value + '</p><p class="sub">' + sub + '</p></div>';
 				}
 				tiles.innerHTML =
 					tile("Resolved forecasts", (all.h1.n + all.h5.n).toLocaleString(), all.h1.pending + " next-day and " + all.h5.pending + " five-day pending") +
-					tile("Next-day hit rate", pct(all.h1.hit_rate, 1), all.h1.n ? all.h1.hits + " of " + all.h1.n + " &middot; always-up " + pct(all.h1.up_share, 1) : "no outcomes yet") +
-					tile("Five-day hit rate", pct(all.h5.hit_rate, 1), all.h5.n ? all.h5.hits + " of " + all.h5.n + " &middot; always-up " + pct(all.h5.up_share, 1) : "no outcomes yet");
+					tile("Next-day hit rate", pct(all.h1.hit_rate, 1), all.h1.n ? all.h1.hits + " of " + all.h1.n + (shadowOn ? " &middot; base features " + pct(all.h1.base_hit_rate, 1) : "") + " &middot; always-up " + pct(all.h1.up_share, 1) : "no outcomes yet") +
+					tile("Five-day hit rate", pct(all.h5.hit_rate, 1), all.h5.n ? all.h5.hits + " of " + all.h5.n + (shadowOn ? " &middot; base features " + pct(all.h5.base_hit_rate, 1) : "") + " &middot; always-up " + pct(all.h5.up_share, 1) : "no outcomes yet");
 
-				var html = '<div class="tablewrap"><table class="rec"><thead><tr><th>Market</th><th>Horizon</th><th class="num">Resolved</th><th class="num">Hits</th><th class="num">Hit rate</th><th class="num">Always-up</th><th class="num">Pending</th></tr></thead><tbody>';
+				var html = '<div class="tablewrap"><table class="rec"><thead><tr><th>Market</th><th>Horizon</th><th class="num">Resolved</th><th class="num">Hits</th><th class="num">Hit rate</th>' +
+					(shadowOn ? '<th class="num">Base features</th>' : '') + '<th class="num">Always-up</th><th class="num">Pending</th></tr></thead><tbody>';
 				Object.keys(markets).forEach(function (k) {
 					var g = tr[k];
 					if (!g) return;
@@ -848,13 +879,15 @@
 						var r = g["h" + h];
 						html += '<tr><td>' + esc(markets[k].label) + '</td><td>' + (h === "1" ? "next day" : "five days") + '</td>' +
 							'<td class="num">' + r.n + '</td><td class="num">' + r.hits + '</td>' +
-							'<td class="num">' + pct(r.hit_rate, 1) + '</td><td class="num">' + pct(r.up_share, 1) + '</td>' +
+							'<td class="num">' + pct(r.hit_rate, 1) + '</td>' +
+							(shadowOn ? '<td class="num">' + (r.shadow_n ? pct(r.base_hit_rate, 1) : '<span class="muted">same</span>') + '</td>' : '') +
+							'<td class="num">' + pct(r.up_share, 1) + '</td>' +
 							'<td class="num">' + r.pending + '</td></tr>';
 					});
 				});
 				html += '</tbody></table></div>';
 				table.innerHTML = html;
-				renderRecordCharts(all);
+				renderRecordCharts(all, sinceAll);
 			}
 
 			/* ---------------- forecast log (from data/log.json) ---------------- */
@@ -937,6 +970,50 @@
 					});
 			}
 
+			/* ---------------- feature ablation (from tools/stocks/experiments/latest.json) ---------------- */
+
+			function renderAblation(d) {
+				var el = document.getElementById("ablation");
+				var fgm = d.model.feature_groups || {};
+				if (Array.isArray(fgm)) return;
+				fetch("../tools/stocks/experiments/latest.json", { cache: "no-store" })
+					.then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+					.then(function (rep) {
+						var cfgOf = {};
+						Object.keys(rep.config_groups || {}).forEach(function (c) { cfgOf[rep.config_groups[c].slice().sort().join("+")] = c; });
+						var html = '<p><strong>Feature groups, measured.</strong> From the experiment of ' + esc(rep.generated_at.slice(0, 10)) +
+							': walk-forward over the last ' + rep.test_days + ' labelled trading days of every ticker, production parameters, accuracy pooled over the market\'s basket (one standard error about ' +
+							pct(rep.summary.base[Object.keys(d.markets)[0]]["1"].acc_se, 1) + ' per market). "better / worse" counts tickers against the base set. Full report with every group on its own: ' +
+							'<a href="https://github.com/ebenezer61/ebenezer61.github.io/blob/main/tools/stocks/experiments/latest.md" target="_blank" rel="noopener">latest.md</a>.</p>' +
+							'<div class="tablewrap"><table class="rec"><thead><tr><th>Market</th><th>Horizon</th><th>Features</th><th class="num">Accuracy</th><th class="num">vs base</th><th class="num">AUC</th><th class="num">Better / worse</th></tr></thead><tbody>';
+						var rows = 0;
+						Object.keys(d.markets).forEach(function (mk) {
+							var prod = cfgOf[(fgm[mk] || []).slice().sort().join("+")] || "base";
+							var show = ["base"];
+							if (prod !== "base") show.push(prod);
+							if (rep.summary.all && prod !== "all") show.push("all");
+							HORIZONS.forEach(function (h) {
+								var base = rep.summary.base[mk] && rep.summary.base[mk][h];
+								if (!base) return;
+								show.forEach(function (c, i) {
+									var sm = rep.summary[c] && rep.summary[c][mk] && rep.summary[c][mk][h];
+									if (!sm) return;
+									var ng = (rep.config_groups[c] || []).length;
+									var name = c === "base" ? "base set" : (c === prod ? "in production: base + " + ng + " groups" : "base + all " + ng + " groups");
+									var delta = c === "base" ? "–" : signedPct((sm.acc - base.acc) * 100) + " pp";
+									html += '<tr' + (c === prod && c !== "base" ? ' style="font-weight:600"' : '') + '><td>' + (i === 0 ? esc(d.markets[mk].label) : "") + '</td><td>' + (i === 0 ? (h === "1" ? "next day" : "five days") : "") + '</td><td>' + esc(name) + '</td>' +
+										'<td class="num">' + pct(sm.acc, 1) + '</td><td class="num">' + delta + '</td><td class="num">' + sm.auc.toFixed(3) + '</td>' +
+										'<td class="num">' + ("better" in sm ? sm.better + " / " + sm.worse : "–") + '</td></tr>';
+									rows++;
+								});
+							});
+						});
+						html += '</tbody></table></div>';
+						if (rows) { el.innerHTML = html; el.hidden = false; }
+					})
+					.catch(function () { el.hidden = true; });
+			}
+
 			/* ---------------- header + method ---------------- */
 
 			function renderStatus(d) {
@@ -951,7 +1028,12 @@
 				var p = d.model.params;
 				document.getElementById("params").textContent = JSON.stringify(p, null, 2) +
 					"\n\n# start " + d.model.start + ", warm-up " + d.model.warmup_rows + " rows, test window " + d.model.test_days + " days, refit every " + d.model.retrain_every + " days";
-				document.getElementById("features").innerHTML = d.model.features.map(function (f) { return "<span>" + esc(f) + "</span>"; }).join("");
+				var feats = d.model.features || [];
+				if (Array.isArray(feats)) feats = { ALL: feats };
+				document.getElementById("features").innerHTML = Object.keys(feats).map(function (mk) {
+					var label = d.markets[mk] ? d.markets[mk].label : mk;
+					return '<strong>' + esc(label) + ' (' + feats[mk].length + ')</strong> ' + feats[mk].map(function (f) { return "<span>" + esc(f) + "</span>"; }).join("");
+				}).join("<br>");
 				var groupText = {
 					us_lead: "<strong>US session, for Taiwan stocks:</strong> the S&amp;P 500, the SOX semiconductor index and the TSMC ADR on the same calendar date, and the ADR's premium over the Taipei close. That session closes at 04:00 Taipei the next morning, after the Taipei close it is paired with and before the Taipei target bar opens, so the forecast may use it.",
 					macro: "<strong>Macro:</strong> VIX level, daily change and 20-day z-score; 1- and 20-day changes in the US 10-year yield, the dollar index, USD/TWD, crude oil and gold.",
@@ -960,12 +1042,19 @@
 					risk: "<strong>Risk appetite:</strong> VVIX, VIX relative to realised S&amp;P 500 volatility, high-yield versus investment-grade credit, small versus large caps, utilities versus the market, copper versus gold, and the slope of the yield curve.",
 					earnings: "<strong>Earnings calendar:</strong> trading days until and since the stock's earnings reaction, whether the next bar is the reaction bar, the last EPS surprise, and the surprise of a report released after today's close."
 				};
-				var groups = (d.model.feature_groups || []).filter(function (g) { return groupText[g]; });
+				var fgm = d.model.feature_groups || {};
+				if (Array.isArray(fgm)) fgm = { ALL: fgm };
+				var used = {};
+				Object.keys(fgm).forEach(function (mk) { (fgm[mk] || []).forEach(function (g) { if (groupText[g]) used[g] = 1; }); });
+				var groups = Object.keys(groupText).filter(function (g) { return used[g]; });
 				var fg = document.getElementById("feature-groups");
 				if (groups.length) {
-					fg.innerHTML = "<strong>Extra feature groups.</strong> On top of the base set, this run also used " +
-						groups.length + (groups.length === 1 ? " group" : " groups") + ", chosen after comparing each one on the same walk-forward window (" +
-						'<a href="https://github.com/ebenezer61/ebenezer61.github.io/blob/main/tools/stocks/experiments/latest.md" target="_blank" rel="noopener">report</a>). ' +
+					var perMarket = Object.keys(d.markets).map(function (mk) {
+						var gs = (fgm[mk] || []).filter(function (g) { return groupText[g]; });
+						return esc(d.markets[mk].label) + ": " + (gs.length ? gs.length + (gs.length === 1 ? " extra group" : " extra groups") + " (" + gs.map(function (g) { return "<code>" + esc(g) + "</code>"; }).join(", ") + ")" : "base set only");
+					}).join("; ");
+					fg.innerHTML = "<strong>Extra feature groups.</strong> " + perMarket + ". Each group was scored on its own and in combination on the same walk-forward window before being switched on (" +
+						'<a href="https://github.com/ebenezer61/ebenezer61.github.io/blob/main/tools/stocks/experiments/latest.md" target="_blank" rel="noopener">report</a>; summary under Validation). ' +
 						groups.map(function (g) { return groupText[g]; }).join(" ") +
 						" Every feature is aligned to what was known at 07:47 Taipei the morning after the as-of date, when the forecast is made, and the same code builds the training rows and the row being scored.";
 					fg.hidden = false;
@@ -988,6 +1077,7 @@
 					renderRecord(d.track_record, d.markets);
 					renderLog(d);
 					renderMethod(d);
+					renderAblation(d);
 				})
 				.catch(function (e) {
 					document.getElementById("status").innerHTML = '<span class="error">Could not load data/predictions.json (' + esc(e.message) + '). If you opened this file from disk, serve the folder over HTTP instead; browsers block fetch on file:// URLs.</span>';

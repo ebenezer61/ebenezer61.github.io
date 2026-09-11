@@ -64,6 +64,21 @@ of accuracy is about 0.65 pp) and writes `experiments/latest.md`. Run it
 before changing `DEFAULT_FEATURES`; the `all` row versus the best single
 group shows whether the groups interfere.
 
+Decision of 2026-09-11 (`experiments/2026-09-11.md`): Taiwan uses every
+group (next-day pooled accuracy 52.9% to 61.0%, 12 of 12 tickers better, no
+interference between groups; `us_lead`, `macro` and `risk` carry most of it,
+all three being the same overnight US-session information); US stocks keep
+the base set, since no group moved their accuracy by more than one standard
+error.
+
+Whenever a market has extra groups, the daily run also fits a shadow model on
+the base features and stores its probability next to the production one
+(`h1_base`, `h5_base` in `history.json`). `track_record` then carries both hit
+rates and `features_since`, the first forecast date with extra groups per
+market, so the page draws the base-feature line and marks the switch on the
+cumulative chart. The page also renders a short ablation table from
+`experiments/latest.json` under Validation.
+
 The T86 cache is filled once with `python tools/stocks/twse.py --backfill`
 (about 3100 requests at 4 s each; resumable) and topped up by the daily run,
 which fetches at most `TWSE_DAILY_REQUESTS` missing days. TWSE data starts
