@@ -5,6 +5,8 @@
     "currency": "TWD",
     "index": "^TWII",
     "index_name": "TAIEX",
+    "tz": "Asia/Taipei",
+    "close": "13:30",
     "stocks": [
       { "ticker": "2330.TW", "name": "台積電", "en": "TSMC" },
       { "ticker": "2317.TW", "name": "鴻海",   "en": "Hon Hai (Foxconn)" },
@@ -26,6 +28,8 @@
     "currency": "USD",
     "index": "^GSPC",
     "index_name": "S&P 500",
+    "tz": "America/New_York",
+    "close": "16:00",
     "stocks": [
       { "ticker": "AAPL",  "name": "Apple",              "en": "", "sector_etf": "XLK" },
       { "ticker": "MSFT",  "name": "Microsoft",          "en": "", "sector_etf": "XLK" },

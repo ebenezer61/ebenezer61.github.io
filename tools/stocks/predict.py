@@ -68,6 +68,7 @@ import warnings
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import numpy as np
 import pandas as pd
@@ -96,6 +97,7 @@ SPARK_DAYS = 60               # closes shipped for the sparkline
 HISTORY_KEEP_DAYS = 3 * 366   # history.json is pruned beyond this
 LOG_DAYS = 60                 # trading days of resolved forecasts in log.json
 TWSE_DAILY_REQUESTS = 10      # cap on TWSE fetches inside the daily run
+SETTLE_MINUTES = 20           # a session's bar counts as final this long after the close
 
 FEATURE_GROUPS = ("us_lead", "macro", "xsec", "twse", "risk", "earnings")
 # What the daily run uses per market, decided from experiments/latest.md
@@ -194,6 +196,23 @@ def download(tickers: list[str], start: str) -> dict[str, pd.DataFrame]:
             continue
         out[t] = s
     return out
+
+
+def last_completed_session(m: dict, now: datetime) -> pd.Timestamp | None:
+    """The latest calendar date whose session in market `m` has closed (plus a
+    settling margin) at `now`. Bars after it are in progress: Yahoo returns the
+    partial bar of a session that is still open, and GitHub runs the 23:47 UTC
+    schedule up to two hours late, inside the Taipei morning session, which
+    once put opening prices into the record as closes.
+    """
+    tz, close = m.get("tz"), m.get("close")
+    if not tz or not close:
+        return None
+    local = now.astimezone(ZoneInfo(tz))
+    hh, mm = (int(x) for x in close.split(":"))
+    cutoff = local.replace(hour=hh, minute=mm, second=0, microsecond=0) + timedelta(minutes=SETTLE_MINUTES)
+    day = local.date() if local >= cutoff else local.date() - timedelta(days=1)
+    return pd.Timestamp(day)
 
 
 def adjust(raw: pd.DataFrame) -> pd.DataFrame:
@@ -656,11 +675,24 @@ def analyse(meta: dict, px: pd.DataFrame | None, ctx: Context,
 # --------------------------------------------------------------------------
 
 def load_market(mkey: str, m: dict, stocks: list[dict], extra: dict[str, pd.DataFrame],
-                groups: tuple[str, ...], start: str, twse_requests: int | None) -> tuple[Context, dict[str, pd.DataFrame]]:
+                groups: tuple[str, ...], start: str, twse_requests: int | None,
+                now: datetime | None = None) -> tuple[Context, dict[str, pd.DataFrame]]:
     """Download one market's bars and build its Context. Returns (context, raw bars by ticker)."""
     tickers = [s["ticker"] for s in stocks] + [m["index"]]
     log(f"{mkey}: downloading {len(tickers)} series from {start}")
     data = download(tickers, start)
+
+    # Keep only sessions that have closed: a bar dated after the last completed
+    # session is the partial bar of a session still in progress.
+    limit = last_completed_session(m, now or datetime.now(timezone.utc))
+    if limit is not None:
+        dropped = {t: df.index[-1].date().isoformat() for t, df in data.items() if df.index[-1] > limit}
+        if dropped:
+            log(f"{mkey}: dropping in-progress bars after {limit.date()}: {sorted(set(dropped.values()))} for {len(dropped)} series")
+            data = {t: df[df.index <= limit] for t, df in data.items()}
+        stale = [t for t, df in data.items() if df.index[-1] < limit - timedelta(days=4)]
+        if stale:
+            log(f"{mkey}: WARNING last bar older than {limit.date()} minus 4 days for {stale}")
 
     idx_raw = data.get(m["index"])
     idx_close = adjust(idx_raw)["Close"] if idx_raw is not None else None
@@ -895,7 +927,7 @@ def main() -> int:
         stocks = m["stocks"][:2] if args.quick else m["stocks"]
         groups = groups_by_market[mkey]
         log(f"{mkey}: feature groups {list(groups) or 'base only'}")
-        ctx, data = load_market(mkey, m, stocks, extra, groups, args.start, args.twse_requests)
+        ctx, data = load_market(mkey, m, stocks, extra, groups, args.start, args.twse_requests, now)
 
         recs, errors = [], []
         for s in stocks:

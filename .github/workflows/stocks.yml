@@ -6,6 +6,12 @@ on:
     # after both TWSE (13:30 Taipei) and NYSE (16:00 New York) have closed.
     # Off the :00/:30 marks: GitHub delays or drops schedules at busy minutes.
     - cron: "47 23 * * 1-5"
+    # Second pass at 03:47 UTC (11:47 Taipei, before New York opens): Yahoo's
+    # end-of-day bar for a US session is sometimes still missing hours after the
+    # close, and the run above may execute up to two hours late. Runs are
+    # idempotent, and predict.py only uses sessions that have closed, so the
+    # Taipei session in progress at this hour is ignored.
+    - cron: "47 3 * * 2-6"
   workflow_dispatch:
   # Run once on every change to the pipeline itself, so a broken step shows up
   # right away instead of at the next morning's schedule.

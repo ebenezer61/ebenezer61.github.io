@@ -127,8 +127,20 @@ needs to be scheduled on the laptop.
 ## Schedule
 
 The workflow runs at 23:47 UTC Monday to Friday (07:47 Taipei the next
-morning), after both markets have closed, and can also be started by hand from
-the Actions tab (`workflow_dispatch`). It commits `stocks/data` and the T86
+morning), after both markets have closed, again at 03:47 UTC Tuesday to
+Saturday (Yahoo sometimes publishes a US session's bar hours late), and can
+also be started by hand from the Actions tab (`workflow_dispatch`). Runs are
+idempotent: a forecast already in `history.json` for the same ticker and
+`as_of` is kept.
+
+GitHub often starts the 23:47 schedule one to two hours late, inside the
+Taipei morning session, and Yahoo then returns the partial bar of that
+session. `predict.py` therefore keeps only bars up to the last completed
+session of each market (`tz` and `close` in `tickers.json`, plus a
+20-minute settling margin), so a late run still forecasts from the last
+close. Before this guard existed (2026-09-09 to 09-11) the Taiwan forecasts
+were built from opening prices; those three days were removed from
+`history.json` on 2026-09-14. It commits `stocks/data` and the T86
 cache as `github-actions[bot]` with the message `stocks: daily update
 YYYY-MM-DD`; a day with no new bars produces no commit. To hide those commits when reading history:
 
