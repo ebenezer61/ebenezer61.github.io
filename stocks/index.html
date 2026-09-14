@@ -246,6 +246,9 @@
 			.btn { font: inherit; font-size: .85rem; padding: .35rem .9rem; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); color: var(--accent); cursor: pointer; }
 			.btn:hover { border-color: var(--accent); }
 			table.log td small { font-size: .78rem; }
+			table.groups td { white-space: normal; vertical-align: top; }
+			table.groups td:first-child { white-space: nowrap; }
+			table.groups td:last-child { min-width: 22em; }
 			.res.miss { font-weight: 600; }
 			.res.hit { color: var(--text-muted); }
 
@@ -383,7 +386,7 @@
 						20-day returns and 20-day volatility; 20-day return relative to the index; and
 						the day of the week.
 					</p>
-					<p id="feature-groups" hidden></p>
+					<div id="feature-groups" hidden></div>
 					<p>
 						<strong>Model.</strong> One <code>XGBClassifier</code> per stock and horizon, predicting
 						whether the adjusted close will be higher one trading day ahead, and separately
@@ -834,7 +837,10 @@
 				var cards = HORIZONS.map(function (h) {
 					var c = cumulative(all["h" + h].by_date || []);
 					cums[h] = c;
-					if (c.dates.length < 5) return "";
+					if (c.dates.length < 2) {
+						return '<div class="chart-card" data-h="' + h + '" data-empty="1"><h4>' + (h === "1" ? "Next day" : "Five days") + ' &middot; cumulative hit rate</h4>' +
+							'<p class="muted" style="margin:.4rem 0 0">' + (c.dates.length ? "One forecast date resolved so far; the line starts with the second." : "No " + (h === "1" ? "next-day" : "five-day") + " outcomes yet.") + '</p></div>';
+					}
 					var lines = [{ values: c.model, cls: "model", label: "model " + pct(c.model[c.model.length - 1]) }];
 					if (shadowOn && c.shadow) lines.push({ values: c.shadow, cls: "shadow", label: "base " + pct(c.shadow[c.shadow.length - 1]) });
 					if (c.base) lines.push({ values: c.base, cls: "base", label: "always up " + pct(c.base[c.base.length - 1]) });
@@ -852,6 +858,7 @@
 					'<span class="lk base"></span> always up, same days' +
 					(since ? ' &nbsp;&nbsp; <span class="lk mark"></span> extra feature groups from ' + esc(since) : '') + '</p><div class="charts2">' + cards + '</div>';
 				el.querySelectorAll(".chart-card").forEach(function (card) {
+					if (card.getAttribute("data-empty")) return;
 					var h = card.getAttribute("data-h"), c = cums[h];
 					var g = tsChart(c.dates, [{ values: c.model }], null, { rightPad: 84 });
 					attachTsHover(card.querySelector("svg.ts"), g, c.model, function (i) {
@@ -1052,29 +1059,34 @@
 					var label = d.markets[mk] ? d.markets[mk].label : mk;
 					return '<strong>' + esc(label) + ' (' + feats[mk].length + ')</strong> ' + feats[mk].map(function (f) { return "<span>" + esc(f) + "</span>"; }).join("");
 				}).join("<br>");
-				var groupText = {
-					us_lead: "<strong>US session, for Taiwan stocks:</strong> the S&amp;P 500, the SOX semiconductor index and the TSMC ADR on the same calendar date, and the ADR's premium over the Taipei close. That session closes at 04:00 Taipei the next morning, after the Taipei close it is paired with and before the Taipei target bar opens, so the forecast may use it.",
-					macro: "<strong>Macro:</strong> VIX level, daily change and 20-day z-score; 1- and 20-day changes in the US 10-year yield, the dollar index, USD/TWD, crude oil and gold.",
-					xsec: "<strong>Cross-section:</strong> the mean return, breadth and dispersion of the other stocks in the same basket over 1, 5 and 20 days, this stock's return relative to them, and for US stocks the sector ETF.",
-					twse: "<strong>Institutional flows, for Taiwan stocks:</strong> foreign, investment-trust and dealer net buying from the TWSE T86 report, in units of the stock's 20-day volume, over 1, 5 and 20 days, plus the length of the current foreign buying or selling streak and the basket-wide foreign flow.",
-					risk: "<strong>Risk appetite:</strong> VVIX, VIX relative to realised S&amp;P 500 volatility, high-yield versus investment-grade credit, small versus large caps, utilities versus the market, copper versus gold, and the slope of the yield curve.",
-					earnings: "<strong>Earnings calendar:</strong> trading days until and since the stock's earnings reaction, whether the next bar is the reaction bar, the last EPS surprise, and the surprise of a report released after today's close."
+				var groupInfo = {
+					us_lead: ["US session", "S&amp;P 500, SOX and TSMC ADR returns on the same calendar date, and the ADR's premium over the Taipei close. That session closes at 04:00 Taipei the next morning, after the Taipei close it is paired with and before the Taipei target bar opens."],
+					macro: ["Macro", "VIX level, daily change and 20-day z-score; 1- and 20-day changes in the US 10-year yield, the dollar index, USD/TWD, crude oil and gold."],
+					xsec: ["Cross-section", "Mean return, breadth and dispersion of the other stocks in the same basket over 1, 5 and 20 days, this stock's return relative to them, and for US stocks the sector ETF."],
+					twse: ["Institutional flows", "Foreign, investment-trust and dealer net buying from the TWSE T86 report, in units of the stock's 20-day volume, over 1, 5 and 20 days, plus the current foreign buying or selling streak and the basket-wide foreign flow."],
+					risk: ["Risk appetite", "VVIX, VIX relative to realised S&amp;P 500 volatility, high-yield versus investment-grade credit, small versus large caps, utilities versus the market, copper versus gold, and the slope of the yield curve."],
+					earnings: ["Earnings calendar", "Trading days until and since the stock's earnings reaction, whether the next bar is the reaction bar, the last EPS surprise, and the surprise of a report released after today's close."]
 				};
 				var fgm = d.model.feature_groups || {};
 				if (Array.isArray(fgm)) fgm = { ALL: fgm };
-				var used = {};
-				Object.keys(fgm).forEach(function (mk) { (fgm[mk] || []).forEach(function (g) { if (groupText[g]) used[g] = 1; }); });
-				var groups = Object.keys(groupText).filter(function (g) { return used[g]; });
+				var usedBy = {};
+				Object.keys(fgm).forEach(function (mk) { (fgm[mk] || []).forEach(function (g) { if (groupInfo[g]) (usedBy[g] = usedBy[g] || []).push(mk); }); });
+				var groups = Object.keys(groupInfo).filter(function (g) { return usedBy[g]; });
 				var fg = document.getElementById("feature-groups");
 				if (groups.length) {
 					var perMarket = Object.keys(d.markets).map(function (mk) {
-						var gs = (fgm[mk] || []).filter(function (g) { return groupText[g]; });
-						return esc(d.markets[mk].label) + ": " + (gs.length ? gs.length + (gs.length === 1 ? " extra group" : " extra groups") + " (" + gs.map(function (g) { return "<code>" + esc(g) + "</code>"; }).join(", ") + ")" : "base set only");
-					}).join("; ");
-					fg.innerHTML = "<strong>Extra feature groups.</strong> " + perMarket + ". Each group was scored on its own and in combination on the same walk-forward window before being switched on (" +
-						'<a href="https://github.com/ebenezer61/ebenezer61.github.io/blob/main/tools/stocks/experiments/latest.md" target="_blank" rel="noopener">report</a>; summary under Validation). ' +
-						groups.map(function (g) { return groupText[g]; }).join(" ") +
-						" Every feature is aligned to what was known at 07:47 Taipei the morning after the as-of date, when the forecast is made, and the same code builds the training rows and the row being scored.";
+						var n = (fgm[mk] || []).filter(function (g) { return groupInfo[g]; }).length;
+						return esc(d.markets[mk].label) + " " + (n ? n + (n === 1 ? " extra group" : " extra groups") : "base set only");
+					}).join(", ");
+					fg.innerHTML = '<p><strong>Extra feature groups.</strong> ' + perMarket + '. Each group was scored on its own and in combination on the same walk-forward window before being switched on (' +
+						'<a href="https://github.com/ebenezer61/ebenezer61.github.io/blob/main/tools/stocks/experiments/latest.md" target="_blank" rel="noopener">report</a>; summary under Validation).</p>' +
+						'<div class="tablewrap"><table class="rec groups"><thead><tr><th>Group</th><th>Used for</th><th>What it adds</th></tr></thead><tbody>' +
+						groups.map(function (g) {
+							var mks = usedBy[g].map(function (mk) { return d.markets[mk] ? esc(d.markets[mk].label) : esc(mk); }).join(", ");
+							return '<tr><td><strong>' + groupInfo[g][0] + '</strong><br><code>' + esc(g) + '</code></td><td>' + mks + '</td><td>' + groupInfo[g][1] + '</td></tr>';
+						}).join("") +
+						'</tbody></table></div>' +
+						'<p class="muted" style="font-size:.88rem;margin:0 0 1.2rem">Every feature is aligned to what was known at 07:47 Taipei the morning after the as-of date, when the forecast is made, and the same code builds the training rows and the row being scored.</p>';
 					fg.hidden = false;
 				}
 			}
