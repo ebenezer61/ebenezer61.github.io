@@ -20,7 +20,9 @@ and writes four files into stocks/data/:
                      outcome filled in once the target bar exists
   backtest.json      per ticker and horizon, the walk-forward window's daily
                      predicted probability next to what happened (the chart
-                     in each row's detail panel)
+                     in each row's detail panel), packed: one date list per
+                     ticker, probabilities in thousandths, outcomes as a
+                     0/1 string, returns in basis points
   log.json           the resolved forecasts of the last LOG_DAYS trading
                      days, flattened for the page's forecast log
 
@@ -613,6 +615,36 @@ def walk_forward(X: pd.DataFrame, y: np.ndarray, fwd: np.ndarray, h: int,
     return metrics, series
 
 
+def pack_backtest(series_by_h: dict[str, dict]) -> dict:
+    """Compact form of one ticker's walk-forward series for backtest.json.
+
+    Both horizons are slices of the same calendar, so the dates are stored
+    once and each horizon keeps an offset: {"dates": [...], "1": {"off": k,
+    "p": [thousandths], "a": "0110...", "r": [basis points]}}. The page
+    unpacks it in renderBacktest(). About 45% smaller than the plain lists.
+    """
+    starts = {h: s["dates"][0] for h, s in series_by_h.items()}
+    ends = {h: s["dates"][-1] for h, s in series_by_h.items()}
+    first, last = min(starts.values()), max(ends.values())
+    # the union calendar, taken from the horizon that starts first and extended
+    # by the one that ends last (they overlap, so this is exact)
+    h_first = min(series_by_h, key=lambda h: starts[h])
+    dates = list(series_by_h[h_first]["dates"])
+    for h, s in series_by_h.items():
+        for d in s["dates"]:
+            if d > dates[-1]:
+                dates.append(d)
+    out = {"dates": dates}
+    for h, s in series_by_h.items():
+        out[h] = {
+            "off": dates.index(s["dates"][0]),
+            "p": [int(round(v * 1000)) for v in s["p"]],
+            "a": "".join(str(int(v)) for v in s["actual"]),
+            "r": [int(round(v * 10000)) for v in s["ret"]],
+        }
+    return out
+
+
 def final_fit(X: pd.DataFrame, y: np.ndarray, params: dict) -> dict:
     labelled = np.flatnonzero(~np.isnan(y))
     cut = int(labelled[-1]) + 1
@@ -941,7 +973,7 @@ def main() -> int:
                 feature_names[mkey] = names
             recs.append(rec)
             adj_close[rec["ticker"]] = ac
-            backtest[rec["ticker"]] = bt
+            backtest[rec["ticker"]] = pack_backtest(bt)
             today.append({
                 "ticker": rec["ticker"], "market": mkey, "as_of": rec["as_of"],
                 "close": rec["close"],
@@ -982,6 +1014,7 @@ def main() -> int:
         "generated_at": now.isoformat(timespec="seconds"),
         "test_days": test_days,
         "horizons": list(HORIZONS),
+        "format": "packed",
         "tickers": backtest,
     }, separators=(",", ":")) + "\n", encoding="utf-8")
 

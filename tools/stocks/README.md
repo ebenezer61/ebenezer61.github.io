@@ -12,12 +12,12 @@ Feeds the page at `/stocks/`. One script, one config file, one workflow.
 | `requirements.txt` | xgboost, yfinance, pandas, numpy, scikit-learn, requests |
 | `cache/twse_t86.csv` | Daily foreign / trust / dealer net shares for the Taiwan basket since 2014 |
 | `cache/earnings.csv` | Earnings dates, times and EPS surprises for every ticker |
-| `experiments/` | Reports written by `experiment.py` (`latest.md` is the one to read) |
+| `experiments/` | Reports written by `experiment.py`: `latest.md` and `latest.json` (the page reads the JSON) plus a dated copy of the markdown |
 | `../../.github/workflows/stocks.yml` | Runs the script every weekday and commits the output |
 | `../../.github/workflows/stocks-experiment.yml` | Runs `experiment.py` on demand or when the feature code changes |
 | `../../stocks/data/predictions.json` | Today's snapshot, rendered by `stocks/index.html` |
 | `../../stocks/data/history.json` | Every published forecast with its realised outcome |
-| `../../stocks/data/backtest.json` | Per ticker and horizon: the walk-forward window's daily predicted probability, actual outcome and realised return, drawn in each row's detail panel |
+| `../../stocks/data/backtest.json` | Per ticker and horizon: the walk-forward window's daily predicted probability, actual outcome and realised return, drawn in each row's detail panel. Packed (`format: packed`): one date list per ticker, per horizon an offset, probabilities in thousandths, outcomes as a 0/1 string, returns in basis points; about 200 KB instead of 370 |
 | `../../stocks/data/log.json` | The resolved forecasts of the last 60 trading days, flattened for the page's forecast log |
 
 ## What the model does

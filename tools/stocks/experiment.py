@@ -14,7 +14,7 @@ too but are far noisier (about 2.2 pp).
     python tools/stocks/experiment.py --test-days 250 --quick      # smoke test
     python tools/stocks/experiment.py --configs base,us_lead+macro # combine groups with '+'
 
-Writes <out>/latest.json and <out>/latest.md plus dated copies. Runs from
+Writes <out>/latest.json and <out>/latest.md plus a dated copy of the markdown. Runs from
 .github/workflows/stocks-experiment.yml on GitHub Actions; results are
 committed under tools/stocks/experiments/.
 """
@@ -293,8 +293,10 @@ def main() -> int:
     out.mkdir(parents=True, exist_ok=True)
     stamp = now.strftime("%Y-%m-%d")
     md = report(result, labels)
+    # latest.json is what the page reads; the dated copy is the markdown only
+    # (the JSON of an old run is in git history if ever needed).
+    (out / "latest.json").write_text(json.dumps(result, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
     for name in ("latest", stamp):
-        (out / f"{name}.json").write_text(json.dumps(result, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
         (out / f"{name}.md").write_text(md, encoding="utf-8")
     P.log(f"wrote {out / 'latest.md'} in {time.time() - t0:.0f}s")
 

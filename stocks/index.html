@@ -633,6 +633,21 @@
 				loadBacktest().then(function (bt) {
 					var t = bt.tickers && bt.tickers[ticker];
 					if (!t) throw new Error("no series for " + ticker);
+					if (bt.format === "packed") {
+						// One date list per ticker; per horizon an offset into it, probabilities
+						// in thousandths, outcomes as a 0/1 string, returns in basis points.
+						var packed = t; t = {};
+						HORIZONS.forEach(function (h) {
+							var q = packed[h];
+							if (!q) return;
+							t[h] = {
+								dates: packed.dates.slice(q.off, q.off + q.p.length),
+								p: q.p.map(function (v) { return v / 1000; }),
+								actual: q.a.split("").map(Number),
+								ret: q.r.map(function (v) { return v / 10000; })
+							};
+						});
+					}
 					var geoms = {};
 					var html = '<h4>Backtest: predicted vs actual over the holdout window</h4>' +
 						'<p class="bt-note">The line is the probability the walk-forward model gave each day, clipped to the 30 to 70% band. ' +
