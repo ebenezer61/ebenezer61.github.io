@@ -128,8 +128,13 @@ needs to be scheduled on the laptop.
 
 The workflow runs at 23:47 UTC Monday to Friday (07:47 Taipei the next
 morning), after both markets have closed, again at 03:47 UTC Tuesday to
-Saturday (Yahoo sometimes publishes a US session's bar hours late), and can
-also be started by hand from the Actions tab (`workflow_dispatch`). Runs are
+Saturday (Yahoo sometimes publishes a US session's bar hours late), a third
+time at 06:17 UTC Monday to Friday (14:17 Taipei, after the close) so the
+morning's Taiwan forecasts are scored the same afternoon, and can also be
+started by hand from the Actions tab (`workflow_dispatch`). A market whose
+inputs for the latest session are not complete yet (Taiwan before the US
+session of that date has closed) keeps its previous forecasts in
+`predictions.json`; only outcomes are resolved. Runs are
 idempotent: a forecast already in `history.json` for the same ticker and
 `as_of` is kept.
 

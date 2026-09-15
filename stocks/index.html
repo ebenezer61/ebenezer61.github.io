@@ -408,9 +408,12 @@
 						<strong>Schedule.</strong> A GitHub Actions workflow runs the whole pipeline at
 						23:47 UTC Monday to Friday, which is 07:47 in Taipei the next morning, after both
 						markets have closed, and again at 03:47 UTC in case Yahoo had not yet published the
-						previous US session. Only sessions that have closed are used: a bar of a session
-						still in progress is dropped, so a run that lands inside the Taipei morning session
-						still forecasts from the last close. It commits <code>predictions.json</code> and
+						previous US session. A third pass at 14:17 Taipei, after the Taipei close, scores the
+						morning's Taiwan forecasts the same day; it makes no new Taiwan forecast, since those
+						features need the US session that closes at 04:00 Taipei. Only sessions that have
+						closed are used: a bar of a session still in progress is dropped, so a run that lands
+						inside the Taipei morning session still forecasts from the last close. It commits
+						<code>predictions.json</code> and
 						<code>history.json</code> back to this repository, and the page reads them on load.
 						Before appending the day's forecasts it fills in the outcome of every earlier
 						forecast whose target bar now exists, which is where the track record comes from.

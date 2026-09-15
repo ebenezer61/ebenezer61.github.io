@@ -120,6 +120,7 @@ EXTRA_SYMBOLS = {
     "risk": ["^VVIX", "^VIX", "^GSPC", "HYG", "LQD", "IWM", "SPY", "XLU", "^TNX", "^IRX", "HG=F", "GC=F"],
 }
 ADR_SHARES = 5                # one TSM ADR = five 2330.TW shares
+NEEDS_US_SESSION = ("us_lead", "macro", "risk")   # groups built from the US session of the as-of date
 EARNINGS_CAP = 70             # trading days; "no report in sight" beyond this
 
 XGB_PARAMS = dict(
@@ -215,6 +216,26 @@ def last_completed_session(m: dict, now: datetime) -> pd.Timestamp | None:
     cutoff = local.replace(hour=hh, minute=mm, second=0, microsecond=0) + timedelta(minutes=SETTLE_MINUTES)
     day = local.date() if local >= cutoff else local.date() - timedelta(days=1)
     return pd.Timestamp(day)
+
+
+def missing_inputs(mkey: str, groups: tuple[str, ...], ctx: "Context", as_of: pd.Timestamp | None) -> str | None:
+    """Why the market's forecast for `as_of` cannot be made yet, or None if it can.
+
+    A non-US market whose groups use the US session of the as-of date has to
+    wait for that session to close (04:00 Taipei the next morning). Until
+    then the run only resolves outcomes and keeps the previous forecasts, so
+    an afternoon run after the Taipei close updates the record without
+    publishing a forecast built on last night's US data.
+    """
+    if as_of is None:
+        return "no bars"
+    if mkey != "US" and any(g in groups for g in NEEDS_US_SESSION):
+        ref = next((ctx.extra[sym] for sym in ("^GSPC", "^VIX") if sym in ctx.extra), None)
+        last = ref.index[-1] if ref is not None else None
+        if last is None or last < as_of:
+            return (f"US session of {as_of.date()} not closed yet"
+                    f" (last US bar {last.date() if last is not None else 'none'})")
+    return None
 
 
 def adjust(raw: pd.DataFrame) -> pd.DataFrame:
@@ -955,11 +976,42 @@ def main() -> int:
         log(f"extra: downloading {len(extra_syms)} series for {all_groups}: {extra_syms}")
         extra = {s: adjust(df) for s, df in download(extra_syms, args.start).items()}
 
+    # The previous snapshot, reused for a market whose inputs are not complete yet.
+    prev: dict = {}
+    prev_bt: dict = {}
+    try:
+        if (out_dir / "predictions.json").exists():
+            prev = json.loads((out_dir / "predictions.json").read_text(encoding="utf-8"))
+        if (out_dir / "backtest.json").exists():
+            prev_bt = json.loads((out_dir / "backtest.json").read_text(encoding="utf-8"))
+    except Exception as e:
+        log(f"previous snapshot unreadable: {e!r}")
+
     for mkey, m in cfg.items():
         stocks = m["stocks"][:2] if args.quick else m["stocks"]
         groups = groups_by_market[mkey]
         log(f"{mkey}: feature groups {list(groups) or 'base only'}")
         ctx, data = load_market(mkey, m, stocks, extra, groups, args.start, args.twse_requests, now)
+        for t, px in ctx.px.items():
+            adj_close[t] = px["Close"]           # outcomes resolve even if no forecast is made
+
+        as_of_mk = max((px.index[-1] for px in ctx.px.values()), default=None)
+        why = missing_inputs(mkey, groups, ctx, as_of_mk)
+        if why:
+            prev_m = (prev.get("markets") or {}).get(mkey)
+            if prev_m is None:
+                log(f"{mkey}: {why}; no earlier snapshot to keep, market skipped")
+                continue
+            log(f"{mkey}: {why}; keeping the forecasts as of {prev_m.get('as_of')}, resolving outcomes only")
+            markets_out[mkey] = prev_m
+            if prev_bt.get("format") == "packed":
+                for t in ctx.px:
+                    if t in prev_bt.get("tickers", {}):
+                        backtest[t] = prev_bt["tickers"][t]
+            prev_feats = (prev.get("model") or {}).get("features") or {}
+            if isinstance(prev_feats, dict) and mkey in prev_feats:
+                feature_names[mkey] = prev_feats[mkey]
+            continue
 
         recs, errors = [], []
         for s in stocks:

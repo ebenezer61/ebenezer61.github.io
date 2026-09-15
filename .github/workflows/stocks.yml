@@ -12,6 +12,12 @@ on:
     # idempotent, and predict.py only uses sessions that have closed, so the
     # Taipei session in progress at this hour is ignored.
     - cron: "47 3 * * 2-6"
+    # Afternoon pass at 06:17 UTC (14:17 Taipei, after the 13:30 close): resolves
+    # the outcomes of the morning's Taiwan forecasts so the track record and
+    # the log update the same day. No new Taiwan forecast is made then, since
+    # its features need the US session that closes at 04:00 Taipei; predict.py
+    # keeps the morning's forecasts for a market whose inputs are not complete.
+    - cron: "17 6 * * 1-5"
   workflow_dispatch:
   # Run once on every change to the pipeline itself, so a broken step shows up
   # right away instead of at the next morning's schedule.
@@ -59,5 +65,8 @@ jobs:
             exit 0
           fi
           git commit -m "stocks: daily update $(date -u +%Y-%m-%d)"
-          git pull --rebase origin main
+          # Another run or a manual push may have landed meanwhile; replay this
+          # commit on top and, if the same data file changed on both sides, keep
+          # this run's version (it was regenerated from the newer download).
+          git pull --rebase -X theirs origin main
           git push origin HEAD:main
