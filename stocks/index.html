@@ -935,11 +935,14 @@
 							return '<option value="' + esc(t) + '">' + esc(s ? s.label : t) + '</option>';
 						}).join("");
 						var marketOpts = Object.keys(d.markets).map(function (k) { return '<option value="' + esc(k) + '">' + esc(d.markets[k].label) + '</option>'; }).join("");
-						// One option per forecast date, newest first; the newest is selected on load
-						// so the log opens on the latest resolved forecasts instead of the whole window.
+						// Default view: each market's most recent resolved date (the markets resolve
+						// on different days), then one option per date, then the whole window.
 						var dates = Object.keys(rows.reduce(function (m, r) { m[r.as_of] = true; return m; }, {})).sort().reverse();
-						var dateOpts = dates.map(function (dt, i) {
-							return '<option value="' + esc(dt) + '"' + (i === 0 ? ' selected' : '') + '>' + esc(dt) + (i === 0 ? ' (latest)' : '') + '</option>';
+						var latestBy = {};
+						rows.forEach(function (r) { if (!latestBy[r.market] || r.as_of > latestBy[r.market]) latestBy[r.market] = r.as_of; });
+						var latestLabel = Object.keys(d.markets).filter(function (k) { return latestBy[k]; }).map(function (k) { return d.markets[k].label + " " + latestBy[k]; }).join(", ");
+						var dateOpts = '<option value="latest" selected>Latest per market (' + esc(latestLabel) + ')</option>' + dates.map(function (dt) {
+							return '<option value="' + esc(dt) + '">' + esc(dt) + '</option>';
 						}).join("") + '<option value="">All ' + dates.length + ' days</option>';
 						body.innerHTML =
 							'<div class="filters">' +
@@ -952,7 +955,7 @@
 							'</div>' +
 							'<div class="tablewrap"><table class="rec log"><thead><tr><th>As of</th><th>Stock</th><th>Horizon</th><th>Forecast</th><th>Actual</th><th>Result</th></tr></thead><tbody id="log-rows"></tbody></table></div>' +
 							'<p id="log-more-wrap"><button type="button" class="btn" id="log-more">Show 50 more</button></p>' +
-							'<p class="muted" style="font-size:.82rem">Showing the latest forecast date by default; pick another date, or all ' + log.window_days + ' trading days, from the first menu. The full record, including the forecasts still pending, is in <a href="data/history.json">history.json</a>.</p>';
+							'<p class="muted" style="font-size:.82rem">Showing each market\'s latest resolved forecast date by default; pick a date, or all ' + log.window_days + ' trading days, from the first menu. The full record, including the forecasts still pending, is in <a href="data/history.json">history.json</a>.</p>';
 						var shown = 50;
 						function isHit(r) { return (r.p > 0.5) === (r.actual === 1); }
 						function filtered() {
@@ -962,7 +965,8 @@
 							var st = document.getElementById("log-stock").value;
 							var miss = document.getElementById("log-miss").checked;
 							return rows.filter(function (r) {
-								if (dt && r.as_of !== dt) return false;
+								if (dt === "latest") { if (r.as_of !== latestBy[r.market]) return false; }
+								else if (dt && r.as_of !== dt) return false;
 								if (mk && r.market !== mk) return false;
 								if (hh && String(r.h) !== hh) return false;
 								if (st && r.ticker !== st) return false;
