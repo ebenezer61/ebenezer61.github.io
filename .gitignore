@@ -1,2 +1,10 @@
 __pycache__/
 *.pyc
+
+# API credentials never belong in the repository: keep them in ~/.config/finmind/token
+# (read at runtime by tools/mock_trading/finmind.py) or a GitHub Actions secret.
+.env
+.env.*
+*.token
+tools/mock_trading/finmind_cache/
+.venv/

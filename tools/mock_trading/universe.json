@@ -1,0 +1,36 @@
+{
+  "market": "TW",
+  "label": "Taiwan",
+  "currency": "TWD",
+  "note": "Large caps listed on the TWSE today. A basket chosen with hindsight carries survivorship bias: every name in it is one that survived and grew, so absolute returns are flattered. Comparisons between strategies on the same basket are still fair.",
+  "stocks": [
+    { "symbol": "2330.TW", "name": "台積電", "en": "TSMC" },
+    { "symbol": "2317.TW", "name": "鴻海",   "en": "Hon Hai" },
+    { "symbol": "2454.TW", "name": "聯發科", "en": "MediaTek" },
+    { "symbol": "2308.TW", "name": "台達電", "en": "Delta Electronics" },
+    { "symbol": "2303.TW", "name": "聯電",   "en": "UMC" },
+    { "symbol": "2412.TW", "name": "中華電", "en": "Chunghwa Telecom" },
+    { "symbol": "2882.TW", "name": "國泰金", "en": "Cathay Financial" },
+    { "symbol": "2881.TW", "name": "富邦金", "en": "Fubon Financial" },
+    { "symbol": "2891.TW", "name": "中信金", "en": "CTBC Financial" },
+    { "symbol": "2886.TW", "name": "兆豐金", "en": "Mega Financial" },
+    { "symbol": "2884.TW", "name": "玉山金", "en": "E.Sun Financial" },
+    { "symbol": "2892.TW", "name": "第一金", "en": "First Financial" },
+    { "symbol": "1301.TW", "name": "台塑",   "en": "Formosa Plastics" },
+    { "symbol": "1303.TW", "name": "南亞",   "en": "Nan Ya Plastics" },
+    { "symbol": "1216.TW", "name": "統一",   "en": "Uni-President" },
+    { "symbol": "2002.TW", "name": "中鋼",   "en": "China Steel" },
+    { "symbol": "1101.TW", "name": "台泥",   "en": "Taiwan Cement" },
+    { "symbol": "2382.TW", "name": "廣達",   "en": "Quanta" },
+    { "symbol": "2357.TW", "name": "華碩",   "en": "ASUS" },
+    { "symbol": "2379.TW", "name": "瑞昱",   "en": "Realtek" },
+    { "symbol": "2345.TW", "name": "智邦",   "en": "Accton" },
+    { "symbol": "3008.TW", "name": "大立光", "en": "Largan" },
+    { "symbol": "2207.TW", "name": "和泰車", "en": "Hotai Motor" },
+    { "symbol": "2603.TW", "name": "長榮",   "en": "Evergreen Marine" }
+  ],
+  "benchmarks": [
+    { "symbol": "0050.TW",  "name": "元大台灣50", "en": "Yuanta Taiwan 50 ETF" },
+    { "symbol": "TAIEX_TR", "name": "加權報酬指數", "en": "TAIEX total return" }
+  ]
+}

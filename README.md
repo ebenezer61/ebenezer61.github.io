@@ -12,15 +12,18 @@ Live at **<https://ebenezer61.github.io/>**, served by GitHub Pages from the `ma
 | `style.css` | All styling for the homepage. Light/dark aware, responsive, no external dependencies |
 | `interpretability/` | PyCon TW 2026 poster hub: `theory/` (timeline, attention as a kernel, the word "circuit") and `practice/` (the write-up, the graph, the probes) |
 | `stocks/` | Daily XGBoost direction forecasts for 12 Taiwan and 14 US blue chips; `data/` holds the JSON the page renders |
+| `mock_trading/` | Trading rules backtested on one basket of Taiwan large caps since 2006, compared over any window of years; `data/backtest.json` holds the daily returns the page slices |
 | `tools/stocks/` | The pipeline behind `stocks/`: `predict.py`, the ticker basket, requirements, its own README |
+| `tools/mock_trading/` | The pipeline behind `mock_trading/`: `backtest.py`, the FinMind data layer, the basket, its own README |
 | `tools/figures/` | Scripts that generated the inline SVG charts on the interpretability pages |
 | `.github/workflows/stocks.yml` | Runs the stock pipeline every weekday and commits the refreshed JSON |
+| `.github/workflows/mock-trading.yml` | Reruns the mock-trading backtest every Saturday and commits the JSON |
 | `.nojekyll` | Empty marker telling GitHub Pages to serve the files as-is, without a Jekyll pass |
 
 There is still no build step, no framework, and nothing to install: everything is plain
 HTML, CSS and static data, so opening a page in a browser shows exactly what visitors
-see. The one exception is `stocks/`, whose page fetches its JSON and so needs to be
-served over HTTP (`python -m http.server` from the repository root works).
+see. The exceptions are `stocks/` and `mock_trading/`, whose pages fetch their JSON and
+so need to be served over HTTP (`python -m http.server` from the repository root works).
 
 ### `stocks/`
 
@@ -36,6 +39,19 @@ Two of those files exist so the page can show predictions next to outcomes:
 happened (drawn when a row is opened), and `log.json` the resolved forecasts of the
 last 60 trading days (the forecast log). Model, features, validation and how to
 change the basket are documented in `tools/stocks/README.md`.
+
+### `mock_trading/`
+
+<https://ebenezer61.github.io/mock_trading/> runs a few trading rules (momentum,
+reversal, low volatility, a trend filter) and three benchmarks on one basket of 24
+Taiwan large caps from 2006 on, with brokerage and transaction tax, and lets the
+reader pick any window of years to compare growth, drawdown, CAGR, Sharpe and
+calendar-year returns. Nothing places an order. Bars come from FinMind (the token
+is a repository secret; never in the tree). `.github/workflows/mock-trading.yml`
+reruns `tools/mock_trading/backtest.py` every Saturday and commits
+`mock_trading/data/backtest.json` as `github-actions[bot]` with the message
+`mock_trading: weekly backtest YYYY-MM-DD`. Engine, rules and limits are in
+`tools/mock_trading/README.md`.
 
 ### `interpretability/`
 
