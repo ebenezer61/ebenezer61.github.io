@@ -8,3 +8,8 @@ __pycache__/
 *.token
 tools/mock_trading/finmind_cache/
 .venv/
+
+# Call-auction recordings stay on the workstation that records them.
+tools/mock_trading/cache/callauction/
+tools/mock_trading/cache/callauction_tw50/
+tools/mock_trading/cache/callauction_competition/
