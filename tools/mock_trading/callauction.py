@@ -154,14 +154,21 @@ def record(window: str, poll: float, list_name: str) -> int:
     total, last_data = 0, datetime.now(TPE)
     log(f"recording {len(syms)} symbols to {path.relative_to(HERE.parent.parent)} until {end:%H:%M}")
     while datetime.now(TPE) < end:
+        t0 = time.monotonic()
         try:
             rows = snapshot(syms, ses)
+            took = time.monotonic() - t0
             n = append(rows, seen, path)
             total += n
             if rows:
                 last_data = datetime.now(TPE)
+            # every poll is logged, also one that brought nothing new, so a gap in
+            # the CSV can be told apart: a slow request, or the exchange not updating
+            ex = [r["ex_time"] for r in rows]
+            log(f"{list_name} {window} poll: {took:.1f}s, {len(rows)} dated today, {n} new, "
+                f"{sum(r['trial'] for r in rows)} trial, ex_time {min(ex, default='-')} to {max(ex, default='-')}")
         except Exception as e:  # a missed poll is fine; the next one is seconds away
-            log(f"poll failed: {e!r}")
+            log(f"{list_name} {window} poll failed after {time.monotonic() - t0:.1f}s: {type(e).__name__}: {str(e)[:160]}")
         if datetime.now(TPE) - last_data > timedelta(minutes=NO_DATA_MINUTES):
             log("nothing dated today; no session, stopping")
             break
