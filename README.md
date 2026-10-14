@@ -8,11 +8,12 @@ Live at **<https://ebenezer61.github.io/>**, served by GitHub Pages from the `ma
 
 | Path | Purpose |
 | --- | --- |
-| `index.html` | The homepage: About, Research Interests, Projects, Publications, Teaching & Outreach |
+| `index.html` | The homepage: About, Research Interests, Projects, Tools, Publications, Teaching & Outreach |
 | `style.css` | All styling for the homepage. Light/dark aware, responsive, no external dependencies |
 | `interpretability/` | PyCon TW 2026 poster hub: `theory/` (timeline, attention as a kernel, the word "circuit") and `practice/` (the write-up, the graph, the probes) |
 | `stocks/` | Daily XGBoost direction forecasts for 12 Taiwan and 14 US blue chips; `data/` holds the JSON the page renders |
 | `mock_trading/` | Trading rules backtested on one basket of Taiwan large caps since 2006, compared over any window of years; `data/backtest.json` holds the daily returns the page slices |
+| `headset/` | Headset check: microphone meter and playback, left/right channel test, and a clarity report (speech level, noise floor, clipping, effective bandwidth); pure client-side Web Audio |
 | `tools/stocks/` | The pipeline behind `stocks/`: `predict.py`, the ticker basket, requirements, its own README |
 | `tools/mock_trading/` | The pipeline behind `mock_trading/`: `backtest.py`, the FinMind data layer, the basket, its own README |
 | `tools/figures/` | Scripts that generated the inline SVG charts on the interpretability pages |
@@ -52,6 +53,23 @@ reruns `tools/mock_trading/backtest.py` every Saturday and commits
 `mock_trading/data/backtest.json` as `github-actions[bot]` with the message
 `mock_trading: weekly backtest YYYY-MM-DD`. Engine, rules and limits are in
 `tools/mock_trading/README.md`.
+
+### `headset/`
+
+<https://ebenezer61.github.io/headset/> is a pre-call check for a headset, built after a
+headset microphone kept making meetings hard for everyone else. Section 1 opens the
+microphone (device picker, echo-cancellation / noise-suppression / auto-gain toggles),
+shows RMS and peak in dBFS with a clipping flag and a waveform, and records five seconds
+for playback. Section 2 routes a tone or pink noise to a hard left or hard right channel
+through a `ChannelMergerNode`, with an output-device picker where the browser supports
+`AudioContext.setSinkId`. Section 3 records a noise floor and a read-aloud passage
+(Mandarin and English), then reports speech level, noise floor, signal-to-noise ratio,
+clipped-sample share, effective bandwidth (highest third-octave band still carrying
+speech) and a 4 to 8 kHz "presence" figure, with an average-spectrum chart. Bandwidth
+below about 4.5 kHz is the signature of a Bluetooth headset in hands-free (HFP) mode,
+which is what the other side of a call hears. Everything is one HTML file with an
+inline FFT; audio never leaves the browser. Needs https or localhost for microphone
+access.
 
 ### `interpretability/`
 

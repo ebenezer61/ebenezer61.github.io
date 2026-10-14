@@ -1,0 +1,940 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>Headset Check &middot; Anna Liang</title>
+		<meta name="description" content="Test a headset before a call: microphone level and recording, left and right channels, and a clarity report (speech level, noise floor, clipping, effective bandwidth) that shows what the other side of the meeting hears. Everything runs in the browser; nothing is uploaded." />
+		<meta name="author" content="Anna Liang" />
+		<link rel="stylesheet" href="../style.css" />
+		<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90' font-family='Georgia,serif'>A</text></svg>" />
+
+		<style>
+			/* Page-local styles. Meter and chart colours are the site's chart palette:
+			   --viz-up for the signal, --viz-down for warnings, ink tokens for text. */
+			:root {
+				--viz-surface: #ffffff;
+				--viz-grid:    #ece9e3;
+				--viz-axis:    #b9b3a8;
+				--viz-ink-1:   #232323;
+				--viz-ink-2:   #52514e;
+				--viz-ink-3:   #6b6862;
+				--viz-up:      #2a78d6;
+				--viz-down:    #d95926;
+				--viz-ok:      #1baf7a;
+			}
+			@media (prefers-color-scheme: dark) {
+				:root:not([data-theme="light"]) {
+					color-scheme: dark;
+					--viz-surface: #1f1e1b;
+					--viz-grid:    #302d28;
+					--viz-axis:    #5d574e;
+					--viz-ink-1:   #eae7e1;
+					--viz-ink-2:   #c0bbb2;
+					--viz-ink-3:   #a29d94;
+					--viz-up:      #3987e5;
+					--viz-down:    #eb6834;
+					--viz-ok:      #199e70;
+				}
+			}
+
+			.breadcrumb { font-size: .88rem; color: var(--text-muted); margin: 0 0 1.5rem; }
+			header.hero .subtitle { margin: .6rem 0 0; color: var(--text-muted); font-size: 1.05rem; }
+			header.hero .status { margin: .9rem 0 0; font-size: .88rem; color: var(--text-muted); }
+			header.hero .status strong { color: var(--text); font-weight: 600; }
+			code { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace; font-size: .88em; background: var(--accent-soft); padding: .1em .35em; border-radius: 4px; }
+
+			.callout { background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: var(--radius); padding: 1rem 1.15rem; margin: 0 0 1.1rem; font-size: .95rem; }
+			.callout p:last-child { margin-bottom: 0; }
+			.callout.warn { border-left-color: var(--viz-down); }
+
+			.steps { font-size: .95rem; color: var(--text-muted); margin: 0 0 1.1rem; padding-left: 1.3rem; }
+			.steps li { margin-bottom: .3rem; }
+
+			.controls { display: flex; flex-wrap: wrap; gap: .5rem .6rem; align-items: center; margin: 0 0 .9rem; }
+			.controls label { font-size: .88rem; color: var(--text-muted); display: inline-flex; align-items: center; gap: .35rem; }
+			.controls select { font: inherit; font-size: .88rem; max-width: 100%; padding: .2rem .4rem; background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 6px; }
+			.controls input[type=range] { width: 120px; }
+			.btn { font: inherit; font-size: .86rem; padding: .32rem .85rem; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); color: var(--accent); cursor: pointer; }
+			.btn:hover { border-color: var(--accent); }
+			.btn:disabled { opacity: .45; cursor: default; border-color: var(--border); }
+			.btn.primary, .btn[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+
+			.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: .9rem 1rem 1rem; margin: 0 0 1.2rem; }
+			.card h3 { margin: 0 0 .6rem; font-size: 1.02rem; }
+
+			dl.facts { display: grid; grid-template-columns: max-content 1fr; gap: .2rem 1rem; margin: 0 0 .8rem; font-size: .9rem; }
+			dl.facts dt { color: var(--text-muted); }
+			dl.facts dd { margin: 0; font-variant-numeric: tabular-nums; }
+
+			.meter { position: relative; height: 14px; background: var(--viz-grid); border-radius: 4px; overflow: hidden; margin: .4rem 0 .25rem; }
+			.meter .fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: var(--viz-up); border-radius: 4px; transition: width .05s linear; }
+			.meter .peak { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--viz-ink-1); left: 0; }
+			.meter .zone { position: absolute; top: 0; bottom: 0; border-left: 1px dashed var(--viz-axis); }
+			.meter-scale { display: flex; justify-content: space-between; font-size: .74rem; color: var(--viz-ink-3); font-variant-numeric: tabular-nums; }
+			.readout { font-size: .9rem; display: flex; flex-wrap: wrap; gap: .3rem 1.2rem; font-variant-numeric: tabular-nums; margin: .4rem 0 0; }
+			.readout .clip { color: var(--viz-down); font-weight: 600; visibility: hidden; }
+			.readout .clip.on { visibility: visible; }
+
+			canvas.scope { display: block; width: 100%; height: 110px; background: var(--viz-surface); border: 1px solid var(--border); border-radius: 6px; margin-top: .7rem; }
+			canvas.spec  { display: block; width: 100%; height: 260px; background: var(--viz-surface); border: 1px solid var(--border); border-radius: 6px; margin-top: .7rem; cursor: crosshair; }
+
+			.lr { display: grid; grid-template-columns: 1fr 1fr; gap: .8rem; margin: .8rem 0; }
+			.ear { border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; text-align: center; font-family: var(--serif); font-size: 1.15rem; color: var(--text-muted); transition: background .15s, color .15s, border-color .15s; }
+			.ear.on { background: var(--viz-up); border-color: var(--viz-up); color: #fff; }
+
+			.passage { background: var(--accent-soft); border-radius: var(--radius); padding: .9rem 1.1rem; margin: 0 0 .9rem; font-size: 1.02rem; line-height: 1.8; }
+			.passage p { margin: 0 0 .5rem; }
+			.passage p:last-child { margin: 0; }
+
+			table.report { width: 100%; border-collapse: collapse; font-size: .9rem; margin: .6rem 0 0; }
+			table.report th, table.report td { text-align: left; padding: .4rem .5rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+			table.report th { color: var(--text-muted); font-weight: 500; white-space: nowrap; }
+			table.report td.val { font-variant-numeric: tabular-nums; white-space: nowrap; }
+			table.report tr:last-child td, table.report tr:last-child th { border-bottom: 0; }
+			.verdict { display: inline-block; font-size: .76rem; letter-spacing: .04em; padding: .1rem .55rem; border-radius: 999px; margin-right: .4rem; border: 1px solid transparent; }
+			.verdict.good { color: var(--viz-ok); border-color: var(--viz-ok); }
+			.verdict.warn { color: var(--viz-down); border-color: var(--viz-down); }
+			.verdict.info { color: var(--text-muted); border-color: var(--border); }
+
+			.error { color: var(--viz-down); font-size: .92rem; }
+			.muted { color: var(--text-muted); font-size: .88rem; }
+			.legend { display: flex; gap: 1.2rem; font-size: .82rem; color: var(--viz-ink-3); margin-top: .5rem; flex-wrap: wrap; }
+			.legend i { display: inline-block; width: 18px; height: 0; border-top: 2px solid var(--viz-up); vertical-align: middle; margin-right: .35rem; }
+			.legend i.noise { border-top-style: dashed; border-top-color: var(--viz-ink-3); }
+
+			@media (max-width: 560px) {
+				dl.facts { grid-template-columns: 1fr; gap: 0 }
+				dl.facts dt { margin-top: .3rem; }
+			}
+		</style>
+	</head>
+	<body>
+
+		<header class="hero">
+			<div class="wrap">
+				<p class="breadcrumb"><a href="../">&larr; Anna Liang</a></p>
+				<h1>Headset Check</h1>
+				<p class="subtitle">
+					Three quick tests before a call: does the microphone pick you up, do both ears
+					work, and how clear is your voice to the people on the other side.
+				</p>
+				<p class="status" id="status">Checking browser support&hellip;</p>
+			</div>
+		</header>
+
+		<main>
+
+			<!-- ============================ 1. Microphone ============================ -->
+			<section id="mic">
+				<div class="wrap">
+					<h2>1 &middot; Microphone</h2>
+
+					<div class="callout">
+						<p>
+							Everything runs locally in your browser; no audio leaves this page.
+							The browser will ask for microphone permission once. Pick the headset in the
+							device list (the list fills in after permission is granted), talk, and watch
+							the meter. Then record a few seconds and listen back.
+						</p>
+					</div>
+
+					<div class="controls">
+						<button class="btn primary" id="micStart">Start microphone</button>
+						<button class="btn" id="micStop" disabled>Stop</button>
+						<label>Input <select id="micSelect"><option value="">Default microphone</option></select></label>
+					</div>
+					<div class="controls">
+						<label><input type="checkbox" id="ec" checked /> Echo cancellation</label>
+						<label><input type="checkbox" id="ns" checked /> Noise suppression</label>
+						<label><input type="checkbox" id="agc" checked /> Auto gain</label>
+						<span class="muted">Meeting apps usually keep all three on. Changing one restarts the microphone.</span>
+					</div>
+					<p class="error" id="micError"></p>
+
+					<div class="card">
+						<h3>Live level</h3>
+						<dl class="facts">
+							<dt>Device</dt><dd id="fDevice">&mdash;</dd>
+							<dt>Sample rate</dt><dd id="fRate">&mdash;</dd>
+							<dt>Channels</dt><dd id="fChan">&mdash;</dd>
+							<dt>Processing</dt><dd id="fProc">&mdash;</dd>
+						</dl>
+						<div class="meter" id="meter">
+							<div class="zone" style="left: 58.33%" title="-25 dBFS"></div>
+							<div class="zone" style="left: 80%" title="-12 dBFS"></div>
+							<div class="fill" id="meterFill"></div>
+							<div class="peak" id="meterPeak"></div>
+						</div>
+						<div class="meter-scale"><span>-60</span><span>-48</span><span>-36</span><span>-24</span><span>-12</span><span>0 dBFS</span></div>
+						<div class="readout">
+							<span>RMS <strong id="rRms">&mdash;</strong></span>
+							<span>Peak <strong id="rPeak">&mdash;</strong></span>
+							<span class="clip" id="rClip">Clipping</span>
+						</div>
+						<p class="muted" style="margin-top:.5rem">
+							While speaking normally the bar should sit between the two dashed marks
+							(about -25 to -12 dBFS). Below the first mark you are quiet for the other side;
+							a red "Clipping" flag means the signal is being cut off and will sound harsh.
+						</p>
+						<canvas class="scope" id="scope" aria-label="Waveform of the last few milliseconds"></canvas>
+					</div>
+
+					<div class="card">
+						<h3>Record and listen back</h3>
+						<div class="controls">
+							<button class="btn" id="recStart" disabled>Record 5 seconds</button>
+							<button class="btn" id="recPlay" disabled>Play recording</button>
+							<span class="muted" id="recStatus">Start the microphone first.</span>
+						</div>
+						<p class="muted">
+							Listening back is the only honest check: meeting apps add their own processing,
+							but if the recording already sounds muffled, distant or robotic, so will you.
+						</p>
+					</div>
+				</div>
+			</section>
+
+			<!-- ============================ 2. Left / right ============================ -->
+			<section id="ears">
+				<div class="wrap">
+					<h2>2 &middot; Left and right</h2>
+
+					<div class="callout">
+						<p>
+							A tone is routed to one channel only (hard left or hard right, not panned).
+							Keep the volume low before pressing play. If the sound comes out of the laptop
+							speakers instead of the headset, choose the headset as output below or in the
+							system sound settings.
+						</p>
+					</div>
+
+					<div class="controls">
+						<label>Output <select id="outSelect"><option value="">System default</option></select></label>
+						<span class="muted" id="outNote"></span>
+					</div>
+					<div class="controls">
+						<label>Sound
+							<select id="toneType">
+								<option value="440">Tone 440 Hz</option>
+								<option value="1000">Tone 1 kHz</option>
+								<option value="noise">Pink noise</option>
+							</select>
+						</label>
+						<label>Volume <input type="range" id="toneVol" min="0" max="100" value="25" /></label>
+					</div>
+					<div class="controls">
+						<button class="btn" id="lrLeft">Left</button>
+						<button class="btn" id="lrRight">Right</button>
+						<button class="btn" id="lrBoth">Both</button>
+						<button class="btn" id="lrAlt">Alternate</button>
+						<button class="btn" id="lrStop" disabled>Stop</button>
+					</div>
+
+					<div class="lr">
+						<div class="ear" id="earL">L &middot; Left</div>
+						<div class="ear" id="earR">R &middot; Right</div>
+					</div>
+
+					<p class="muted">
+						Hear it on the wrong side? The headset is plugged in or paired with channels swapped,
+						or the operating system has a balance setting off-centre. Hear both sides when only
+						one is lit, or a quieter, duller tone? Many Bluetooth headsets switch to a mono
+						hands-free profile as soon as a microphone is open, which is exactly the state they are
+						in during a call. Run this test once with the microphone stopped and once with it
+						running (section 1) to hear the difference.
+					</p>
+				</div>
+			</section>
+
+			<!-- ============================ 3. Clarity ============================ -->
+			<section id="clarity">
+				<div class="wrap">
+					<h2>3 &middot; Clarity</h2>
+
+					<div class="callout">
+						<p>
+							This is the test for "the other people in the meeting can't understand me".
+							It measures the recording rather than scoring it: how loud your speech is,
+							how loud the room is when you are silent, how much of the signal is clipped,
+							and how high in frequency the microphone actually reaches. The last number
+							is the usual culprit: consonants like s, f, t, 四, 十, 七 live above 4 kHz, and a
+							microphone that stops there sounds like a telephone.
+						</p>
+					</div>
+
+					<ol class="steps">
+						<li>Stay silent and measure the noise floor (3 seconds).</li>
+						<li>Read the passage below at your normal meeting volume while recording.</li>
+						<li>Read the report, then listen back to the take.</li>
+					</ol>
+
+					<div class="controls">
+						<button class="btn" id="noiseBtn">1 &middot; Measure noise floor</button>
+						<span class="muted" id="noiseStatus">Not measured yet.</span>
+					</div>
+
+					<div class="passage" lang="zh-Hant">
+						<p>請用平常開會的音量讀這段話：今天下午三點的會議改到明天早上十點，請大家先看過第二份簡報，有問題在群組裡提出。四、十、七、三、六、十四。</p>
+						<p lang="en">Please read at your normal meeting volume: the sixth session starts at three fifteen. Share your screen, then switch to the second slide. Six, seven, sixteen, thirty-three, fifty-five.</p>
+					</div>
+
+					<div class="controls">
+						<button class="btn primary" id="speechBtn">2 &middot; Record passage</button>
+						<button class="btn" id="speechStop" disabled>Stop</button>
+						<button class="btn" id="speechPlay" disabled>Play take</button>
+						<span class="muted" id="speechStatus">Up to 15 seconds; press Stop when you finish reading.</span>
+					</div>
+
+					<div class="card" id="reportCard" hidden>
+						<h3>Report</h3>
+						<table class="report" id="report"></table>
+						<canvas class="spec" id="spec" aria-label="Average spectrum of the recorded speech and of the noise floor"></canvas>
+						<div class="legend">
+							<span><i></i>Speech (average while talking)</span>
+							<span><i class="noise"></i>Noise floor</span>
+							<span id="legendBw"></span>
+						</div>
+					</div>
+
+					<div class="card">
+						<h3>How to read the bandwidth number</h3>
+						<table class="report">
+							<tr><th>Below about 4.5 kHz</th><td>Narrowband, telephone quality. Typical of a Bluetooth headset running the hands-free profile (HFP with the CVSD codec), or a "communications" device in Windows set to 8 kHz. Sibilants are gone; names and numbers get confused. Fixes: a wired or USB headset, enabling the wideband (mSBC / HD voice) option in the Bluetooth driver, or using the laptop's own microphone with the Bluetooth headset for listening only.</td></tr>
+							<tr><th>About 4.5 to 9 kHz</th><td>Wideband (16 kHz sampling). Perfectly intelligible for speech; most meeting apps transmit at this bandwidth anyway.</td></tr>
+							<tr><th>Above 9 kHz</th><td>Full band. The microphone is not the limit; if people still struggle, look at level, noise and clipping instead.</td></tr>
+						</table>
+					</div>
+				</div>
+			</section>
+
+		</main>
+
+		<footer>
+			<div class="wrap">
+				<p><a href="../">Chia-chun Liang (Anna)</a> &middot; Web Audio API, no uploads, no dependencies.</p>
+				<p>&copy; 2026 Chia-chun Liang</p>
+			</div>
+		</footer>
+
+		<script>
+		(function () {
+			"use strict";
+
+			var $ = function (id) { return document.getElementById(id); };
+			var cssVar = function (name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); };
+			var fmtDb = function (v) { return isFinite(v) ? (v > 0 ? "+" : "") + v.toFixed(1) + " dBFS" : "—"; };
+			var dbOf = function (a) { return 20 * Math.log10(Math.max(a, 1e-6)); };
+
+			/* ---------- support check ---------- */
+			var status = $("status");
+			var secure = window.isSecureContext && navigator.mediaDevices && navigator.mediaDevices.getUserMedia;
+			var AC = window.AudioContext || window.webkitAudioContext;
+			if (!AC) {
+				status.innerHTML = '<span class="error">This browser has no Web Audio support.</span>';
+			} else if (!secure) {
+				status.innerHTML = '<span class="error">Microphone access needs a secure page (https or localhost).</span> ' +
+					'If you opened this file from disk, serve the folder over HTTP instead, for example <code>python -m http.server</code>. The left/right test still works.';
+			} else {
+				status.innerHTML = "Browser support: <strong>OK</strong>. Nothing is uploaded; close the tab and it is gone.";
+			}
+
+			var ctx = null;
+			function audio() {
+				if (!ctx) ctx = new AC();
+				if (ctx.state === "suspended") ctx.resume();
+				return ctx;
+			}
+
+			/* =====================================================================
+			   1. Microphone
+			   ===================================================================== */
+			var stream = null, source = null, analyser = null, proc = null, sink = null, raf = 0;
+			var capture = null;           // array of Float32Array while recording
+			var peakHold = 0, clipUntil = 0;
+			var timeBuf = new Float32Array(2048);
+
+			function setMicInfo(track) {
+				var s = track ? track.getSettings() : {};
+				$("fDevice").textContent = track ? (track.label || "unnamed device") : "—";
+				$("fRate").textContent = track ? ((s.sampleRate ? s.sampleRate + " Hz (track)" : "unknown (track)") + ", " + ctx.sampleRate + " Hz (context)") : "—";
+				$("fChan").textContent = track ? (s.channelCount || 1) : "—";
+				var flags = [];
+				if (track) {
+					flags.push("echo cancellation " + (s.echoCancellation === undefined ? "?" : s.echoCancellation ? "on" : "off"));
+					flags.push("noise suppression " + (s.noiseSuppression === undefined ? "?" : s.noiseSuppression ? "on" : "off"));
+					flags.push("auto gain " + (s.autoGainControl === undefined ? "?" : s.autoGainControl ? "on" : "off"));
+				}
+				$("fProc").textContent = track ? flags.join(", ") : "—";
+			}
+
+			function explainError(e) {
+				var n = e && e.name;
+				if (n === "NotAllowedError" || n === "SecurityError") return "Permission denied. Click the lock or camera icon in the address bar, allow the microphone, then try again.";
+				if (n === "NotFoundError" || n === "DevicesNotFoundError") return "No microphone found. Is the headset connected and selected as a recording device in the system?";
+				if (n === "NotReadableError" || n === "AbortError") return "The microphone is busy or unreadable. Another app (a meeting client?) may hold it; close it and retry.";
+				if (n === "OverconstrainedError") return "That device is no longer available. Pick another input.";
+				return (e && e.message) || String(e);
+			}
+
+			async function listDevices() {
+				if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return;
+				var devs = await navigator.mediaDevices.enumerateDevices();
+				var mic = $("micSelect"), out = $("outSelect");
+				var curMic = mic.value, curOut = out.value;
+				mic.innerHTML = '<option value="">Default microphone</option>';
+				out.innerHTML = '<option value="">System default</option>';
+				devs.forEach(function (d, i) {
+					if (d.kind === "audioinput") {
+						var o = document.createElement("option"); o.value = d.deviceId; o.textContent = d.label || ("Microphone " + (i + 1)); mic.appendChild(o);
+					} else if (d.kind === "audiooutput" && d.deviceId !== "default") {
+						var p = document.createElement("option"); p.value = d.deviceId; p.textContent = d.label || ("Output " + (i + 1)); out.appendChild(p);
+					}
+				});
+				mic.value = curMic; out.value = curOut;
+			}
+
+			async function startMic() {
+				stopMic();
+				$("micError").textContent = "";
+				if (!secure) { $("micError").textContent = "Microphone access needs https or localhost."; return false; }
+				var ac = audio();
+				var cons = { audio: {
+					echoCancellation: $("ec").checked,
+					noiseSuppression: $("ns").checked,
+					autoGainControl: $("agc").checked
+				} };
+				if ($("micSelect").value) cons.audio.deviceId = { exact: $("micSelect").value };
+				try {
+					stream = await navigator.mediaDevices.getUserMedia(cons);
+				} catch (e) {
+					$("micError").textContent = explainError(e);
+					return false;
+				}
+				await listDevices();
+				var track = stream.getAudioTracks()[0];
+				track.onended = function () { stopMic(); $("micError").textContent = "The microphone was disconnected."; };
+				if (!$("micSelect").value && track.getSettings().deviceId) $("micSelect").value = track.getSettings().deviceId;
+				setMicInfo(track);
+
+				source = ac.createMediaStreamSource(stream);
+				analyser = ac.createAnalyser();
+				analyser.fftSize = 2048;
+				analyser.smoothingTimeConstant = 0;
+				source.connect(analyser);
+
+				// Raw PCM tap for recordings. A ScriptProcessor only runs when it reaches
+				// the destination, so it goes through a muted gain to avoid feedback.
+				proc = ac.createScriptProcessor(4096, 1, 1);
+				sink = ac.createGain(); sink.gain.value = 0;
+				proc.onaudioprocess = function (ev) {
+					if (capture) capture.push(new Float32Array(ev.inputBuffer.getChannelData(0)));
+				};
+				source.connect(proc); proc.connect(sink); sink.connect(ac.destination);
+
+				if (noiseStats) {
+					// The floor belongs to the previous device or processing settings.
+					noiseStats = null; noiseTake = null;
+					$("noiseStatus").textContent = "Microphone changed; measure the noise floor again.";
+					if (speechStats) { speechStats = analyseSpeech(speechTake, ac.sampleRate, null); renderReport(); }
+				}
+				$("micStart").textContent = "Restart microphone";
+				$("micStop").disabled = false;
+				$("recStart").disabled = false;
+				$("recStatus").textContent = "Ready.";
+				peakHold = 0;
+				meterLoop();
+				return true;
+			}
+
+			function stopMic() {
+				cancelAnimationFrame(raf); raf = 0;
+				if (stream) stream.getTracks().forEach(function (t) { t.stop(); });
+				if (source) source.disconnect();
+				if (proc) { proc.disconnect(); proc.onaudioprocess = null; }
+				if (sink) sink.disconnect();
+				stream = source = analyser = proc = sink = null;
+				capture = null;
+				speechStopFlag = true;
+				$("micStop").disabled = true;
+				setRecording(false);
+				$("micStart").textContent = "Start microphone";
+				$("meterFill").style.width = "0";
+				$("rRms").textContent = $("rPeak").textContent = "—";
+				$("rClip").classList.remove("on");
+				setMicInfo(null);
+			}
+
+			var scope = $("scope");
+			function meterLoop() {
+				if (!analyser) return;
+				analyser.getFloatTimeDomainData(timeBuf);
+				var sum = 0, peak = 0;
+				for (var i = 0; i < timeBuf.length; i++) {
+					var x = timeBuf[i]; sum += x * x; var a = Math.abs(x); if (a > peak) peak = a;
+				}
+				var rms = Math.sqrt(sum / timeBuf.length);
+				var rmsDb = dbOf(rms), peakDb = dbOf(peak);
+				peakHold = Math.max(peak, peakHold * 0.97);
+				var now = performance.now();
+				if (peak >= 0.985) clipUntil = now + 1200;
+				$("rClip").classList.toggle("on", now < clipUntil);
+				var pct = function (db) { return Math.max(0, Math.min(100, (db + 60) / 60 * 100)); };
+				$("meterFill").style.width = pct(rmsDb) + "%";
+				$("meterFill").style.background = now < clipUntil ? cssVar("--viz-down") : cssVar("--viz-up");
+				$("meterPeak").style.left = pct(dbOf(peakHold)) + "%";
+				$("rRms").textContent = fmtDb(rmsDb);
+				$("rPeak").textContent = fmtDb(peakDb);
+				drawScope();
+				raf = requestAnimationFrame(meterLoop);
+			}
+
+			function fitCanvas(c) {
+				var dpr = window.devicePixelRatio || 1;
+				var w = c.clientWidth, h = c.clientHeight;
+				if (c.width !== Math.round(w * dpr) || c.height !== Math.round(h * dpr)) { c.width = Math.round(w * dpr); c.height = Math.round(h * dpr); }
+				var g = c.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0);
+				return { g: g, w: w, h: h };
+			}
+
+			function drawScope() {
+				var k = fitCanvas(scope), g = k.g, w = k.w, h = k.h;
+				g.clearRect(0, 0, w, h);
+				g.strokeStyle = cssVar("--viz-grid"); g.lineWidth = 1;
+				g.beginPath(); g.moveTo(0, h / 2); g.lineTo(w, h / 2); g.stroke();
+				g.strokeStyle = cssVar("--viz-up"); g.lineWidth = 1.5;
+				g.beginPath();
+				for (var i = 0; i < timeBuf.length; i++) {
+					var x = i / (timeBuf.length - 1) * w, y = h / 2 - timeBuf[i] * (h / 2 - 2);
+					if (i === 0) g.moveTo(x, y); else g.lineTo(x, y);
+				}
+				g.stroke();
+			}
+
+			/* ---------- recording helpers ---------- */
+			// One take at a time: the three record buttons share the capture tap.
+			var REC_BTNS = ["recStart", "noiseBtn", "speechBtn"];
+			function setRecording(on) {
+				REC_BTNS.forEach(function (id) { $(id).disabled = on || (id === "recStart" && !stream); });
+			}
+			function startCapture() { capture = []; setRecording(true); }
+			function endCapture() {
+				var chunks = capture || []; capture = null;
+				setRecording(false);
+				var n = 0; chunks.forEach(function (c) { n += c.length; });
+				var out = new Float32Array(n), o = 0;
+				chunks.forEach(function (c) { out.set(c, o); o += c.length; });
+				return out;
+			}
+			function wait(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+
+			var playing = null;
+			function playSamples(samples, onEnd) {
+				var ac = audio();
+				if (playing) { try { playing.stop(); } catch (e) {} }
+				var buf = ac.createBuffer(1, samples.length, ac.sampleRate);
+				buf.getChannelData(0).set(samples);
+				var src = ac.createBufferSource(); src.buffer = buf; src.connect(ac.destination);
+				src.onended = function () { playing = null; if (onEnd) onEnd(); };
+				src.start(); playing = src;
+			}
+
+			var micTake = null;
+			$("micStart").onclick = startMic;
+			$("micStop").onclick = stopMic;
+			$("micSelect").onchange = function () { if (stream) startMic(); };
+			["ec", "ns", "agc"].forEach(function (id) { $(id).onchange = function () { if (stream) startMic(); }; });
+
+			$("recStart").onclick = async function () {
+				if (!stream) return;
+				$("recPlay").disabled = true;
+				startCapture();
+				for (var s = 5; s > 0; s--) { $("recStatus").textContent = "Recording… " + s; await wait(1000); }
+				micTake = endCapture();
+				$("recStatus").textContent = "Recorded " + (micTake.length / audio().sampleRate).toFixed(1) + " s.";
+				$("recPlay").disabled = false;
+			};
+			$("recPlay").onclick = function () {
+				if (!micTake) return;
+				$("recPlay").disabled = true; $("recStatus").textContent = "Playing…";
+				playSamples(micTake, function () { $("recPlay").disabled = false; $("recStatus").textContent = "Done."; });
+			};
+
+			/* =====================================================================
+			   2. Left / right
+			   ===================================================================== */
+			var lr = null, altTimer = 0;
+			var outSel = $("outSelect");
+			if (!("setSinkId" in AC.prototype)) {
+				outSel.disabled = true;
+				$("outNote").textContent = "This browser cannot pick an output device per page; choose the headset in the system sound settings.";
+			} else {
+				$("outNote").textContent = "Device names appear after microphone permission is granted.";
+				outSel.onchange = function () {
+					var ac = audio();
+					ac.setSinkId(outSel.value || "").catch(function (e) { $("outNote").textContent = "Could not switch output: " + explainError(e); });
+				};
+			}
+
+			function pinkNoiseBuffer(ac, seconds) {
+				var n = Math.floor(ac.sampleRate * seconds), buf = ac.createBuffer(1, n, ac.sampleRate), d = buf.getChannelData(0);
+				var b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+				for (var i = 0; i < n; i++) {
+					var w = Math.random() * 2 - 1;
+					b0 = 0.99886 * b0 + w * 0.0555179; b1 = 0.99332 * b1 + w * 0.0750759; b2 = 0.96900 * b2 + w * 0.1538520;
+					b3 = 0.86650 * b3 + w * 0.3104856; b4 = 0.55000 * b4 + w * 0.5329522; b5 = -0.7616 * b5 - w * 0.0168980;
+					d[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + w * 0.5362) * 0.11;
+					b6 = w * 0.115926;
+				}
+				return buf;
+			}
+
+			function setEars(l, r) {
+				$("earL").classList.toggle("on", l); $("earR").classList.toggle("on", r);
+				if (lr) {
+					var t = audio().currentTime;
+					lr.gL.gain.cancelScheduledValues(t); lr.gR.gain.cancelScheduledValues(t);
+					lr.gL.gain.setTargetAtTime(l ? 1 : 0, t, 0.015);
+					lr.gR.gain.setTargetAtTime(r ? 1 : 0, t, 0.015);
+				}
+			}
+
+			function volume() { return Math.pow($("toneVol").value / 100, 2) * 0.5; }
+
+			function startLR(mode) {
+				stopLR();
+				var ac = audio();
+				var type = $("toneType").value, src;
+				if (type === "noise") {
+					src = ac.createBufferSource(); src.buffer = pinkNoiseBuffer(ac, 2); src.loop = true;
+				} else {
+					src = ac.createOscillator(); src.type = "sine"; src.frequency.value = parseFloat(type);
+				}
+				var gL = ac.createGain(), gR = ac.createGain(), merger = ac.createChannelMerger(2), master = ac.createGain();
+				gL.gain.value = 0; gR.gain.value = 0; master.gain.value = volume();
+				src.connect(gL); src.connect(gR);
+				gL.connect(merger, 0, 0); gR.connect(merger, 0, 1);
+				merger.connect(master); master.connect(ac.destination);
+				src.start();
+				lr = { src: src, gL: gL, gR: gR, master: master };
+				["lrLeft", "lrRight", "lrBoth", "lrAlt"].forEach(function (id) { $(id).setAttribute("aria-pressed", id === mode ? "true" : "false"); });
+				$("lrStop").disabled = false;
+				if (mode === "lrLeft") setEars(true, false);
+				else if (mode === "lrRight") setEars(false, true);
+				else if (mode === "lrBoth") setEars(true, true);
+				else { var left = true; setEars(true, false); altTimer = setInterval(function () { left = !left; setEars(left, !left); }, 1000); }
+			}
+
+			function stopLR() {
+				clearInterval(altTimer); altTimer = 0;
+				if (lr) {
+					var t = audio().currentTime;
+					lr.master.gain.setTargetAtTime(0, t, 0.01);
+					var old = lr; setTimeout(function () { try { old.src.stop(); } catch (e) {} old.master.disconnect(); }, 80);
+					lr = null;
+				}
+				$("earL").classList.remove("on"); $("earR").classList.remove("on");
+				["lrLeft", "lrRight", "lrBoth", "lrAlt"].forEach(function (id) { $(id).setAttribute("aria-pressed", "false"); });
+				$("lrStop").disabled = true;
+			}
+
+			["lrLeft", "lrRight", "lrBoth", "lrAlt"].forEach(function (id) { $(id).onclick = function () { startLR(id); }; });
+			$("lrStop").onclick = stopLR;
+			$("toneVol").oninput = function () { if (lr) lr.master.gain.setTargetAtTime(volume(), audio().currentTime, 0.02); };
+			$("toneType").onchange = function () {
+				var active = ["lrLeft", "lrRight", "lrBoth", "lrAlt"].filter(function (id) { return $(id).getAttribute("aria-pressed") === "true"; })[0];
+				if (active) startLR(active);
+			};
+
+			/* =====================================================================
+			   3. Clarity
+			   ===================================================================== */
+			var noiseTake = null, speechTake = null, speechStopFlag = false;
+			var noiseStats = null, speechStats = null;
+
+			/* ---- DSP ---- */
+			function fft(re, im) {                 // in-place radix-2
+				var n = re.length;
+				for (var i = 1, j = 0; i < n; i++) {
+					var bit = n >> 1;
+					for (; j & bit; bit >>= 1) j ^= bit;
+					j ^= bit;
+					if (i < j) { var t = re[i]; re[i] = re[j]; re[j] = t; t = im[i]; im[i] = im[j]; im[j] = t; }
+				}
+				for (var len = 2; len <= n; len <<= 1) {
+					var ang = -2 * Math.PI / len, wr = Math.cos(ang), wi = Math.sin(ang);
+					for (var s = 0; s < n; s += len) {
+						var cr = 1, ci = 0;
+						for (var k = 0; k < len / 2; k++) {
+							var a = s + k, b = a + len / 2;
+							var xr = re[b] * cr - im[b] * ci, xi = re[b] * ci + im[b] * cr;
+							re[b] = re[a] - xr; im[b] = im[a] - xi; re[a] += xr; im[a] += xi;
+							var ncr = cr * wr - ci * wi; ci = cr * wi + ci * wr; cr = ncr;
+						}
+					}
+				}
+			}
+
+			var hann = (function () { var N = 2048, w = new Float32Array(N); for (var i = 0; i < N; i++) w[i] = 0.5 - 0.5 * Math.cos(2 * Math.PI * i / N); return w; })();
+
+			// Mean power spectrum (linear) over the frames selected by `keep(frameRms)`.
+			function avgSpectrum(x, keep) {
+				var N = 2048, hop = 1024, acc = new Float64Array(N / 2), count = 0;
+				var re = new Float32Array(N), im = new Float32Array(N);
+				for (var s = 0; s + N <= x.length; s += hop) {
+					var e = 0;
+					for (var i = 0; i < N; i++) e += x[s + i] * x[s + i];
+					if (!keep(Math.sqrt(e / N))) continue;
+					for (var j = 0; j < N; j++) { re[j] = x[s + j] * hann[j]; im[j] = 0; }
+					fft(re, im);
+					for (var k = 0; k < N / 2; k++) acc[k] += (re[k] * re[k] + im[k] * im[k]);
+					count++;
+				}
+				if (!count) return null;
+				for (var q = 0; q < acc.length; q++) acc[q] /= count;
+				return acc;
+			}
+
+			// Third-octave band levels (dB) from a linear power spectrum.
+			function bands(power, sr) {
+				var N = 2048, out = [], fc = 100;
+				while (fc * Math.pow(2, 1 / 6) < sr / 2) {
+					var lo = fc / Math.pow(2, 1 / 6), hi = fc * Math.pow(2, 1 / 6);
+					var kLo = Math.max(1, Math.floor(lo / sr * N)), kHi = Math.min(N / 2 - 1, Math.ceil(hi / sr * N));
+					var p = 0, c = 0;
+					for (var k = kLo; k <= kHi; k++) { p += power[k]; c++; }
+					out.push({ fc: fc, db: 10 * Math.log10(p / Math.max(c, 1) + 1e-14) });
+					fc *= Math.pow(2, 1 / 3);
+				}
+				return out;
+			}
+
+			function frameRms(x, sr) {
+				var L = Math.round(sr * 0.02), out = [];
+				for (var s = 0; s + L <= x.length; s += L) {
+					var e = 0; for (var i = 0; i < L; i++) e += x[s + i] * x[s + i];
+					out.push(Math.sqrt(e / L));
+				}
+				return out;
+			}
+
+			function levelStats(x, sr) {
+				var fr = frameRms(x, sr);
+				var sorted = fr.slice().sort(function (a, b) { return a - b; });
+				var e = 0; for (var i = 0; i < x.length; i++) e += x[i] * x[i];
+				var clipped = 0; for (var j = 0; j < x.length; j++) if (Math.abs(x[j]) >= 0.985) clipped++;
+				return {
+					rmsDb: dbOf(Math.sqrt(e / Math.max(x.length, 1))),
+					p10Db: dbOf(sorted[Math.floor(sorted.length * 0.1)] || 0),
+					p90Db: dbOf(sorted[Math.floor(sorted.length * 0.9)] || 0),
+					frames: fr,
+					clipPct: 100 * clipped / Math.max(x.length, 1),
+					seconds: x.length / sr
+				};
+			}
+
+			function analyseSpeech(x, sr, noise) {
+				var st = levelStats(x, sr);
+				// Active frames: well above the noise floor if we have it, else the louder half.
+				var gate = noise ? Math.pow(10, (noise.rmsDb + 10) / 20) : Math.pow(10, (st.p10Db + st.p90Db) / 40);
+				var act = st.frames.filter(function (r) { return r > gate; });
+				var e = 0; act.forEach(function (r) { e += r * r; });
+				st.speechDb = act.length ? dbOf(Math.sqrt(e / act.length)) : -Infinity;
+				st.activePct = 100 * act.length / Math.max(st.frames.length, 1);
+				st.power = avgSpectrum(x, function (r) { return r > gate; });
+				st.bands = st.power ? bands(st.power, sr) : null;
+				st.snr = noise && isFinite(st.speechDb) ? st.speechDb - noise.rmsDb : null;
+
+				// Effective bandwidth: highest third-octave band that still carries speech,
+				// i.e. clearly above the noise spectrum (if measured) and within 50 dB of the loudest band.
+				st.bandwidth = null; st.presence = null;
+				if (st.bands) {
+					var maxDb = -Infinity; st.bands.forEach(function (b) { if (b.db > maxDb) maxDb = b.db; });
+					var nb = noise && noise.bands;
+					var lastOk = null;
+					for (var i = 0; i < st.bands.length; i++) {
+						var b = st.bands[i], ok = b.db > maxDb - 50;
+						if (nb && nb[i]) ok = ok && (b.db > nb[i].db + 8);
+						if (ok) lastOk = b.fc;
+					}
+					st.bandwidth = lastOk;
+					var mean = function (lo, hi) { var s = 0, c = 0; st.bands.forEach(function (b) { if (b.fc >= lo && b.fc <= hi) { s += b.db; c++; } }); return c ? s / c : NaN; };
+					st.presence = mean(4000, 8000) - mean(1000, 2000);
+				}
+				return st;
+			}
+
+			/* ---- UI ---- */
+			async function ensureMic() {
+				if (stream) return true;
+				return startMic();
+			}
+
+			$("noiseBtn").onclick = async function () {
+				if (!(await ensureMic())) { $("noiseStatus").textContent = "Microphone not available."; return; }
+				startCapture();
+				for (var s = 3; s > 0; s--) { $("noiseStatus").textContent = "Stay silent… " + s; await wait(1000); }
+				noiseTake = endCapture();
+				var ac = audio();
+				noiseStats = levelStats(noiseTake, ac.sampleRate);
+				noiseStats.power = avgSpectrum(noiseTake, function () { return true; });
+				noiseStats.bands = noiseStats.power ? bands(noiseStats.power, ac.sampleRate) : null;
+				$("noiseStatus").textContent = "Noise floor " + fmtDb(noiseStats.rmsDb) + (noiseStats.rmsDb > -40 ? " (loud room, or the mic is picking up a fan or keyboard)" : noiseStats.rmsDb > -55 ? " (ordinary room)" : " (quiet)");
+				if (speechTake) { speechStats = analyseSpeech(speechTake, ac.sampleRate, noiseStats); renderReport(); }
+			};
+
+			$("speechBtn").onclick = async function () {
+				if (!(await ensureMic())) { $("speechStatus").textContent = "Microphone not available."; return; }
+				$("speechStop").disabled = false; $("speechPlay").disabled = true;
+				speechStopFlag = false;
+				startCapture();
+				var t0 = performance.now();
+				while (!speechStopFlag && performance.now() - t0 < 15000) {
+					$("speechStatus").textContent = "Recording… " + ((performance.now() - t0) / 1000).toFixed(0) + " s. Press Stop when done.";
+					await wait(200);
+				}
+				speechTake = endCapture();
+				$("speechStop").disabled = true; $("speechPlay").disabled = false;
+				var ac = audio();
+				speechStats = analyseSpeech(speechTake, ac.sampleRate, noiseStats);
+				$("speechStatus").textContent = "Recorded " + speechStats.seconds.toFixed(1) + " s.";
+				renderReport();
+			};
+			$("speechStop").onclick = function () { speechStopFlag = true; };
+			$("speechPlay").onclick = function () {
+				if (!speechTake) return;
+				$("speechPlay").disabled = true; $("speechStatus").textContent = "Playing…";
+				playSamples(speechTake, function () { $("speechPlay").disabled = false; $("speechStatus").textContent = "Done."; });
+			};
+
+			function verdict(kind, text) { return '<span class="verdict ' + kind + '">' + text + "</span>"; }
+			function fmtHz(f) { return f >= 1000 ? (f / 1000).toFixed(f >= 10000 ? 0 : 1) + " kHz" : Math.round(f) + " Hz"; }
+
+			function renderReport() {
+				var s = speechStats; if (!s) return;
+				$("reportCard").hidden = false;
+				var rows = [];
+
+				var lv = s.speechDb;
+				rows.push(["Speech level", fmtDb(lv),
+					!isFinite(lv) || lv < -45 ? verdict("warn", "Very quiet") + "Almost nothing was recorded. Is this the right microphone, is it muted, or is the boom pointing away from your mouth?" :
+					lv < -30 ? verdict("warn", "Quiet") + "Others will have to turn you up. Raise the input level in the system settings or bring the microphone closer." :
+					lv > -10 ? verdict("warn", "Hot") + "Close to the ceiling; expect distortion on louder words. Lower the input level." :
+					verdict("good", "Good") + "Comfortable level for a call."]);
+
+				rows.push(["Noise floor", noiseStats ? fmtDb(noiseStats.rmsDb) : "not measured",
+					!noiseStats ? verdict("info", "Skip") + "Run step 1 for the signal-to-noise ratio and a more reliable bandwidth reading." :
+					noiseStats.rmsDb > -40 ? verdict("warn", "Noisy") + "The room, a fan, or the microphone's own hiss is loud. Noise suppression will fight it, and your voice suffers." :
+					verdict("good", "Fine") + "Quiet enough."]);
+
+				if (s.snr !== null) {
+					rows.push(["Signal to noise", s.snr.toFixed(1) + " dB",
+						s.snr < 15 ? verdict("warn", "Low") + "Your voice barely stands out from the background; this is what makes people ask you to repeat yourself." :
+						s.snr < 25 ? verdict("info", "OK") + "Workable, but a quieter room or a closer microphone would help." :
+						verdict("good", "Good") + "Your voice is well above the background."]);
+				}
+
+				rows.push(["Clipped samples", s.clipPct.toFixed(2) + " %",
+					s.clipPct > 0.5 ? verdict("warn", "Distorting") + "The signal hits the ceiling often; it will sound harsh and crackly. Lower the input gain." :
+					s.clipPct > 0.02 ? verdict("info", "Some") + "Occasional peaks are cut. Fine for speech, but do not go louder." :
+					verdict("good", "None") + "No clipping."]);
+
+				if (s.bandwidth) {
+					var bw = s.bandwidth;
+					rows.push(["Effective bandwidth", "up to " + fmtHz(bw),
+						bw < 4500 ? verdict("warn", "Narrowband") + "Telephone quality. The microphone path stops around 4 kHz, which removes s, f, th and the sharp edges of 四, 十, 七. A Bluetooth headset in hands-free mode does exactly this; see the table below." :
+						bw < 9000 ? verdict("good", "Wideband") + "Speech band fully covered; this is what most meeting apps transmit." :
+						verdict("good", "Full band") + "The microphone path is not the limit."]);
+					if (isFinite(s.presence)) {
+						rows.push(["Presence (4 to 8 kHz vs 1 to 2 kHz)", s.presence.toFixed(1) + " dB",
+							s.presence < -35 ? verdict("warn", "Dull") + "Consonants are weak relative to vowels; the voice will sound muffled even if it is loud. Often a mic covered by hair or a windscreen, or heavy noise suppression." :
+							verdict("good", "Clear") + "Consonant range present."]);
+					}
+				} else {
+					rows.push(["Effective bandwidth", "—", verdict("info", "No speech") + "Not enough voiced frames to analyse. Record again while reading the passage."]);
+				}
+
+				rows.push(["Talking time", s.activePct.toFixed(0) + " % of " + s.seconds.toFixed(1) + " s", verdict("info", "Info") + "Share of the take with voice present. Below 30 % the spectrum is less reliable."]);
+
+				$("report").innerHTML = rows.map(function (r) {
+					return "<tr><th>" + r[0] + '</th><td class="val">' + r[1] + "</td><td>" + r[2] + "</td></tr>";
+				}).join("");
+				$("legendBw").textContent = s.bandwidth ? "Shaded: above the effective bandwidth (" + fmtHz(s.bandwidth) + ")" : "";
+				drawSpectrum(null);
+			}
+
+			/* ---- spectrum chart ---- */
+			var spec = $("spec");
+			function drawSpectrum(hoverX) {
+				var s = speechStats; if (!s || !s.bands) return;
+				var k = fitCanvas(spec), g = k.g, w = k.w, h = k.h;
+				var sr = audio().sampleRate;
+				var padL = 36, padR = 10, padT = 10, padB = 24;
+				var fMin = 100, fMax = Math.min(20000, sr / 2);
+				var xOf = function (f) { return padL + (Math.log(f / fMin) / Math.log(fMax / fMin)) * (w - padL - padR); };
+				var fOf = function (x) { return fMin * Math.pow(fMax / fMin, (x - padL) / (w - padL - padR)); };
+				var top = -Infinity; s.bands.forEach(function (b) { if (b.db > top) top = b.db; });
+				var yMax = Math.ceil((top + 5) / 10) * 10, yMin = yMax - 80;
+				var yOf = function (db) { return padT + (yMax - Math.max(db, yMin)) / (yMax - yMin) * (h - padT - padB); };
+
+				g.clearRect(0, 0, w, h);
+				g.font = "11px " + cssVar("--sans");
+				g.fillStyle = cssVar("--viz-ink-3"); g.strokeStyle = cssVar("--viz-grid"); g.lineWidth = 1;
+
+				if (s.bandwidth) {
+					var xb = xOf(Math.min(s.bandwidth * Math.pow(2, 1 / 6), fMax));
+					g.fillStyle = cssVar("--viz-grid"); g.globalAlpha = 0.55;
+					g.fillRect(xb, padT, w - padR - xb, h - padT - padB);
+					g.globalAlpha = 1; g.fillStyle = cssVar("--viz-ink-3");
+				}
+				for (var db = yMin; db <= yMax; db += 20) {
+					var y = yOf(db);
+					g.beginPath(); g.moveTo(padL, y); g.lineTo(w - padR, y); g.stroke();
+					g.textAlign = "right"; g.textBaseline = "middle"; g.fillText(db, padL - 6, y);
+				}
+				[100, 200, 500, 1000, 2000, 4000, 8000, 16000].forEach(function (f) {
+					if (f > fMax) return;
+					var x = xOf(f);
+					g.beginPath(); g.moveTo(x, padT); g.lineTo(x, h - padB); g.stroke();
+					g.textAlign = "center"; g.textBaseline = "top"; g.fillText(f >= 1000 ? (f / 1000) + "k" : f, x, h - padB + 6);
+				});
+				g.textAlign = "left"; g.fillText("dB", padL + 4, padT - 2);
+
+				var line = function (bands, color, dash) {
+					g.strokeStyle = color; g.lineWidth = 2; g.setLineDash(dash || []);
+					g.beginPath();
+					bands.forEach(function (b, i) { var x = xOf(b.fc), y = yOf(b.db); if (i === 0) g.moveTo(x, y); else g.lineTo(x, y); });
+					g.stroke(); g.setLineDash([]);
+				};
+				if (noiseStats && noiseStats.bands) line(noiseStats.bands, cssVar("--viz-ink-3"), [5, 4]);
+				line(s.bands, cssVar("--viz-up"));
+
+				if (hoverX !== null && hoverX >= padL && hoverX <= w - padR) {
+					var f = fOf(hoverX), best = null, bd = Infinity;
+					s.bands.forEach(function (b, i) { var d = Math.abs(Math.log(b.fc / f)); if (d < bd) { bd = d; best = i; } });
+					if (best !== null) {
+						var b = s.bands[best], x = xOf(b.fc);
+						g.strokeStyle = cssVar("--viz-axis"); g.lineWidth = 1; g.beginPath(); g.moveTo(x, padT); g.lineTo(x, h - padB); g.stroke();
+						g.fillStyle = cssVar("--viz-up"); g.beginPath(); g.arc(x, yOf(b.db), 4, 0, 7); g.fill();
+						var txt = fmtHz(b.fc) + "  speech " + b.db.toFixed(0) + " dB" + (noiseStats && noiseStats.bands && noiseStats.bands[best] ? ", noise " + noiseStats.bands[best].db.toFixed(0) + " dB" : "");
+						g.font = "12px " + cssVar("--sans");
+						var tw = g.measureText(txt).width + 12, tx = Math.min(Math.max(x - tw / 2, padL), w - padR - tw);
+						g.fillStyle = cssVar("--viz-ink-1"); g.fillRect(tx, padT + 2, tw, 20);
+						g.fillStyle = cssVar("--viz-surface"); g.textAlign = "left"; g.textBaseline = "middle"; g.fillText(txt, tx + 6, padT + 12);
+					}
+				}
+			}
+			spec.addEventListener("mousemove", function (e) { var r = spec.getBoundingClientRect(); drawSpectrum(e.clientX - r.left); });
+			spec.addEventListener("mouseleave", function () { drawSpectrum(null); });
+			window.addEventListener("resize", function () { drawSpectrum(null); });
+			if (window.matchMedia) window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", function () { drawSpectrum(null); });
+
+			/* initial device list (labels appear only after permission) */
+			if (secure) {
+				listDevices().catch(function () {});
+				navigator.mediaDevices.addEventListener && navigator.mediaDevices.addEventListener("devicechange", function () { listDevices().catch(function () {}); });
+			}
+		})();
+		</script>
+	</body>
+</html>
