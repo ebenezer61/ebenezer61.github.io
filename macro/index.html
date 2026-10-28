@@ -280,7 +280,7 @@
 				el("chart-title").textContent = useIdx ? t("走勢（起點 = 100）", "Trend (start = 100)") : t("走勢", "Trend");
 				el("chart-sub").textContent = M.iso(w[0]) + t(" 至 ", " to ") + M.iso(w[1]) + (useIdx && mixedRate ? t("；利率類維持原始數值（%），和指數化的線混在同一軸上時請分開看。", "; rates stay in their own units (%), so read them separately from the indexed lines on the same axis.") : useIdx ? t("；每條線以區間第一天為 100。", "; each line starts at 100 on the first day of the window.") : "");
 				M.lineChart(el("main"), series, {
-					x0: w[0], x1: w[1], h: 320, markers: markers(), baseline: useIdx ? 100 : null,
+					x0: w[0], x1: w[1], h: 320, legend: false, markers: markers(), baseline: useIdx ? 100 : null,
 					fmt: function (v, s) { var src = S[s.id]; return useIdx && !isRate(src) ? M.num(v, 1) : fmtLevel(src, v); },
 					aria: t("所選項目的走勢", "Trend of the selected series")
 				});

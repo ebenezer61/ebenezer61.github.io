@@ -144,7 +144,7 @@
 				if (!series.length) { el("since-chart").innerHTML = '<p class="muted small">' + t("在排行表勾選要比較的股票。", "Tick stocks in the leaderboard to compare them.") + '</p>'; return; }
 				el("since-sub").textContent = byDays ? t("橫軸是掛牌後第幾個交易日，0 是掛牌首日。", "The x axis counts sessions since listing; 0 is the first day.") : t("橫軸是日期。", "The x axis is the calendar date.");
 				M.lineChart(el("since-chart"), series, {
-					h: 300, baseline: 0, fmt: function (v) { return M.pct(v, 1); }, yfmt: function (v) { return Math.round(v * 100) + "%"; },
+					h: 300, legend: false, baseline: 0, fmt: function (v) { return M.pct(v, 1); }, yfmt: function (v) { return Math.round(v * 100) + "%"; },
 					aria: t("IPO 上市以來相對承銷價", "IPOs since listing, against the offer price"), x0: byDays ? 0 : undefined,
 					// x is session index * DAY when aligned by sessions
 					xticks: byDays ? function (a, b) {

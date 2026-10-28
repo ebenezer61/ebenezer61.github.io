@@ -127,6 +127,18 @@
 		return out;
 	}
 
+	/* x-axis labels, skipping any that would overlap the previous one */
+	function xLabels(ticks, X, lo, hi, y) {
+		var out = "", lastRight = -Infinity;
+		ticks.forEach(function (t) {
+			var xx = X(t), half = String(t.label).length * 3.3 + 2;
+			if (xx - half < lo || xx + half > hi || xx - half < lastRight + 6) return;
+			lastRight = xx + half;
+			out += '<text class="xlab" x="' + xx.toFixed(1) + '" y="' + y + '">' + t.label + '</text>';
+		});
+		return out;
+	}
+
 	function showTip(ev, html) {
 		tip = tip || M.el("tooltip");
 		tip.innerHTML = html; tip.hidden = false;
@@ -138,11 +150,13 @@
 	/* Lines on a shared time axis.
 	   series: [{label, slot, x: [ms], v, step: bool}], opts: {x0, x1, h, fmt, yfmt, baseline,
 	   markers: [{x, label, cls}], aria, right: bool (direct labels), zero: bool,
-	   xticks: fn(x0, x1) -> [{x, label}] and xlabel: fn(x) for a non-date x axis} */
+	   xticks: fn(x0, x1) -> [{x, label}] and xlabel: fn(x) for a non-date x axis,
+	   legend: false when the page draws its own legend (used on narrow screens)} */
 	M.lineChart = function (mount, series, opts) {
 		opts = opts || {};
 		var W = mount.clientWidth > 0 ? Math.max(320, Math.min(1100, mount.clientWidth)) : 640;
-		var lab = opts.right !== false && series.length <= 5, RL = lab ? 96 : 8;
+		// Direct labels at the line ends need ~96px; on a phone a legend above the chart is cheaper.
+		var narrow = W < 480, lab = opts.right !== false && series.length <= 5 && !narrow, RL = lab ? 96 : 8;
 		var H = opts.h || 260, L = 50, R = RL, T = 10, B = 24, pw = W - L - R, ph = H - T - B;
 		var x0 = opts.x0, x1 = opts.x1;
 		if (x0 == null || x1 == null) {
@@ -170,7 +184,7 @@
 			g += '<line class="grid" x1="' + L + '" x2="' + (L + pw) + '" y1="' + yy + '" y2="' + yy + '"/><text class="ylab" x="' + (L - 6) + '" y="' + (+yy + 4) + '">' + yf(t) + '</text>';
 		});
 		if (opts.baseline != null && opts.baseline > lo && opts.baseline < hi) g += '<line class="base" x1="' + L + '" x2="' + (L + pw) + '" y1="' + Y(opts.baseline).toFixed(1) + '" y2="' + Y(opts.baseline).toFixed(1) + '"/>';
-		(opts.xticks ? opts.xticks(x0, x1) : timeTicks(x0, x1)).forEach(function (t) { var xx = X(t.x); if (xx - L > 16 && L + pw - xx > 16) g += '<text class="xlab" x="' + xx.toFixed(1) + '" y="' + (H - 6) + '">' + t.label + '</text>'; });
+		g += xLabels(opts.xticks ? opts.xticks(x0, x1) : timeTicks(x0, x1), function (t) { return X(t.x); }, L, L + pw, H - 6);
 		var mk = "", marks = (opts.markers || []).filter(function (m) { return m.x >= x0 && m.x <= x1; });
 		marks.forEach(function (m) {
 			var xx = X(m.x).toFixed(1);
@@ -198,9 +212,12 @@
 		}
 		var hov = '<line class="hover" y1="' + T + '" y2="' + (T + ph) + '" visibility="hidden"/>';
 		series.forEach(function (s) { hov += '<circle class="hover" r="3.5" style="fill:var(--s' + s.slot + ')" visibility="hidden"/>'; });
-		mount.innerHTML = '<svg class="ts" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + M.esc(opts.aria || "") + '">' + g + mk + paths + dl + hov +
+		var leg = "";
+		if (!lab && opts.legend !== false && series.length > 1)
+			leg = '<ul class="legend">' + series.map(function (s) { return '<li><span class="lk" style="--sc:var(--s' + s.slot + ')"></span>' + M.esc(s.label) + '</li>'; }).join("") + '</ul>';
+		mount.innerHTML = leg + '<svg class="ts" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + M.esc(opts.aria || "") + '">' + g + mk + paths + dl + hov +
 			'<rect x="' + L + '" y="' + T + '" width="' + pw + '" height="' + (ph + 8) + '" fill="transparent"/></svg>';
-		var svg = mount.firstChild, line = svg.querySelector("line.hover"), dots = svg.querySelectorAll("circle.hover");
+		var svg = mount.querySelector("svg"), line = svg.querySelector("line.hover"), dots = svg.querySelectorAll("circle.hover");
 		var fmt = opts.fmt || function (v) { return M.num(v); };
 		function move(ev) {
 			var r = svg.getBoundingClientRect(), sx = (ev.clientX - r.left) / r.width * W;
@@ -248,10 +265,7 @@
 		if (opts.cum) niceTicks(clo, chi, 4).forEach(function (t) { g += '<text x="' + (L + pw + 6) + '" y="' + (Yc(t) + 4).toFixed(1) + '">' + M.num(t, 0) + '</text>'; });
 		g += '<line class="base" x1="' + L + '" x2="' + (L + pw) + '" y1="' + Y(0).toFixed(1) + '" y2="' + Y(0).toFixed(1) + '"/>';
 		var x0 = M.ms(d[0]), x1 = M.ms(d[n - 1]);
-		timeTicks(x0, x1).forEach(function (t) {
-			var i = Math.round((t.x - x0) / (x1 - x0 || 1) * (n - 1)), xx = X(i) + bw / 2;
-			if (xx - L > 16 && L + pw - xx > 16) g += '<text class="xlab" x="' + xx.toFixed(1) + '" y="' + (H - 6) + '">' + t.label + '</text>';
-		});
+		g += xLabels(timeTicks(x0, x1), function (t) { return X(Math.round((t.x - x0) / (x1 - x0 || 1) * (n - 1))) + bw / 2; }, L, L + pw, H - 6);
 		var bars = "", gap = bw > 4 ? 1 : 0;
 		for (var i = 0; i < n; i++) {
 			if (v[i] == null) continue;

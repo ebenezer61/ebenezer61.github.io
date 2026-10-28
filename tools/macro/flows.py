@@ -166,13 +166,17 @@ def update_txf(today):
                     break
             got = 0
             if text.lstrip().startswith("日期"):
+                day = {}
                 for rec in csv.DictReader(io.StringIO(text)):
                     who = TXF_NAMES.get((rec.get("身份別") or "").strip())
                     if not who:
                         continue
                     key = rec["日期"].strip().replace("/", "-")
-                    rows.setdefault(key, {"date": key})[who] = num(rec["多空未平倉口數淨額"])
+                    day.setdefault(key, {"date": key})[who] = num(rec["多空未平倉口數淨額"])
                     got += 1
+                # Before the day's figures are out (about 15:00) TAIFEX already lists
+                # the date with zeros; keep it out so the next run fetches it again.
+                rows.update({k: r for k, r in day.items() if any(r.get(w) for w in ("foreign", "trust", "dealer"))})
             if not got and m.year >= today.year - 2:
                 log(f"tw_txf {m:%Y-%m}: no rows")
         except Exception as e:
