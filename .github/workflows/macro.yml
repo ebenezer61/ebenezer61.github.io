@@ -1,0 +1,74 @@
+name: Macro dashboard update
+
+on:
+  schedule:
+    # 22:37 UTC = 06:37 Taipei: after the New York close (and Yahoo's end-of-day bars).
+    - cron: "37 22 * * *"
+    # 08:07 UTC = 16:07 Taipei: after TWSE/TPEx/TAIFEX publish the day's
+    # institutional figures (about 15:00) and the Tokyo and Hong Kong closes.
+    - cron: "7 8 * * *"
+    # 13:07 UTC = 21:07 Taipei: HKEX Stock Connect statistics, the European
+    # session, U.S. data released at 08:30 New York, fresh headlines.
+    - cron: "7 13 * * *"
+    # Off the :00/:30 marks, and away from stocks.yml (23:47, 03:47, 06:17).
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/macro.yml"
+      - "tools/macro/*.py"
+      - "tools/macro/*.json"
+      - "tools/macro/events/**"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: macro-update
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: tools/macro/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r tools/macro/requirements.txt
+
+      # Each collector keeps its previous output when its sources fail, so one
+      # flaky site does not stop the others; a failing step still shows red.
+      - name: Markets and macro series
+        continue-on-error: true
+        run: python tools/macro/markets.py
+      - name: Big-money flows
+        continue-on-error: true
+        run: python tools/macro/flows.py --max 200
+      - name: Central-bank events and headlines
+        continue-on-error: true
+        run: python tools/macro/events.py
+      - name: IPO watch
+        continue-on-error: true
+        run: python tools/macro/ipo.py
+
+      - name: Commit and push if anything changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add macro/data tools/macro/cache
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+          git commit -m "macro: update $(TZ=Asia/Taipei date +%Y-%m-%d)"
+          # stocks.yml or a manual push may have landed meanwhile; replay on top
+          # and keep this run's version of any data file changed on both sides.
+          git pull --rebase -X theirs origin main
+          git push origin HEAD:main

@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="zh-Hant" data-title-en="Institutional Flows &middot; Anna Liang">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>大戶流向 &middot; Anna Liang</title>
+		<meta name="description" data-en="Net buying by Taiwan's three institutional investor groups and their TAIEX futures positions, Stock Connect southbound net buying, Japan's weekly trading by investor type, and CFTC positions of large traders in U.S. index futures. Each market at its official publication cadence, from exchange and regulator data." content="台灣三大法人買賣超與台指期未平倉、陸港股通南向淨買入、日本投資部門別買賣、美國 CFTC 期貨大戶部位。各市場依官方公布頻率呈現，全部來自交易所與主管機關的公開資料。" />
+		<meta name="author" content="Anna Liang" />
+		<link rel="stylesheet" href="../../style.css" />
+		<link rel="stylesheet" href="../macro.css" />
+		<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90' font-family='Georgia,serif'>A</text></svg>" />
+	</head>
+	<body>
+
+		<header class="hero">
+			<div class="wrap">
+				<p class="breadcrumb"><a href="../../">&larr; Anna Liang</a><a href="../" data-keep-lang data-en="&larr; Macro dashboard">&larr; 總經儀表板</a><a href="../ipo/" data-keep-lang data-en="Hot IPOs &rarr;">熱度 IPO &rarr;</a></p>
+				<h1 data-en="Institutional Flows">大戶流向</h1>
+				<p data-en="Institutional and large-trader money in Taiwan, China and Hong Kong, Japan and the U.S. Each market publishes something different on a different schedule; this page shows each one as it is officially published instead of forcing them into one &amp;ldquo;daily flow&amp;rdquo;." class="subtitle">
+					台灣、陸港、日本、美國的法人與大戶資金動向。每個市場公布的東西不一樣、頻率也不一樣，
+					這頁照官方實際公布的樣子呈現，不硬湊成同一種「每日流向」。
+				</p>
+				<p class="status" id="status"><span data-en="Loading data&amp;hellip;" class="loading">讀取資料中&hellip;</span></p>
+				<ul class="links">
+					<li data-en="&lt;a href=&quot;#tw&quot;&gt;Taiwan (daily)&lt;/a&gt;"><a href="#tw">台灣（每日）</a></li>
+					<li data-en="&lt;a href=&quot;#cn&quot;&gt;Stock Connect (daily)&lt;/a&gt;"><a href="#cn">陸港股通（每日）</a></li>
+					<li data-en="&lt;a href=&quot;#jp&quot;&gt;Japan (weekly)&lt;/a&gt;"><a href="#jp">日本（每週）</a></li>
+					<li data-en="&lt;a href=&quot;#us&quot;&gt;U.S. (weekly)&lt;/a&gt;"><a href="#us">美國（每週）</a></li>
+					<li data-en="&lt;a href=&quot;#method&quot;&gt;Sources&lt;/a&gt;"><a href="#method">資料來源</a></li>
+				</ul>
+			</div>
+		</header>
+
+		<main>
+			<section id="tw">
+				<div class="wrap">
+					<h2 data-en="Taiwan: the three institutional groups">台灣：三大法人</h2>
+					<div class="filters"><span class="group" id="ranges"></span></div>
+					<div class="tablewrap"><table class="rec" id="twtable"></table></div>
+					<div class="filters"><span class="group" id="twwho"></span><span class="group" id="twmkt"></span></div>
+					<div class="chart-card">
+						<h3 data-en="Foreign investors, net buying (NT$100m)" id="twtitle">外資 買賣超（億元）</h3>
+						<p data-en="Bars are daily net buying (blue) or selling (orange); the grey line is the cumulative total over the window (right axis)." class="sub">長條是每日淨買（藍）或淨賣（橘），灰線是區間累計（右軸）。</p>
+						<div id="twbar"></div>
+						<p class="src" id="twsrc">TWSE BFI82U</p>
+					</div>
+					<div class="chart-card">
+						<h3 data-en="TAIEX futures (TX): net open interest by group (contracts)">台指期（TX）三大法人淨未平倉（口）</h3>
+						<p data-en="Long open interest minus short. Foreign investors&#x27; net short is often read as the size of their hedge or bearish bet." class="sub">多方未平倉減空方未平倉。外資的淨空單常被當成避險或看空的程度。</p>
+						<div id="txf"></div>
+						<p data-en="TAIFEX institutional futures positions; the download only serves about three years" class="src">TAIFEX 三大法人期貨契約；下載介面只提供約三年內的資料</p>
+					</div>
+				</div>
+			</section>
+
+			<section id="cn">
+				<div class="wrap">
+					<h2 data-en="Stock Connect">陸港股通</h2>
+					<div class="callout" data-en="&lt;p&gt;Since August 2024 the exchanges no longer publish daily net buying for &lt;strong&gt;northbound&lt;/strong&gt; trading (foreign money into A-shares), only turnover. &lt;strong&gt;Southbound&lt;/strong&gt; trading (mainland money into Hong Kong) still reports buy and sell turnover, so its net can be computed. HKEX keeps only recent daily files online; this series starts from the earliest available day and grows from there.&lt;/p&gt;"><p>2024 年 8 月起，港交所與陸方不再公布<strong>北向</strong>（外資買 A 股）的每日淨買入，只公布成交額；<strong>南向</strong>（陸資買港股）仍有買入、賣出金額，可以算淨額。港交所網站只保留近期的每日檔案，這裡從能抓到的最早一天開始累積。</p></div>
+					<div class="grid2">
+						<div class="chart-card">
+							<h3 data-en="Southbound net buying (HK$100m)">南向淨買入（億港元）</h3>
+							<p data-en="Southbound via Shanghai and Shenzhen Connect, buys minus sells." class="sub">滬港通加深港通的南向，買入減賣出。</p>
+							<div id="sb"></div>
+							<p class="src">HKEX Stock Connect daily statistics</p>
+						</div>
+						<div class="chart-card">
+							<h3 data-en="Northbound turnover (CNY 100m)">北向成交額（億人民幣）</h3>
+							<p data-en="Total turnover (buys plus sells) through Shanghai and Shenzhen Connect: how active foreign money is in A-shares, not its direction." class="sub">滬股通與深股通的總成交額（買加賣），代表外資在 A 股的活躍度，不是方向。</p>
+							<div id="nb"></div>
+							<p class="src">HKEX Stock Connect daily statistics</p>
+						</div>
+					</div>
+				</div>
+			</section>
+
+			<section id="jp">
+				<div class="wrap">
+					<h2 data-en="Japan: trading by investor type (weekly)">日本：投資部門別買賣（每週）</h2>
+					<p data-en="Tokyo and Nagoya markets combined, cash plus margin, purchases minus sales (¥100m). JPX publishes the previous week around Thursday." class="muted small">東京與名古屋市場合計，現金加信用交易，買入減賣出（億日圓）。JPX 每週四左右公布前一週。</p>
+					<div class="filters"><span class="group" id="jpwho"></span></div>
+					<div class="chart-card">
+						<h3 data-en="Foreigners, net buying (¥100m)" id="jptitle">海外投資家 淨買（億日圓）</h3>
+						<div id="jpbar"></div>
+						<p data-en="JPX trading by type of investors (stock_1_w)" class="src">JPX 投資部門別売買状況（stock_1_w）</p>
+					</div>
+					<div class="tablewrap"><table class="rec" id="jptable"></table></div>
+				</div>
+			</section>
+
+			<section id="us">
+				<div class="wrap">
+					<h2 data-en="U.S.: CFTC large-trader positions (weekly)">美國：CFTC 期貨大戶部位（每週）</h2>
+					<p data-en="The U.S. has no official daily statistics on institutional buying and selling. The closest public data on &amp;ldquo;big money&amp;rdquo; is the CFTC&#x27;s weekly Traders in Financial Futures report: net positions (contracts) of asset managers (pension and mutual funds) and leveraged funds (hedge funds, CTAs) in index futures. Positions are as of Tuesday, published Friday." class="muted small">美國沒有官方的每日法人買賣統計。最接近「大戶」的公開資料是 CFTC 每週的 Traders in Financial Futures 報告：資產管理人（退休基金、共同基金）與槓桿基金（避險基金、CTA）在指數期貨上的淨部位（口）。統計日是週二，週五公布。</p>
+					<div class="grid2">
+						<div class="chart-card">
+							<h3>E-mini S&amp;P 500</h3>
+							<div id="es"></div>
+							<p data-en="CFTC TFF (13874A)" class="src">CFTC TFF（13874A）</p>
+						</div>
+						<div class="chart-card">
+							<h3>E-mini Nasdaq-100</h3>
+							<div id="nq"></div>
+							<p data-en="CFTC TFF (209742)" class="src">CFTC TFF（209742）</p>
+						</div>
+					</div>
+				</div>
+			</section>
+
+			<section id="method" class="method">
+				<div class="wrap">
+					<h2 data-en="Sources">資料來源</h2>
+					<ul>
+						<li data-en="&lt;strong&gt;Taiwan, listed&lt;/strong&gt;: TWSE &amp;ldquo;three institutional investors trading value&amp;rdquo; (BFI82U); foreign investors include foreign dealers, dealers include proprietary and hedging trades."><strong>台灣上市</strong>：證交所「三大法人買賣金額統計表」（BFI82U），外資含外資自營商，自營商含自行買賣與避險。</li>
+						<li data-en="&lt;strong&gt;Taiwan, OTC&lt;/strong&gt;: the TPEx summary of the same three groups."><strong>台灣上櫃</strong>：櫃買中心「三大法人買賣金額彙總表」。</li>
+						<li data-en="&lt;strong&gt;TAIEX futures&lt;/strong&gt;: TAIFEX institutional positions by contract, TX net open interest."><strong>台指期</strong>：期交所「三大法人－區分各期貨契約」的臺股期貨（TX）多空未平倉口數淨額。</li>
+						<li data-en="&lt;strong&gt;Stock Connect&lt;/strong&gt;: HKEX daily statistics (data_tab_daily)."><strong>陸港股通</strong>：港交所 Stock Connect 每日統計（data_tab_daily）。</li>
+						<li data-en="&lt;strong&gt;Japan&lt;/strong&gt;: Japan Exchange Group weekly trading by type of investors."><strong>日本</strong>：日本交易所集團 JPX 的投資部門別株式売買状況，每週檔。</li>
+						<li data-en="&lt;strong&gt;U.S.&lt;/strong&gt;: CFTC Public Reporting, Traders in Financial Futures (futures only)."><strong>美國</strong>：CFTC Public Reporting 的 Traders in Financial Futures（futures only）。</li>
+					</ul>
+					<p data-en="Raw rows are kept in &lt;code&gt;tools/macro/cache/*.csv&lt;/code&gt;; the page reads &lt;a href=&quot;../data/flows.json&quot;&gt;flows.json&lt;/a&gt;. Code: &lt;a href=&quot;https://github.com/ebenezer61/ebenezer61.github.io/blob/main/tools/macro/flows.py&quot; target=&quot;_blank&quot; rel=&quot;noopener&quot;&gt;flows.py&lt;/a&gt;. For information only, not investment advice." class="muted small">原始資料存在 <code>tools/macro/cache/*.csv</code>，頁面讀 <a href="../data/flows.json">flows.json</a>。程式：<a href="https://github.com/ebenezer61/ebenezer61.github.io/blob/main/tools/macro/flows.py" target="_blank" rel="noopener">flows.py</a>。僅供資訊參考，不是投資建議。</p>
+				</div>
+			</section>
+		</main>
+
+		<footer>
+			<div class="wrap"><p>&copy; 2026 Chia-chun Liang &middot; <a href="../../">Home</a></p></div>
+		</footer>
+
+		<div id="tooltip" hidden></div>
+		<script src="../macro.js"></script>
+		<script>
+		(function () {
+			"use strict";
+			var el = M.el, esc = M.esc, t = M.t, DAY = 864e5, F;
+			var range = 92, who = "foreign", mkt = "tw_twse", jwho = "foreigners";
+			var WHO = [["foreign", t("外資", "Foreign")], ["trust", t("投信", "Trusts")], ["dealer", t("自營商", "Dealers")]];
+			var JWHO = [["foreigners", t("海外投資家", "Foreigners")], ["individuals", t("個人", "Individuals")], ["trusts", t("投資信託", "Investment trusts")], ["business", t("事業法人", "Business cos.")], ["proprietary", t("自己（券商自營）", "Proprietary")]];
+			var RANGES = [["1M", 31], ["3M", 92], ["6M", 183], ["1Y", 365], ["3Y", 1096], [t("2020 起", "Since 2020"), null]];
+			function yi(x) { return M.signed(x, 1) + t(" 億", " ×100m"); }
+
+			function cut(o, keys) {
+				var end = o.d.length ? M.ms(o.d[o.d.length - 1]) : Date.now(), t0 = range == null ? 0 : end - range * DAY, out = { d: [] };
+				keys.forEach(function (k) { out[k] = []; });
+				o.d.forEach(function (d, i) { if (M.ms(d) >= t0) { out.d.push(d); keys.forEach(function (k) { out[k].push(o[k][i]); }); } });
+				return out;
+			}
+			function btns(mount, list, cur, cb) {
+				mount.innerHTML = "";
+				list.forEach(function (it) {
+					var b = document.createElement("button"); b.className = "btn"; b.textContent = it[1]; b.setAttribute("aria-pressed", String(it[0] === cur));
+					b.addEventListener("click", function () { mount.querySelectorAll(".btn").forEach(function (x) { x.setAttribute("aria-pressed", String(x === b)); }); cb(it[0]); });
+					mount.appendChild(b);
+				});
+			}
+			function lines(o, keys) {
+				return keys.map(function (k, i) { return { label: k[1], slot: i + 1, x: o.d.map(M.ms), v: o[k[0]] }; });
+			}
+
+			function renderTW() {
+				var a = F.tw_twse, b = F.tw_tpex;
+				if (a) {
+					var n = a.d.length, bi = {};
+					if (b) b.d.forEach(function (d, i) { bi[d] = i; });
+					var h = '<thead><tr><th>' + t("日期", "Date") + '</th>' + [t("上市 外資", "Listed foreign"), t("上市 投信", "Listed trusts"), t("上市 自營", "Listed dealers"), t("上市 合計", "Listed total"), t("上櫃 外資", "OTC foreign"), t("上櫃 投信", "OTC trusts"), t("上櫃 自營", "OTC dealers")].map(function (x) { return '<th class="num">' + x + '</th>'; }).join("") + '</tr></thead><tbody>';
+					for (var i = n - 1; i >= Math.max(0, n - 10); i--) {
+						var d = a.d[i], j = bi[d], tot = a.foreign[i] + a.trust[i] + a.dealer[i];
+						var c = function (v) { return '<td class="num ' + (v > 0 ? "up" : v < 0 ? "down" : "") + '">' + (v == null ? "–" : M.signed(v, 1)) + '</td>'; };
+						h += '<tr><td class="num">' + d + '</td>' + c(a.foreign[i]) + c(a.trust[i]) + c(a.dealer[i]) + c(tot) +
+							(j != null ? c(b.foreign[j]) + c(b.trust[j]) + c(b.dealer[j]) : '<td></td><td></td><td></td>') + '</tr>';
+					}
+					el("twtable").innerHTML = h + '</tbody><caption class="muted small" style="caption-side:bottom;text-align:left;padding-top:.3rem">' + t("單位：億元新台幣；資料從 " + a.d[0] + " 起。", "NT$100m; data from " + a.d[0] + ".") + '</caption>';
+				}
+				var src = F[mkt];
+				if (src) {
+					var o = cut(src, [who]);
+					el("twtitle").textContent = (mkt === "tw_twse" ? t("上市 ", "Listed, ") : t("上櫃 ", "OTC, ")) + WHO.filter(function (w) { return w[0] === who; })[0][1] + t(" 買賣超（億元）", ": net buying (NT$100m)");
+					el("twsrc").textContent = mkt === "tw_twse" ? "TWSE BFI82U" : t("TPEx 三大法人買賣金額彙總表", "TPEx three institutional investors summary");
+					M.barChart(el("twbar"), o.d, o[who], { cum: true, label: t("淨買賣", "Net"), fmt: yi, aria: t("三大法人買賣超", "Institutional net buying") });
+				}
+				if (F.tw_txf) {
+					var tx = cut(F.tw_txf, ["foreign", "trust", "dealer"]);
+					M.lineChart(el("txf"), lines(tx, WHO), { baseline: 0, fmt: function (v) { return M.signed(v, 0) + t(" 口", " contracts"); }, aria: t("台指期淨未平倉", "TAIEX futures net open interest") });
+				}
+			}
+			function renderCN() {
+				if (!F.hk) return;
+				var o = cut(F.hk, ["sb_sse_net", "sb_szse_net", "nb_sse_turnover", "nb_szse_turnover"]);
+				var sb = o.d.map(function (_, i) { var a = o.sb_sse_net[i], b = o.sb_szse_net[i]; return a == null && b == null ? null : (a || 0) + (b || 0); });
+				M.barChart(el("sb"), o.d, sb, { cum: true, label: t("南向淨買入", "Southbound net"), fmt: function (x) { return M.signed(x, 1) + t(" 億港元", " HK$100m"); }, aria: t("南向淨買入", "Southbound net buying") });
+				var nb = o.d.map(function (_, i) { var a = o.nb_sse_turnover[i], b = o.nb_szse_turnover[i]; return a == null && b == null ? null : (a || 0) + (b || 0); });
+				M.lineChart(el("nb"), [{ label: t("北向成交額", "Northbound turnover"), slot: 1, x: o.d.map(M.ms), v: nb }], { fmt: function (x) { return M.num(x, 0) + t(" 億", " ×100m"); }, aria: t("北向成交額", "Northbound turnover") });
+			}
+			function renderJP() {
+				if (!F.jp) return;
+				var o = cut(F.jp, JWHO.map(function (w) { return w[0]; }));
+				el("jptitle").textContent = JWHO.filter(function (w) { return w[0] === jwho; })[0][1] + t(" 淨買（億日圓）", ": net buying (¥100m)");
+				M.barChart(el("jpbar"), o.d, o[jwho], { cum: true, label: t("淨買", "Net"), fmt: function (x) { return M.signed(x, 0) + t(" 億円", " ¥100m"); }, aria: t("日本投資部門別", "Japan by investor type") });
+				var j = F.jp, n = j.d.length, h = '<thead><tr><th>' + t("週", "Week") + '</th>' + JWHO.map(function (w) { return '<th class="num">' + w[1] + '</th>'; }).join("") + '</tr></thead><tbody>';
+				for (var i = n - 1; i >= Math.max(0, n - 8); i--) {
+					h += '<tr><td class="num">' + j.d[i].slice(5) + '–' + j.end[i].slice(5) + '</td>' + JWHO.map(function (w) { var v = j[w[0]][i]; return '<td class="num ' + (v > 0 ? "up" : v < 0 ? "down" : "") + '">' + M.signed(v, 0) + '</td>'; }).join("") + '</tr>';
+				}
+				el("jptable").innerHTML = h + '</tbody><caption class="muted small" style="caption-side:bottom;text-align:left;padding-top:.3rem">' + t("單位：億日圓；資料從 " + j.d[0] + " 那週起累積。", "¥100m; collected from the week of " + j.d[0] + " on.") + '</caption>';
+			}
+			function renderUS() {
+				if (!F.us) return;
+				[["E-mini S&P 500", "es"], ["E-mini Nasdaq-100", "nq"]].forEach(function (c) {
+					var src = F.us[c[0]]; if (!src) return;
+					var o = cut(src, ["asset_mgr", "lev_money", "dealer"]);
+					M.lineChart(el(c[1]), lines(o, [["asset_mgr", t("資產管理人", "Asset managers")], ["lev_money", t("槓桿基金", "Leveraged funds")], ["dealer", t("交易商", "Dealers")]]), { baseline: 0, fmt: function (v) { return M.signed(v, 0) + t(" 口", " contracts"); }, aria: c[0] + t(" 淨部位", " net positions") });
+				});
+			}
+			function renderAll() { renderTW(); renderCN(); renderJP(); renderUS(); }
+
+			M.load("../data/flows.json").then(function (D) {
+				F = D;
+				var last = F.tw_twse ? F.tw_twse.d[F.tw_twse.d.length - 1] : "–";
+				el("status").innerHTML = t("最後更新 <strong>" + esc(D.updated) + "</strong>（台北時間）；台股最新交易日 " + esc(last), "Last updated <strong>" + esc(D.updated) + "</strong> (Taipei time); latest Taiwan session " + esc(last));
+				btns(el("ranges"), RANGES.map(function (r) { return [r[1], r[0]]; }), range, function (r) { range = r; renderAll(); });
+				btns(el("twwho"), WHO, who, function (w) { who = w; renderTW(); });
+				btns(el("twmkt"), [["tw_twse", t("上市", "Listed")], ["tw_tpex", t("上櫃", "OTC")]], mkt, function (m) { mkt = m; renderTW(); });
+				btns(el("jpwho"), JWHO, jwho, function (w) { jwho = w; renderJP(); });
+				renderAll();
+				M.onResize(renderAll);
+			}).catch(function (err) { el("status").innerHTML = '<span class="error">' + t("讀取失敗：", "Could not load: ") + esc(err.message) + '</span>'; });
+		})();
+		</script>
+	</body>
+</html>

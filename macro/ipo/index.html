@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="zh-Hant" data-title-en="Hot IPOs &middot; Anna Liang">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>熱度 IPO &middot; Anna Liang</title>
+		<meta name="description" data-en="The hottest IPOs of 2025 and 2026 in Taiwan, the U.S., Hong Kong, China, Korea and Japan: offer price, first day, performance since listing, trading heat and news volume, plus the companies that have filed but not yet listed. Public data only." content="2025 至 2026 年台灣、美國、香港、中國、韓國、日本的熱門 IPO：承銷價、首日表現、上市以來走勢、成交熱度與新聞聲量，以及已遞件尚未掛牌的名單。全部來自公開資料。" />
+		<meta name="author" content="Anna Liang" />
+		<link rel="stylesheet" href="../../style.css" />
+		<link rel="stylesheet" href="../macro.css" />
+		<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90' font-family='Georgia,serif'>A</text></svg>" />
+	</head>
+	<body>
+
+		<header class="hero">
+			<div class="wrap">
+				<p class="breadcrumb"><a href="../../">&larr; Anna Liang</a><a href="../" data-keep-lang data-en="&larr; Macro dashboard">&larr; 總經儀表板</a><a href="../flows/" data-keep-lang data-en="Institutional flows &rarr;">大戶流向 &rarr;</a></p>
+				<h1 data-en="Hot IPOs">熱度 IPO</h1>
+				<p data-en="Hon Precision and Hermes Testing in Taiwan, SpaceX and Anthropic in the U.S., and the most watched new listings of the past two years in Hong Kong, China&#x27;s STAR Market, Korea and Japan: offer price, first day, the road since listing, and how many people are still trading and writing about them." class="subtitle">
+					台股鴻勁、漢測，美股 SpaceX、Anthropic，以及港股、陸股科創板、韓股、日股這兩年最受注目的新股：
+					承銷價、首日、上市以來的走勢，以及現在還有多少人在交易、在報導。
+				</p>
+				<p class="status" id="status"><span data-en="Loading data&amp;hellip;" class="loading">讀取資料中&hellip;</span></p>
+				<ul class="links">
+					<li data-en="&lt;a href=&quot;#board&quot;&gt;Leaderboard&lt;/a&gt;"><a href="#board">排行</a></li>
+					<li data-en="&lt;a href=&quot;#since&quot;&gt;Since listing&lt;/a&gt;"><a href="#since">上市以來</a></li>
+					<li data-en="&lt;a href=&quot;#pipeline&quot;&gt;Filed, not listed&lt;/a&gt;"><a href="#pipeline">已遞件、未掛牌</a></li>
+					<li data-en="&lt;a href=&quot;#method&quot;&gt;How heat is scored&lt;/a&gt;"><a href="#method">熱度怎麼算</a></li>
+				</ul>
+			</div>
+		</header>
+
+		<main>
+			<section id="board">
+				<div class="wrap">
+					<h2 data-en="Leaderboard">排行</h2>
+					<div class="filters"><span class="group" id="mkts"></span></div>
+					<p data-en="Click a column header to sort. &amp;ldquo;vs offer&amp;rdquo; is the latest price against the offer price; &amp;ldquo;Day 1&amp;rdquo; is the first close against the offer; &amp;ldquo;Attention&amp;rdquo; is the average traded value of the last 5 sessions over the average since listing (above 1 means busier than usual)." class="muted small">點欄位標題排序。「對承銷價」是現價相對承銷價；「首日」是掛牌第一天收盤相對承銷價；「注意度」是近 5 日平均成交值除以上市以來平均（大於 1 表示最近比平常熱）。</p>
+					<div class="tablewrap"><table class="rec" id="board-table"></table></div>
+				</div>
+			</section>
+
+			<section id="since">
+				<div class="wrap">
+					<h2 data-en="Since listing">上市以來</h2>
+					<div class="filters">
+						<span class="group" id="mkts2"></span>
+						<span class="group"><button data-en="Align by session" class="btn" id="bydays" aria-pressed="true">以掛牌後交易日對齊</button></span>
+					</div>
+					<div class="chart-card">
+						<h3 data-en="Against the offer price (offer = 0%)">相對承銷價（承銷價 = 0%）</h3>
+						<p data-en="Up to 8 at a time; tick stocks in the leaderboard to compare them." class="sub" id="since-sub">最多同時畫 8 檔；在排行表勾選要比較的股票。</p>
+						<ul class="legend" id="since-legend"></ul>
+						<div id="since-chart"></div>
+					</div>
+					<div class="cards" id="cards"></div>
+				</div>
+			</section>
+
+			<section id="pipeline">
+				<div class="wrap">
+					<h2 data-en="Filed, not yet listed">已遞件、未掛牌</h2>
+					<p data-en="Companies that have filed (publicly or confidentially) but have not priced or listed. Status follows public filings and reports; sources and the last 7 days of headlines are below." class="muted small">已向主管機關遞交（公開或秘密）申請，但還沒定價掛牌的公司。狀態依公開文件與報導，下面附來源與近 7 天新聞標題。</p>
+					<div class="cards" id="pipe"></div>
+				</div>
+			</section>
+
+			<section id="method" class="method">
+				<div class="wrap">
+					<h2 data-en="How heat is scored">熱度怎麼算</h2>
+					<ul>
+						<li data-en="&lt;strong&gt;Heat (0–100)&lt;/strong&gt;: listed stocks only. Four measures are each ranked as a percentile within the list (0–100) and averaged: return vs offer, 1-month return, attention, and the number of headlines in the last 7 days. It compares the stocks on the list with each other on public numbers; it is not a forecast and not a sentiment model."><strong>熱度（0–100）</strong>：只算已掛牌的股票。四個指標各自在名單內排百分位（0–100），再取平均：對承銷價報酬、近 1 月報酬、注意度、近 7 日新聞標題數。它只是把名單裡的股票用公開數字互相比較，不是預測，也不是情緒模型。</li>
+						<li data-en="&lt;strong&gt;Headline count&lt;/strong&gt;: a fixed Google News RSS search per stock over the last 7 days, counted up to 100 (the RSS limit); titles and links only."><strong>新聞標題數</strong>：Google News RSS 對每檔的固定關鍵字搜尋近 7 天，最多計到 100（RSS 上限），只取標題與連結。</li>
+						<li data-en="&lt;strong&gt;Prices&lt;/strong&gt;: Yahoo Finance daily closes. Yahoo keeps Taiwan emerging-board trading under the same symbol, so only data from the main-board listing date on is used."><strong>股價</strong>：Yahoo Finance 日收盤。台股興櫃期間的交易在 Yahoo 上沿用同一代號，這裡只取正式上市（櫃）日之後的資料。</li>
+						<li data-en="&lt;strong&gt;The list&lt;/strong&gt;: kept by hand in &lt;code&gt;tools/macro/ipo.json&lt;/code&gt;, each entry with public sources (exchange notices, SEC EDGAR, company releases, press). New IPOs, or filed companies that price and list, are added or updated by hand."><strong>名單</strong>：人工整理在 <code>tools/macro/ipo.json</code>，每檔附公開來源（交易所公告、SEC EDGAR、公司新聞稿、報導）。有新的 IPO 或遞件公司定價掛牌時，手動加一筆或更新狀態。</li>
+					</ul>
+					<p data-en="Data: &lt;a href=&quot;../data/ipo.json&quot;&gt;ipo.json&lt;/a&gt;. For information only; not investment or subscription advice." class="muted small">資料：<a href="../data/ipo.json">ipo.json</a>。僅供資訊參考，不是投資建議，也不是申購建議。</p>
+				</div>
+			</section>
+		</main>
+
+		<footer>
+			<div class="wrap"><p>&copy; 2026 Chia-chun Liang &middot; <a href="../../">Home</a></p></div>
+		</footer>
+
+		<div id="tooltip" hidden></div>
+		<script src="../macro.js"></script>
+		<script>
+		(function () {
+			"use strict";
+			var el = M.el, esc = M.esc, t = M.t, DAY = 864e5, D, mkt = "", sortK = "heat", sortDir = -1, pick = {}, byDays = true;
+			var MKT = M.en ? { TW: "Taiwan", US: "U.S.", HK: "Hong Kong", CN: "China", KR: "Korea", JP: "Japan" } : { TW: "台灣", US: "美國", HK: "香港", CN: "中國", KR: "韓國", JP: "日本" };
+			var STATUS = M.en ? { listed: "listed", priced: "priced", filed: "filed publicly", confidential: "filed confidentially", rumored: "rumored" } : { listed: "已掛牌", priced: "已定價", filed: "公開遞件", confidential: "秘密遞件", rumored: "傳聞" };
+			var COLS = [
+				["name", t("名稱", "Name")], ["market", t("市場", "Market")], ["ipo_date", t("掛牌日", "Listed")], ["offer_price", t("承銷價", "Offer"), 1], ["last", t("現價", "Last"), 1],
+				["vs_offer", t("對承銷價", "vs offer"), 1, "p"], ["day1_ret", t("首日", "Day 1"), 1, "p"], ["chg_1d", t("1 日", "1D"), 1, "p"], ["ret_1w", t("1 週", "1W"), 1, "p"], ["ret_1m", t("1 月", "1M"), 1, "p"],
+				["from_high", t("距高點", "From high"), 1, "p"], ["attention", t("注意度", "Attention"), 1], ["news_7d", t("7 日新聞", "News 7d"), 1], ["heat", t("熱度", "Heat"), 1]
+			];
+			function nm(e) { return !M.en && e.name_zh && e.name_zh !== e.name ? e.name_zh : e.name; }
+			function note(e) { return M.en ? e.note_en || e.note_zh : e.note_zh; }
+			function sector(e) { return M.en ? e.sector_en || e.sector : e.sector; }
+			function listed() { return D.ipos.filter(function (e) { return e.last != null && (!mkt || e.market === mkt); }); }
+
+			function renderBoard() {
+				var rows = listed().slice().sort(function (a, b) {
+					var x = a[sortK], y = b[sortK];
+					if (x == null) return 1; if (y == null) return -1;
+					return (x < y ? -1 : x > y ? 1 : 0) * sortDir;
+				});
+				var h = '<thead><tr><th>' + t("比較", "Plot") + '</th>' + COLS.map(function (c) { return '<th data-k="' + c[0] + '" class="' + (c[2] ? "num" : "") + '"' + (c[0] === sortK ? ' aria-sort="' + (sortDir < 0 ? "descending" : "ascending") + '"' : '') + '>' + c[1] + (c[0] === sortK ? (sortDir < 0 ? " ↓" : " ↑") : "") + '</th>'; }).join("") + '</tr></thead><tbody>';
+				rows.forEach(function (e) {
+					h += '<tr><td><input type="checkbox" data-y="' + esc(e.yahoo) + '"' + (pick[e.yahoo] ? " checked" : "") +  ' aria-label="' + t("比較 ", "Plot ") + esc(nm(e)) + '"></td>';
+					COLS.forEach(function (c) {
+						var v = e[c[0]], cell;
+						if (c[0] === "name") cell = '<strong>' + esc(nm(e)) + '</strong> <span class="muted small">' + esc(e.yahoo) + '</span>';
+						else if (c[0] === "market") cell = esc(MKT[e.market] || e.market) + ' <span class="muted small">' + esc(e.exchange || "") + '</span>';
+						else if (c[3] === "p") cell = '<span class="' + M.sign(v) + '">' + M.pct(v, 1) + '</span>';
+						else if (c[0] === "attention") cell = v == null ? "–" : '<span class="' + (v > 1.2 ? "up" : v < 0.8 ? "down" : "") + '">' + M.num(v, 2) + '×</span>';
+						else if (c[0] === "heat") cell = v == null ? "–" : '<strong>' + v + '</strong><div class="heatbar" style="width:4rem"><span style="width:' + v + '%"></span></div>';
+						else if (c[0] === "news_7d") cell = v == null ? "–" : (v >= 100 ? "100+" : v);
+						else if (c[0] === "offer_price" || c[0] === "last") cell = M.num(v) + (c[0] === "last" ? ' <span class="muted small">' + esc((e.last_date || "").slice(5)) + '</span>' : ' <span class="muted small">' + esc(e.currency || "") + '</span>');
+						else cell = esc(v == null ? "–" : v);
+						h += '<td class="' + (c[0] === "name" ? "name" : c[2] ? "num" : "") + '">' + cell + '</td>';
+					});
+					h += '</tr>';
+				});
+				el("board-table").innerHTML = h + '</tbody>';
+				el("board-table").querySelectorAll("th[data-k]").forEach(function (th) {
+					th.addEventListener("click", function () { var k = th.getAttribute("data-k"); if (k === sortK) sortDir = -sortDir; else { sortK = k; sortDir = k === "name" || k === "market" ? 1 : -1; } renderBoard(); });
+				});
+				el("board-table").querySelectorAll("input[data-y]").forEach(function (cb) {
+					cb.addEventListener("change", function () { pick[cb.getAttribute("data-y")] = cb.checked; renderSince(); });
+				});
+			}
+
+			function renderSince() {
+				var chosen = D.ipos.filter(function (e) { return e.series && pick[e.yahoo]; }).slice(0, 8);
+				var series = chosen.map(function (e, k) {
+					var s = M.expand(e.series), base = e.offer_price || s.v[0];
+					var x = byDays ? s.x.map(function (_, i) { return i * DAY; }) : s.x;
+					return { label: nm(e), slot: k + 1, x: x, v: s.v.map(function (v) { return v / base - 1; }) };
+				});
+				el("since-legend").innerHTML = series.map(function (s) { return '<li><span class="lk" style="--sc:var(--s' + s.slot + ')"></span>' + esc(s.label) + '</li>'; }).join("");
+				if (!series.length) { el("since-chart").innerHTML = '<p class="muted small">' + t("在排行表勾選要比較的股票。", "Tick stocks in the leaderboard to compare them.") + '</p>'; return; }
+				el("since-sub").textContent = byDays ? t("橫軸是掛牌後第幾個交易日，0 是掛牌首日。", "The x axis counts sessions since listing; 0 is the first day.") : t("橫軸是日期。", "The x axis is the calendar date.");
+				M.lineChart(el("since-chart"), series, {
+					h: 300, baseline: 0, fmt: function (v) { return M.pct(v, 1); }, yfmt: function (v) { return Math.round(v * 100) + "%"; },
+					aria: t("IPO 上市以來相對承銷價", "IPOs since listing, against the offer price"), x0: byDays ? 0 : undefined,
+					// x is session index * DAY when aligned by sessions
+					xticks: byDays ? function (a, b) {
+						var n = (b - a) / DAY, step = n > 300 ? 60 : n > 120 ? 20 : n > 40 ? 10 : 5, out = [];
+						for (var i = 0; i <= n; i += step) out.push({ x: i * DAY, label: String(i) });
+						return out;
+					} : undefined,
+					xlabel: byDays ? function (x) { return t("掛牌後第 " + Math.round(x / DAY + 1) + " 個交易日", "Session " + Math.round(x / DAY + 1) + " since listing"); } : undefined
+				});
+			}
+
+			function newsList(e) {
+				if (!e.news || !e.news.length) return '<p class="muted small">' + t("近 7 天沒有抓到標題。", "No headlines in the last 7 days.") + '</p>';
+				return '<ul>' + e.news.map(function (n) { return '<li><a href="' + esc(n.url) + '" target="_blank" rel="noopener">' + esc(n.title) + '</a> <span class="muted small">' + esc((n.date || "").slice(5)) + ' ' + esc(n.source || "") + '</span></li>'; }).join("") + '</ul>';
+			}
+			function sources(e) {
+				return (e.sources || []).map(function (u, i) { var host = u.replace(/^https?:\/\/(www\.)?/, "").split("/")[0]; return '<a href="' + esc(u) + '" target="_blank" rel="noopener">' + esc(host) + '</a>'; }).join(t("、", ", "));
+			}
+			function renderCards() {
+				el("cards").innerHTML = listed().slice().sort(function (a, b) { return (b.heat || 0) - (a.heat || 0); }).map(function (e) {
+					return '<div class="card"><h4>' + esc(nm(e)) + ' <span class="muted small">' + esc(e.yahoo) + '</span></h4>' +
+						'<p class="meta">' + esc(MKT[e.market] || e.market) + ' ' + esc(e.exchange || "") + ' | ' + esc(sector(e) || "") + t(" | 掛牌 ", " | listed ") + esc(e.ipo_date) + t(" | 承銷 ", " | offer ") + M.num(e.offer_price) + ' ' + esc(e.currency || "") + (e.raised ? t(" | 募資 ", " | raised ") + esc(e.raised) : '') + '</p>' +
+						'<div class="heatbar"><span style="width:' + (e.heat || 0) + '%"></span></div><p class="small muted">' + t("熱度 ", "Heat ") + (e.heat == null ? "–" : e.heat) + t(" | 對承銷價 ", " | vs offer ") + '<span class="' + M.sign(e.vs_offer) + '">' + M.pct(e.vs_offer, 1) + '</span>' + t(" | 首日 ", " | day 1 ") + M.pct(e.day1_ret, 1) + t(" | 上市後高點 ", " | high since listing ") + M.num(e.high) + ' (' + esc(e.high_date || "") + ')</p>' +
+						'<p>' + esc(note(e) || "") + '</p>' + newsList(e) + '<p class="small muted">' + t("來源：", "Sources: ") + sources(e) + '</p></div>';
+				}).join("");
+			}
+			function renderPipe() {
+				var rows = D.ipos.filter(function (e) { return e.last == null && (!mkt || e.market === mkt); });
+				el("pipe").innerHTML = rows.map(function (e) {
+					return '<div class="card"><h4>' + esc(nm(e)) + ' <span class="badge">' + esc(STATUS[e.status] || e.status) + '</span></h4>' +
+						'<p class="meta">' + esc(MKT[e.market] || e.market) + ' ' + esc(e.exchange || "") + ' | ' + esc(sector(e) || "") + (e.ipo_date ? t(" | 預計 ", " | expected ") + esc(e.ipo_date) : '') + '</p>' +
+						'<p>' + esc(note(e) || "") + '</p><p class="small muted">' + t("近 7 日新聞 ", "Headlines, last 7 days: ") + (e.news_7d == null ? "–" : e.news_7d >= 100 ? "100+" : e.news_7d) + t(" 則", "") + '</p>' + newsList(e) + '<p class="small muted">' + t("來源：", "Sources: ") + sources(e) + '</p></div>';
+				}).join("") || '<p class="muted">' + t("目前名單內沒有未掛牌的公司。", "No unlisted companies on the list right now.") + '</p>';
+			}
+			function buildMkts(mount) {
+				var ms = {}; D.ipos.forEach(function (e) { ms[e.market] = 1; });
+				[""].concat(Object.keys(MKT).filter(function (k) { return ms[k]; })).forEach(function (k) {
+					var b = document.createElement("button"); b.className = "btn"; b.textContent = k ? MKT[k] : t("全部", "All"); b.setAttribute("data-m", k); b.setAttribute("aria-pressed", String(k === mkt));
+					b.addEventListener("click", function () {
+						mkt = k;
+						document.querySelectorAll("#mkts .btn, #mkts2 .btn").forEach(function (x) { x.setAttribute("aria-pressed", String(x.getAttribute("data-m") === k)); });
+						renderBoard(); renderCards(); renderPipe();
+					});
+					mount.appendChild(b);
+				});
+			}
+
+			M.load("../data/ipo.json").then(function (j) {
+				D = j;
+				var L = listed();
+				el("status").innerHTML = t("最後更新 <strong>" + esc(D.updated) + "</strong>（台北時間）；" + L.length + " 檔已掛牌、" + (D.ipos.length - L.length) + " 家遞件中", "Last updated <strong>" + esc(D.updated) + "</strong> (Taipei time); " + L.length + " listed, " + (D.ipos.length - L.length) + " filed");
+				L.slice().sort(function (a, b) { return (b.heat || 0) - (a.heat || 0); }).slice(0, 4).forEach(function (e) { pick[e.yahoo] = true; });
+				["7769.TW", "7856.TWO", "SPCX"].forEach(function (y) { if (D.ipos.some(function (e) { return e.yahoo === y; })) pick[y] = true; });
+				buildMkts(el("mkts")); buildMkts(el("mkts2"));
+				el("bydays").addEventListener("click", function () { byDays = !byDays; el("bydays").setAttribute("aria-pressed", String(byDays)); renderSince(); });
+				renderBoard(); renderSince(); renderCards(); renderPipe();
+				M.onResize(renderSince);
+			}).catch(function (err) { el("status").innerHTML = '<span class="error">' + t("讀取失敗：", "Could not load: ") + esc(err.message) + '</span>'; });
+		})();
+		</script>
+	</body>
+</html>

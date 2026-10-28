@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="zh-Hant" data-title-en="Macro Dashboard &middot; Anna Liang">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>總經儀表板 &middot; Anna Liang</title>
+		<meta name="description" data-en="World equity indices, index futures, oil and gold, currencies, Treasury yields, the Fed rate and U.S. inflation and jobs since 2020, with a timeline of central-bank decisions and daily public headlines. Public data only, refreshed automatically." content="國際股市指數、期貨、油價黃金、匯率、美債殖利率、Fed 利率、美國通膨與就業，2020 年至今的走勢，加上各國央行決議時間軸與每日公開新聞標題。全部來自公開資料，每天自動更新。" />
+		<meta name="author" content="Anna Liang" />
+		<link rel="stylesheet" href="../style.css" />
+		<link rel="stylesheet" href="macro.css" />
+		<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90' font-family='Georgia,serif'>A</text></svg>" />
+	</head>
+	<body>
+
+		<header class="hero">
+			<div class="wrap">
+				<p class="breadcrumb"><a href="../">&larr; Anna Liang</a><a href="flows/" data-keep-lang data-en="Institutional flows &rarr;">大戶流向 &rarr;</a><a href="ipo/" data-keep-lang data-en="Hot IPOs &rarr;">熱度 IPO &rarr;</a></p>
+				<h1 data-en="Macro Dashboard">總經儀表板</h1>
+				<p data-en="World equities, index futures, oil and gold, currencies, Treasury yields, the Fed rate and U.S. inflation and jobs since 2020; every central-bank decision linked to the bank&#x27;s own statement; public headlines every day. Public data only." class="subtitle">
+					國際股市、期貨、原油黃金、匯率、美債殖利率、Fed 利率與美國通膨就業，2020 年至今；
+					各國央行每一次決議與官方聲明連結；每天的公開新聞標題。全部來自公開資料。
+				</p>
+				<p class="status" id="status"><span data-en="Loading data&amp;hellip;" class="loading">讀取資料中&hellip;</span></p>
+				<ul class="links">
+					<li data-en="&lt;a href=&quot;#snapshot&quot;&gt;Markets&lt;/a&gt;"><a href="#snapshot">行情</a></li>
+					<li data-en="&lt;a href=&quot;#chart&quot;&gt;Trends &amp;amp; events&lt;/a&gt;"><a href="#chart">走勢與事件</a></li>
+					<li data-en="&lt;a href=&quot;#rates&quot;&gt;Rates &amp;amp; inflation&lt;/a&gt;"><a href="#rates">利率與通膨</a></li>
+					<li data-en="&lt;a href=&quot;#cb&quot;&gt;Central banks&lt;/a&gt;"><a href="#cb">央行決議</a></li>
+					<li data-en="&lt;a href=&quot;#calendar&quot;&gt;Coming up&lt;/a&gt;"><a href="#calendar">接下來</a></li>
+					<li data-en="&lt;a href=&quot;#news&quot;&gt;Headlines&lt;/a&gt;"><a href="#news">新聞</a></li>
+					<li data-en="&lt;a href=&quot;#method&quot;&gt;Sources&lt;/a&gt;"><a href="#method">資料來源</a></li>
+				</ul>
+			</div>
+		</header>
+
+		<main>
+			<section id="snapshot">
+				<div class="wrap">
+					<h2 data-en="Markets">行情</h2>
+					<div class="callout">
+						<p data-en="The numbers are the last close (or last trade) fetched by each automatic update, &lt;strong&gt;not live quotes&lt;/strong&gt;: GitHub Actions runs three times a day (06:37, 16:07 and 21:07 Taipei). The date in each tile&#x27;s corner is the date of that number. Click a tile to add it to the chart below.">數字是每次自動更新時抓到的最後收盤（或當下最後成交），<strong>不是即時報價</strong>：GitHub Actions 每天跑三次（台北 06:37、16:07、21:07）。每格右上角是那個數字的日期。點一格就把它加進下面的走勢圖。</p>
+					</div>
+					<div id="tiles"><p class="loading" data-en="Loading&hellip;">讀取中&hellip;</p></div>
+				</div>
+			</section>
+
+			<section id="returns">
+				<div class="wrap">
+					<h2 data-en="Returns">漲跌幅</h2>
+					<p data-en="Prices show percent change; rates (%) show the change in percentage points, in bp (1 bp = 0.01 percentage point). Shading follows the size of the move." class="muted small">價格類是百分比漲跌；利率類（%）是百分點變化，以 bp 表示（1 bp = 0.01 個百分點）。顏色深淺跟著幅度。</p>
+					<div class="tablewrap"><table class="rec" id="rettable"></table></div>
+				</div>
+			</section>
+
+			<section id="chart">
+				<div class="wrap">
+					<h2 data-en="Trends and events">走勢與事件</h2>
+					<div class="filters">
+						<span class="group" id="ranges"></span>
+						<span class="group"><button data-en="Start = 100" class="btn" id="mode" aria-pressed="true">起點 = 100</button></span>
+						<span data-en="Add &lt;select id=&quot;addsel&quot;&gt;&lt;/select&gt;" class="group">加入 <select id="addsel"></select></span>
+					</div>
+					<div class="filters"><span class="group" id="banks"><span data-en="Mark decisions by:">央行決議標記：</span></span></div>
+					<ul class="legend" id="legend"></ul>
+					<div class="chart-card">
+						<h3 data-en="Trend" id="chart-title">走勢</h3>
+						<p class="sub" id="chart-sub"></p>
+						<div id="main"></div>
+						<p data-en="▲ marks a rate change by the selected banks (holds are not marked); hover to read it." class="src">▲ 標記是選取央行的升降息決議（不含按兵不動），滑過可看內容。</p>
+					</div>
+				</div>
+			</section>
+
+			<section id="rates">
+				<div class="wrap">
+					<h2 data-en="Rates and inflation">利率與通膨</h2>
+					<div class="filters"><span class="group" id="ranges2"></span></div>
+					<div class="grid2">
+						<div class="chart-card">
+							<h3 data-en="Fed target, EFFR, Treasury yields">Fed 目標利率、EFFR、美債殖利率</h3>
+							<p data-en="The upper bound of the target range is the step line; EFFR is the overnight rate actually traded." class="sub">目標區間上緣是階梯線；EFFR 是實際成交的隔夜利率。</p>
+							<div id="ratechart"></div>
+							<p data-en="New York Fed, U.S. Treasury" class="src">New York Fed、U.S. Treasury</p>
+						</div>
+						<div class="chart-card">
+							<h3 data-en="U.S. CPI and core CPI, year over year">美國 CPI 與核心 CPI 年增率</h3>
+							<p data-en="Not seasonally adjusted index against the same month a year earlier; dated by reference month, not release day." class="sub">未季調指數對去年同月；日期是統計月份，不是公布日。</p>
+							<div id="cpichart"></div>
+							<p data-en="BLS CPI-U (CUUR0000SA0, CUUR0000SA0L1E)" class="src">BLS CPI-U（CUUR0000SA0、CUUR0000SA0L1E）</p>
+						</div>
+						<div class="chart-card">
+							<h3 data-en="Nonfarm payrolls, monthly change (thousands)">非農就業月增（千人）</h3>
+							<p data-en="Seasonally adjusted change from the previous month; the last two months get revised. The axis is cut at ±1,500k; months beyond it (April 2020, about −20,000k) are marked with a dot, hover for the value." class="sub">季調後就業人數對上月；最近兩個月會被修正。刻度截在 ±1,500k，超出的月份（2020 年 4 月 −20,000k 左右）以黑點標示，滑過可看數字。</p>
+							<div id="nfpchart"></div>
+							<p class="src">BLS CES0000000001</p>
+						</div>
+						<div class="chart-card">
+							<h3 data-en="Unemployment rate and the 10Y–2Y spread">失業率與 10 年-2 年利差</h3>
+							<p data-en="A negative spread means an inverted yield curve." class="sub">利差為負就是殖利率曲線倒掛。</p>
+							<div id="unchart"></div>
+							<p data-en="BLS LNS14000000, U.S. Treasury" class="src">BLS LNS14000000、U.S. Treasury</p>
+						</div>
+					</div>
+				</div>
+			</section>
+
+			<section id="cb">
+				<div class="wrap">
+					<h2 data-en="Central-bank decisions">央行決議</h2>
+					<p data-en="Every rate decision since 2020, holds and unscheduled meetings included, each linked to the bank&#x27;s own release. ECB rows use the deposit facility rate; PBoC rows list changes to the 1-year LPR and cuts to the reserve requirement ratio." class="muted small">2020 年至今每一次利率決議（含按兵不動與臨時會議），每列連到該央行自己的新聞稿。ECB 用存款機制利率；PBoC 列出 1 年期 LPR 調整與降準。</p>
+					<div id="cbnow" class="cards" style="margin-bottom:1rem"></div>
+					<div class="filters">
+						<span class="group" id="cbfilter"></span>
+						<span class="group"><button data-en="Changes only" class="btn" id="onlychg" aria-pressed="false">只看升降息</button></span>
+						<span data-en="Year &lt;select id=&quot;cbyear&quot;&gt;&lt;/select&gt;" class="group">年份 <select id="cbyear"></select></span>
+					</div>
+					<div class="tablewrap"><table class="rec" id="cbtable"></table></div>
+					<p><button data-en="Show all" class="btn" id="cbmore" hidden>顯示全部</button></p>
+				</div>
+			</section>
+
+			<section id="calendar">
+				<div class="wrap">
+					<h2 data-en="Coming up">接下來</h2>
+					<p data-en="Scheduled central-bank meetings and U.S. data releases (local dates)." class="muted small">已排定的央行會議與美國數據公布（日期為當地時間）。</p>
+					<div class="tablewrap"><table class="rec" id="caltable"></table></div>
+				</div>
+			</section>
+
+			<section id="news">
+				<div class="wrap">
+					<h2 data-en="Headlines">新聞標題</h2>
+					<p data-en="Titles and links only (no article text), from central banks&#x27; official RSS feeds and public Google News searches. Older news cannot be backfilled, so the archive starts on the day this page went live, one file per month." class="muted small">只收標題與連結（不轉載內文），來自央行官方 RSS 與 Google News 公開搜尋。舊新聞無法回補，從這頁上線那天開始累積，每月一個檔案。</p>
+					<div class="filters">
+						<span class="group" id="topics"></span>
+						<span data-en="Month &lt;select id=&quot;month&quot;&gt;&lt;/select&gt;" class="group">月份 <select id="month"></select></span>
+					</div>
+					<ul class="news" id="newslist"><li class="loading" data-en="Loading&hellip;">讀取中&hellip;</li></ul>
+				</div>
+			</section>
+
+			<section id="method" class="method">
+				<div class="wrap">
+					<h2 data-en="Sources">資料來源</h2>
+					<ul>
+						<li data-en="&lt;strong&gt;Indices, futures, commodities, FX, VIX, bitcoin&lt;/strong&gt;: daily closes from the Yahoo Finance chart API. Futures are front-month continuous contracts, so they jump at rolls. TAIEX futures are not on Yahoo; institutional positions in them are on the &lt;a href=&quot;flows/&quot; data-keep-lang&gt;flows&lt;/a&gt; page."><strong>指數、期貨、商品、匯率、VIX、比特幣</strong>：Yahoo Finance chart API 的日收盤。期貨是近月連續合約，換月時會有跳動。台指期不在 Yahoo 上，台指期三大法人未平倉在<a href="flows/">大戶流向</a>頁。</li>
+						<li data-en="&lt;strong&gt;Treasury yields&lt;/strong&gt;: the U.S. Treasury daily par yield curve."><strong>美債殖利率</strong>：U.S. Treasury 每日 par yield curve。</li>
+						<li data-en="&lt;strong&gt;Fed rate&lt;/strong&gt;: EFFR and the FOMC target range from the New York Fed (daily)."><strong>Fed 利率</strong>：New York Fed 的 EFFR 與 FOMC 目標區間（每日）。</li>
+						<li data-en="&lt;strong&gt;CPI, core CPI, unemployment, payrolls&lt;/strong&gt;: the BLS public API v2 (the keyless tier)."><strong>CPI、核心 CPI、失業率、非農</strong>：BLS public API v2（不需金鑰的版本）。</li>
+						<li data-en="&lt;strong&gt;Central-bank decisions&lt;/strong&gt;: compiled by hand from each bank&#x27;s press releases into &lt;code&gt;tools/macro/events/cb_decisions.json&lt;/code&gt;, every row with its official link. A new decision needs a new row."><strong>央行決議</strong>：依各央行官網新聞稿人工整理，存在 <code>tools/macro/events/cb_decisions.json</code>，每列附官方連結。新的決議出來後要手動加一列。</li>
+						<li data-en="&lt;strong&gt;Coming up&lt;/strong&gt;: meeting and BLS release dates entered by hand (&lt;code&gt;calendar.json&lt;/code&gt;); BEA&#x27;s GDP and PCE dates are read from bea.gov on every run."><strong>接下來</strong>：央行會議與 BLS 公布日期人工整理（<code>calendar.json</code>）；BEA 的 GDP、PCE 日期每次從 bea.gov 讀取。</li>
+						<li data-en="&lt;strong&gt;Headlines&lt;/strong&gt;: official RSS from the Fed, ECB, BoJ and BoE, plus Google News RSS searches on a fixed set of topics; only title, source, time and link are stored."><strong>新聞</strong>：Fed、ECB、BoJ、BoE 官方 RSS，加上 Google News RSS 對固定主題的搜尋；只存標題、來源、時間與連結。</li>
+					</ul>
+					<p data-en="For information only, not investment advice. Code in &lt;a href=&quot;https://github.com/ebenezer61/ebenezer61.github.io/tree/main/tools/macro&quot; target=&quot;_blank&quot; rel=&quot;noopener&quot;&gt;tools/macro&lt;/a&gt;, data in &lt;a href=&quot;data/markets.json&quot;&gt;markets.json&lt;/a&gt; and &lt;a href=&quot;data/events.json&quot;&gt;events.json&lt;/a&gt;." class="muted small">僅供資訊參考，不是投資建議。程式在 <a href="https://github.com/ebenezer61/ebenezer61.github.io/tree/main/tools/macro" target="_blank" rel="noopener">tools/macro</a>，資料在 <a href="data/markets.json">markets.json</a>、<a href="data/events.json">events.json</a>。</p>
+				</div>
+			</section>
+		</main>
+
+		<footer>
+			<div class="wrap"><p>&copy; 2026 Chia-chun Liang &middot; <a href="../">Home</a></p></div>
+		</footer>
+
+		<div id="tooltip" hidden></div>
+		<script src="macro.js"></script>
+		<script>
+		(function () {
+			"use strict";
+			var el = M.el, esc = M.esc, t = M.t, DAY = 864e5;
+			var S = {}, ORDER = [], E = null, sel = ["spx", "twii", "n225", "kospi"], rangeDays = null, indexed = true;
+			var BANKS = { FED: ["Fed", 1], ECB: ["ECB", 2], BOJ: ["BoJ", 3], BOE: ["BoE", 4], CBC: [t("台灣央行", "CBC"), 5], BOK: [t("韓國央行", "BoK"), 6], PBOC: [t("人行", "PBoC"), 7], BLS: ["BLS", 8], BEA: ["BEA", 8] };
+			var onBank = { FED: true };
+			var RANGES = [["1M", 31], ["3M", 92], ["6M", 183], ["YTD", "ytd"], ["1Y", 365], ["3Y", 1096], [t("2020 起", "Since 2020"), null]];
+			function nm(s) { return M.en ? s.name_en || s.name : s.name; }
+			function grp(s) { return M.en ? s.group_en || s.group : s.group; }
+			function ttl(d) { return M.en ? d.title_en || d.title_zh : d.title_zh; }
+			var TOPIC_EN = { "央行": "Central banks", "聯準會": "Fed", "美股": "US stocks", "台股": "Taiwan", "日韓股": "Japan/Korea", "陸港股": "China/HK", "油價黃金": "Oil & gold", "匯率": "FX", "通膨就業": "Inflation & jobs" };
+			function topicName(x) { return M.en ? TOPIC_EN[x] || x : x; }
+
+			function isRate(s) { return s.unit === "%"; }
+			function last(s, k) { return s.v[s.v.length - 1 - (k || 0)]; }
+			function lastX(s) { return s.x[s.x.length - 1]; }
+			function change(s, t0) {
+				var a = M.at(s, t0), b = last(s);
+				if (a == null || b == null) return null;
+				return isRate(s) ? (b - a) * 100 : (a ? b / a - 1 : null);
+			}
+			function fmtChange(s, c) {
+				if (c == null) return "–";
+				return isRate(s) ? M.signed(c, 0, " bp") : M.pct(c, 2);
+			}
+			function fmtLevel(s, v) {
+				if (v == null) return "–";
+				if (s.unit === "千人") return M.signed(v, 0) + "k";
+				if (isRate(s)) return M.num(v, 2) + "%";
+				return M.num(v);
+			}
+
+			/* ---------------- tiles ---------------- */
+			function renderTiles() {
+				var groups = {}, gorder = [];
+				ORDER.forEach(function (id) {
+					var s = S[id]; if (id === "fed_lower") return;
+					if (!groups[grp(s)]) { groups[grp(s)] = []; gorder.push(grp(s)); }
+						groups[grp(s)].push(s);
+				});
+				var h = "";
+				gorder.forEach(function (g) {
+					h += '<div class="tile-group"><h3>' + esc(g) + '</h3><div class="tiles">';
+					groups[g].forEach(function (s) {
+						var n = s.v.length, prevT = s.x[n - 2], c = n > 1 ? change(s, prevT) : null;
+						var tail = s.v.slice(Math.max(0, n - (s.freq === "m" ? 24 : 66)));
+						var lvl = fmtLevel(s, last(s));
+						h += '<button class="tile" data-id="' + s.id + '" aria-pressed="' + (sel.indexOf(s.id) >= 0) + '">' +
+							'<span class="dt">' + M.iso(lastX(s)).slice(s.freq === "m" ? 0 : 5, s.freq === "m" ? 7 : 10) + '</span>' +
+							'<div class="nm" title="' + esc(nm(s)) + '">' + esc(nm(s)) + '</div>' +
+							'<div class="lv">' + lvl + '</div>' +
+							'<div class="ch ' + M.sign(c) + '">' + fmtChange(s, c) + (s.freq === "m" ? ' <span class="muted">' + t("vs 上月", "m/m") + '</span>' : '') + '</div>' +
+							M.spark(tail) + '</button>';
+					});
+					h += '</div></div>';
+				});
+				el("tiles").innerHTML = h;
+				// The Fed tile shows the whole target range.
+				var ft = el("tiles").querySelector('[data-id="fed_upper"]');
+				if (ft && S.fed_lower) { ft.querySelector(".lv").textContent = M.num(last(S.fed_lower), 2) + "–" + M.num(last(S.fed_upper), 2) + "%"; ft.querySelector(".nm").textContent = t("FOMC 目標區間", "FOMC target range"); }
+				el("tiles").querySelectorAll(".tile").forEach(function (b) {
+					b.addEventListener("click", function () { toggle(b.getAttribute("data-id")); location.hash = "chart"; });
+				});
+			}
+			function toggle(id) {
+				var i = sel.indexOf(id);
+				if (i >= 0) sel.splice(i, 1); else { sel.push(id); if (sel.length > 6) sel.shift(); }
+				el("tiles").querySelectorAll(".tile").forEach(function (b) { b.setAttribute("aria-pressed", String(sel.indexOf(b.getAttribute("data-id")) >= 0)); });
+				renderMain();
+			}
+
+			/* ---------------- returns table ---------------- */
+			function renderReturns() {
+				var cols = [[t("1 日", "1D"), 1], [t("1 週", "1W"), 7], [t("1 月", "1M"), 30], ["YTD", "ytd"], [t("1 年", "1Y"), 365], [t("2020 起", "Since 2020"), "all"]];
+				var h = '<thead><tr><th>' + t("項目", "Series") + '</th><th class="num">' + t("最新", "Latest") + '</th>' + cols.map(function (c) { return '<th class="num">' + c[0] + '</th>'; }).join("") + '</tr></thead><tbody>';
+				ORDER.forEach(function (id) {
+					var s = S[id]; if (s.freq !== "d" || id === "fed_lower" || id === "fed_upper") return;
+					var end = lastX(s), n = s.v.length;
+					h += '<tr><td class="name">' + esc(nm(s)) + '</td><td class="num">' + fmtLevel(s, last(s)) + '</td>';
+					cols.forEach(function (c) {
+						var t0 = c[1] === 1 ? s.x[n - 2] : c[1] === "ytd" ? Date.UTC(new Date(end).getUTCFullYear(), 0, 1) - DAY : c[1] === "all" ? s.x[0] : end - c[1] * DAY;
+						var v = change(s, t0), k = v == null ? 0 : Math.min(40, Math.abs(isRate(s) ? v / 4 : v * 200));
+						h += '<td class="num ' + (v > 0 ? "pos" : v < 0 ? "neg" : "") + '" style="--k:' + k.toFixed(0) + '">' + fmtChange(s, v) + '</td>';
+					});
+					h += '</tr>';
+				});
+				el("rettable").innerHTML = h + '</tbody>';
+			}
+
+			/* ---------------- main chart ---------------- */
+			function window_(days) {
+				var end = 0;
+				sel.forEach(function (id) { if (S[id]) end = Math.max(end, lastX(S[id])); });
+				if (!end) end = Date.now();
+				var start = days == null ? M.ms("2020-01-01") : days === "ytd" ? Date.UTC(new Date(end).getUTCFullYear(), 0, 1) : end - days * DAY;
+				return [start, end];
+			}
+			function markers(x0, x1) {
+				if (!E) return [];
+				return E.decisions.filter(function (d) { return onBank[d.bank] && (d.change_bp || d.change_bp_5y); }).map(function (d) {
+					return { x: M.ms(d.date), label: ttl(d) || (d.bank + " " + d.change_bp + "bp"), color: "--s" + (BANKS[d.bank] || ["", 8])[1] };
+				});
+			}
+			function renderMain() {
+				var w = window_(rangeDays), list = sel.filter(function (id) { return S[id]; });
+				var useIdx = indexed && list.length > 1;
+				var mixedRate = list.some(function (id) { return isRate(S[id]); });
+				var series = list.map(function (id, k) {
+					var s = S[id], v = s.v;
+					if (useIdx && !isRate(s)) { var b = M.at(s, w[0]) || s.v[M.bisect(s.x, w[0]) + 1] || s.v[0]; v = s.v.map(function (x) { return x == null ? null : x / b * 100; }); }
+					return { label: nm(s), slot: k + 1, x: s.x, v: v, step: id === "fed_upper" || id === "fed_lower", id: id };
+				});
+				el("legend").innerHTML = series.map(function (s) { return '<li><span class="lk" style="--sc:var(--s' + s.slot + ')"></span>' + esc(s.label) + ' <button data-id="' + s.id + '" aria-label="' + t("移除 ", "Remove ") + esc(s.label) + '">×</button></li>'; }).join("");
+				el("legend").querySelectorAll("button").forEach(function (b) { b.addEventListener("click", function () { toggle(b.getAttribute("data-id")); }); });
+				el("chart-title").textContent = useIdx ? t("走勢（起點 = 100）", "Trend (start = 100)") : t("走勢", "Trend");
+				el("chart-sub").textContent = M.iso(w[0]) + t(" 至 ", " to ") + M.iso(w[1]) + (useIdx && mixedRate ? t("；利率類維持原始數值（%），和指數化的線混在同一軸上時請分開看。", "; rates stay in their own units (%), so read them separately from the indexed lines on the same axis.") : useIdx ? t("；每條線以區間第一天為 100。", "; each line starts at 100 on the first day of the window.") : "");
+				M.lineChart(el("main"), series, {
+					x0: w[0], x1: w[1], h: 320, markers: markers(), baseline: useIdx ? 100 : null,
+					fmt: function (v, s) { var src = S[s.id]; return useIdx && !isRate(src) ? M.num(v, 1) : fmtLevel(src, v); },
+					aria: t("所選項目的走勢", "Trend of the selected series")
+				});
+			}
+			function buildControls() {
+				function rangeBtns(mount, cb) {
+					RANGES.forEach(function (r) {
+						var b = document.createElement("button"); b.className = "btn"; b.textContent = r[0];
+						b.setAttribute("aria-pressed", String(r[1] === null));
+						b.addEventListener("click", function () { mount.querySelectorAll(".btn").forEach(function (x) { x.setAttribute("aria-pressed", "false"); }); b.setAttribute("aria-pressed", "true"); cb(r[1]); });
+						mount.appendChild(b);
+					});
+				}
+				rangeBtns(el("ranges"), function (d) { rangeDays = d; renderMain(); });
+				rangeBtns(el("ranges2"), function (d) { rateDays = d; renderRates(); });
+				el("mode").addEventListener("click", function () { indexed = !indexed; el("mode").setAttribute("aria-pressed", String(indexed)); renderMain(); });
+				var s = el("addsel"), h = '<option value="">' + t("選擇項目…", "Choose a series…") + '</option>';
+				ORDER.forEach(function (id) { h += '<option value="' + id + '">' + esc(grp(S[id]) + t("｜", " | ") + nm(S[id])) + '</option>'; });
+				s.innerHTML = h;
+				s.addEventListener("change", function () { if (s.value && sel.indexOf(s.value) < 0) toggle(s.value); s.value = ""; });
+				Object.keys(BANKS).forEach(function (k) {
+					if (k === "BLS" || k === "BEA") return;
+					var b = document.createElement("button"); b.className = "btn"; b.textContent = BANKS[k][0];
+					b.style.setProperty("--sc", "var(--s" + BANKS[k][1] + ")");
+					b.setAttribute("aria-pressed", String(!!onBank[k]));
+					b.addEventListener("click", function () { onBank[k] = !onBank[k]; b.setAttribute("aria-pressed", String(onBank[k])); renderMain(); });
+					el("banks").appendChild(b);
+				});
+			}
+
+			/* ---------------- rates & inflation ---------------- */
+			var rateDays = null;
+			function renderRates() {
+				var end = S.ust10y ? lastX(S.ust10y) : Date.now();
+				var x0 = rateDays == null ? M.ms("2020-01-01") : rateDays === "ytd" ? Date.UTC(new Date(end).getUTCFullYear(), 0, 1) : end - rateDays * DAY;
+				function pick(ids) { return ids.filter(function (p) { return S[p[0]]; }).map(function (p, k) { var s = S[p[0]]; return { label: p[1], slot: p[2], x: s.x, v: s.v, step: !!p[3] }; }); }
+				var pf = function (v) { return M.num(v, 2) + "%"; };
+				M.lineChart(el("ratechart"), pick([["fed_upper", t("目標上緣", "Target, upper"), 1, true], ["effr", "EFFR", 3], ["ust2y", t("2 年", "2Y"), 2], ["ust10y", t("10 年", "10Y"), 4]]), { x0: x0, x1: end, fmt: pf, yfmt: function (v) { return M.num(v, 1) + "%"; }, markers: E ? markers() : [], aria: t("Fed 利率與美債殖利率", "Fed rate and Treasury yields") });
+				M.lineChart(el("cpichart"), pick([["cpi_yoy", "CPI", 2], ["core_cpi_yoy", t("核心 CPI", "Core CPI"), 1]]), { x0: x0, x1: end, fmt: pf, yfmt: function (v) { return M.num(v, 1) + "%"; }, baseline: 2, aria: t("CPI 年增率", "CPI year over year") });
+				if (S.nfp) {
+					var d = [], v = [];
+					S.nfp.x.forEach(function (t, i) { if (t >= x0 - 31 * DAY) { d.push(M.iso(t)); v.push(S.nfp.v[i]); } });
+					M.barChart(el("nfpchart"), d, v, { label: t("非農月增（千人）", "Payrolls m/m (thousands)"), clip: 1500, fmt: function (x) { return M.signed(x, 0) + "k"; }, aria: t("非農就業月增", "Nonfarm payrolls, monthly change") });
+				}
+				M.lineChart(el("unchart"), pick([["unrate", t("失業率", "Unemployment"), 1], ["spread_10y2y", "10Y-2Y", 2]]), { x0: x0, x1: end, fmt: pf, yfmt: function (v) { return M.num(v, 1) + "%"; }, baseline: 0, aria: t("失業率與利差", "Unemployment and yield spread") });
+			}
+
+			/* ---------------- central banks ---------------- */
+			var cbOn = {}, onlyChg = false, cbYear = "", cbAll = false;
+			function badge(d) {
+				if (!d.change_bp) return '<span class="badge">' + (d.type === "statement" ? t("聲明", "statement") : t("不變", "hold")) + '</span>';
+				return '<span class="badge ' + (d.change_bp < 0 ? "cut" : "hike") + '">' + (d.change_bp > 0 ? t("升 ", "+") : t("降 ", "−")) + Math.abs(d.change_bp) + ' bp</span>';
+			}
+			function renderCB() {
+				var latest = {};
+				E.decisions.forEach(function (d) { if (d.rate_after != null && d.rate_after !== "" && d.rate_after !== "n/a") latest[d.bank] = d; });
+				el("cbnow").innerHTML = Object.keys(BANKS).filter(function (k) { return latest[k]; }).map(function (k) {
+					var d = latest[k], lastChg = null;
+					E.decisions.forEach(function (x) { if (x.bank === k && x.change_bp) lastChg = x; });
+					return '<div class="card"><h4>' + esc(BANKS[k][0]) + ' <span class="muted" style="font-weight:400">' + esc(d.rate_after) + '%</span></h4>' +
+						'<p class="meta">' + t("最近決議 ", "Last decision ") + esc(d.date) + ' ' + badge(d) + (lastChg ? '<br>' + t("上次調整 ", "Last change ") + esc(lastChg.date) + t("（", " (") + (lastChg.change_bp > 0 ? "+" : "") + lastChg.change_bp + t(" bp）", " bp)") : '') + '</p></div>';
+				}).join("");
+				var rows = E.decisions.filter(function (d) {
+					return (!Object.keys(cbOn).some(function (k) { return cbOn[k]; }) || cbOn[d.bank]) && (!onlyChg || d.change_bp) && (!cbYear || d.date.slice(0, 4) === cbYear);
+				}).slice().reverse();
+				var total = rows.length;
+				if (!cbAll && !cbYear) rows = rows.slice(0, 40);
+				var h = '<thead><tr><th>' + t("日期", "Date") + '</th><th>' + t("央行", "Bank") + '</th><th>' + t("決議", "Decision") + '</th><th class="num">' + t("決議後利率", "Rate after") + '</th><th>' + t("內容", "Details") + '</th></tr></thead><tbody>';
+				rows.forEach(function (d) {
+					h += '<tr><td class="num">' + esc(d.date) + '</td><td>' + esc((BANKS[d.bank] || [d.bank])[0]) + '</td><td>' + badge(d) + '</td><td class="num">' + esc(d.rate_after == null ? "" : d.rate_after) + '</td><td class="wrap">' +
+						(d.url ? '<a href="' + esc(d.url) + '" target="_blank" rel="noopener">' + esc(ttl(d)) + '</a>' : esc(ttl(d))) + (d.unverified ? ' <span class="badge">' + t("待查證", "unverified") + '</span>' : '') + '</td></tr>';
+				});
+				el("cbtable").innerHTML = h + '</tbody>' + (rows.length ? "" : '<tr><td colspan="5" class="muted">' + t("沒有符合的決議。", "No matching decisions.") + '</td></tr>' );
+				el("cbmore").hidden = cbAll || !!cbYear || total <= rows.length;
+				el("cbmore").textContent = t("顯示全部 " + total + " 筆", "Show all " + total);
+			}
+			function buildCB() {
+				Object.keys(BANKS).forEach(function (k) {
+					if (k === "BLS" || k === "BEA") return;
+					var b = document.createElement("button"); b.className = "btn"; b.textContent = BANKS[k][0]; b.setAttribute("aria-pressed", "false");
+					b.addEventListener("click", function () { cbOn[k] = !cbOn[k]; b.setAttribute("aria-pressed", String(!!cbOn[k])); renderCB(); });
+					el("cbfilter").appendChild(b);
+				});
+				el("cbmore").addEventListener("click", function () { cbAll = true; renderCB(); });
+				el("onlychg").addEventListener("click", function () { onlyChg = !onlyChg; el("onlychg").setAttribute("aria-pressed", String(onlyChg)); renderCB(); });
+				var ys = {}; E.decisions.forEach(function (d) { ys[d.date.slice(0, 4)] = 1; });
+				el("cbyear").innerHTML = '<option value="">' + t("全部", "All") + '</option>' + Object.keys(ys).sort().reverse().map(function (y) { return '<option>' + y + '</option>'; }).join("");
+				el("cbyear").addEventListener("change", function () { cbYear = el("cbyear").value; renderCB(); });
+			}
+			function renderCalendar() {
+				var h = '<thead><tr><th>' + t("日期", "Date") + '</th><th>' + t("機構", "Source") + '</th><th>' + t("事件", "Event") + '</th></tr></thead><tbody>';
+				E.upcoming.forEach(function (c) {
+					h += '<tr><td class="num">' + esc(c.date) + '</td><td>' + esc((BANKS[c.bank] || [c.bank])[0]) + '</td><td class="wrap">' + (c.url ? '<a href="' + esc(c.url) + '" target="_blank" rel="noopener">' + esc(ttl(c)) + '</a>' : esc(ttl(c))) + (c.unverified ? ' <span class="badge">' + t("待查證", "unverified") + '</span>' : '') + '</td></tr>';
+				});
+				el("caltable").innerHTML = h + '</tbody>';
+			}
+
+			/* ---------------- news ---------------- */
+			var items = [], topic = "";
+			function renderNews() {
+				var list = items.filter(function (x) { return !topic || x.topic === topic; }).slice(0, 150);
+				el("newslist").innerHTML = list.map(function (x) {
+					var tm = new Date(x.t), local = new Date(tm.getTime() + 8 * 36e5).toISOString().slice(5, 16).replace("T", " ");
+					return '<li><span class="meta">' + local + '</span><span class="badge tp">' + esc(topicName(x.topic)) + '</span><a href="' + esc(x.url) + '" target="_blank" rel="noopener">' + esc(x.title) + '</a> <span class="meta">' + esc(x.source || "") + '</span></li>';
+				}).join("") || '<li class="muted">' + t("沒有標題。", "No headlines.") + '</li>';
+			}
+			function buildNews(months) {
+				var ts = {}; items.forEach(function (x) { ts[x.topic] = 1; });
+				var mount = el("topics");
+				[""].concat(Object.keys(ts)).forEach(function (tp) {
+					var b = document.createElement("button"); b.className = "btn"; b.textContent = tp ? topicName(tp) : t("全部", "All"); b.setAttribute("aria-pressed", String(tp === topic));
+					b.addEventListener("click", function () { topic = tp; mount.querySelectorAll(".btn").forEach(function (x) { x.setAttribute("aria-pressed", String(x === b)); }); renderNews(); });
+					mount.appendChild(b);
+				});
+				el("month").innerHTML = '<option value="">' + t("最新", "Latest") + '</option>' + months.map(function (m) { return '<option>' + m + '</option>'; }).join("");
+				el("month").addEventListener("change", function () {
+					var m = el("month").value;
+					if (!m) { items = E.headlines; renderNews(); return; }
+					M.load("data/news/" + m + ".json").then(function (j) { items = j.items; renderNews(); });
+				});
+			}
+
+			/* ---------------- boot ---------------- */
+			M.load("data/markets.json").then(function (D) {
+				D.series.forEach(function (s) { var e = M.expand(s); s.x = e.x; s.v = e.v; S[s.id] = s; ORDER.push(s.id); });
+				el("status").innerHTML = t("最後更新 <strong>" + esc(D.updated) + "</strong>（台北時間），" + D.series.length + " 個序列", "Last updated <strong>" + esc(D.updated) + "</strong> (Taipei time), " + D.series.length + " series");
+				buildControls(); renderTiles(); renderReturns(); renderMain(); renderRates();
+				M.onResize(function () { renderMain(); renderRates(); });
+				return M.load("data/events.json");
+			}).then(function (ev) {
+				E = ev; renderMain(); renderRates(); buildCB(); renderCB(); renderCalendar();
+				items = E.headlines;
+				return M.load("data/news/index.json").catch(function () { return { months: [] }; });
+			}).then(function (ix) { buildNews(ix.months || []); renderNews(); })
+			.catch(function (err) { el("status").innerHTML = '<span class="error">' + t("讀取失敗：", "Could not load: ") + esc(err.message) + '</span>'; });
+		})();
+		</script>
+	</body>
+</html>

@@ -13,11 +13,14 @@ Live at **<https://ebenezer61.github.io/>**, served by GitHub Pages from the `ma
 | `interpretability/` | PyCon TW 2026 poster hub: `theory/` (timeline, attention as a kernel, the word "circuit") and `practice/` (the write-up, the graph, the probes) |
 | `stocks/` | Daily XGBoost direction forecasts for 12 Taiwan and 14 US blue chips; `data/` holds the JSON the page renders |
 | `mock_trading/` | Trading rules backtested on one basket of Taiwan large caps since 2006, compared over any window of years; `data/backtest.json` holds the daily returns the page slices |
+| `macro/` | 總經儀表板: world indices, futures, commodities, FX, yields, Fed rate, U.S. CPI and jobs since 2020, central-bank decisions, headlines; `flows/` (大戶流向) and `ipo/` (熱度 IPO) beside it; `data/` holds the JSON |
 | `headset/` | Headset check: microphone meter and playback, left/right channel test, and a clarity report (speech level, noise floor, clipping, effective bandwidth); pure client-side Web Audio |
 | `tools/stocks/` | The pipeline behind `stocks/`: `predict.py`, the ticker basket, requirements, its own README |
 | `tools/mock_trading/` | The pipeline behind `mock_trading/`: `backtest.py`, the FinMind data layer, the basket, its own README |
+| `tools/macro/` | The pipeline behind `macro/`: four collectors (markets, flows, events, IPO), the hand-checked event and IPO lists, its own README |
 | `tools/figures/` | Scripts that generated the inline SVG charts on the interpretability pages |
 | `.github/workflows/stocks.yml` | Runs the stock pipeline every weekday and commits the refreshed JSON |
+| `.github/workflows/macro.yml` | Refreshes the macro section three times a day and commits its JSON |
 | `.github/workflows/mock-trading.yml` | Reruns the mock-trading backtest every Saturday and commits the JSON |
 | `.nojekyll` | Empty marker telling GitHub Pages to serve the files as-is, without a Jekyll pass |
 
@@ -53,6 +56,21 @@ reruns `tools/mock_trading/backtest.py` every Saturday and commits
 `mock_trading/data/backtest.json` as `github-actions[bot]` with the message
 `mock_trading: weekly backtest YYYY-MM-DD`. Engine, rules and limits are in
 `tools/mock_trading/README.md`.
+
+### `macro/`
+
+<https://ebenezer61.github.io/macro/> is a macro dashboard in Traditional Chinese, with an
+English toggle (`?lang=en`), built only from public data: tiles and a returns table for world indices, index futures, oil and
+gold, currencies, Treasury yields and the Fed's target range; charts since 2020 with
+central-bank decisions marked on them; U.S. CPI, payrolls and unemployment; a table of
+every Fed, ECB, BoJ, BoE, CBC, BoK and PBoC decision since 2020 linked to the bank's own
+release; the calendar ahead; and public headlines (titles and links only), archived
+monthly from the first run. `macro/flows/` shows institutional flows at each market's
+real cadence (Taiwan daily, Stock Connect daily, Japan weekly, CFTC weekly) and
+`macro/ipo/` tracks hot IPOs against their offer price. It is not a live feed:
+`.github/workflows/macro.yml` refreshes it at 06:37, 16:07 and 21:07 Taipei and commits
+`macro/data/` as `github-actions[bot]` with the message `macro: update YYYY-MM-DD`.
+Sources, cadences and the hand-maintained lists are in `tools/macro/README.md`.
 
 ### `headset/`
 
