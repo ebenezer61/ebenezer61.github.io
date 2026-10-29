@@ -10,6 +10,9 @@ on:
     # 13:07 UTC = 21:07 Taipei: HKEX Stock Connect statistics, the European
     # session, U.S. data released at 08:30 New York, fresh headlines.
     - cron: "7 13 * * *"
+    # 19:37 UTC = 03:37 Taipei: after the FOMC statement (2:00 p.m. New York,
+    # i.e. 02:00 Taipei in summer, 03:00 in winter); events.py adds the decision.
+    - cron: "37 19 * * *"
     # Off the :00/:30 marks, and away from stocks.yml (23:47, 03:47, 06:17).
   workflow_dispatch:
   push:
@@ -62,7 +65,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add macro/data tools/macro/cache
+          git add macro/data tools/macro/cache tools/macro/events/cb_decisions.json
           if git diff --cached --quiet; then
             echo "No changes to commit."
             exit 0

@@ -12,8 +12,9 @@ here needs a secret.
 | `events.py` | `events.json`, `news/YYYY-MM.json`, `news/index.json` | `events/cb_decisions.json` and `events/calendar.json` (hand-checked), BEA release schedule, Fed/ECB/BoJ/BoE RSS, Google News RSS |
 | `ipo.py` | `ipo.json` | `ipo.json` in this folder (hand-curated list), Yahoo Finance, Google News RSS |
 
-`.github/workflows/macro.yml` runs all four at 06:37, 16:07 and 21:07 Taipei and
-commits `macro/data/` and `tools/macro/cache/` as `github-actions[bot]` with the
+`.github/workflows/macro.yml` runs all four at 06:37, 16:07, 21:07 and 03:37 Taipei
+(the last one right after FOMC statements) and commits `macro/data/`,
+`tools/macro/cache/` and `events/cb_decisions.json` as `github-actions[bot]` with the
 message `macro: update YYYY-MM-DD`. The page is therefore **not live**: a number is
 the last close (or last trade) when the run fetched it.
 
@@ -54,8 +55,10 @@ it does not have. `*_closed.csv` lists weekdays a source answered with no data
 
 - `events/cb_decisions.json`: every policy decision since 2020 for Fed, ECB (deposit
   facility rate), BoJ, BoE, CBC Taiwan, BoK, and PBoC (1-year LPR changes, RRR cuts),
-  each with the bank's own press-release URL and a `title_zh` and `title_en`. Add a
-  row after each meeting. Rows marked `"unverified": true` are shown with a 待查證
+  each with the bank's own press-release URL and a `title_zh` and `title_en`. Fed rows
+  are added automatically: for each FED date in `calendar.json` that has passed,
+  `events.py` reads the statement (`monetaryYYYYMMDDa.htm`) and parses the target
+  range. For the other banks, add a row by hand after each meeting. Rows marked `"unverified": true` are shown with a 待查證
   (unverified) badge.
 - `events/calendar.json`: scheduled meetings and U.S. BLS release dates ahead, with
   `title_zh` and `title_en`.

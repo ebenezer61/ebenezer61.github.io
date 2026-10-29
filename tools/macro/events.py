@@ -150,10 +150,67 @@ def bea_schedule():
     return out
 
 
+FED_RE = re.compile(r"decided to (maintain|raise|lower) the target range for the federal funds rate"
+                    r"(?: by [\d/ -]+ percentage points?)? (?:at|to) ([\d/-]+) to ([\d/-]+) percent")
+
+
+def fed_rate(s):
+    """'3-3/4' -> 3.75, '4' -> 4.0"""
+    whole, _, frac = s.partition("-")
+    if "/" in whole:
+        whole, frac = "0", whole
+    n, _, d = frac.partition("/")
+    return int(whole) + (int(n) / int(d) if frac else 0)
+
+
+def fed_auto(decisions, calendar, today):
+    """Add the FOMC decision for every scheduled meeting that has passed but has no
+    row yet, parsed from the statement on federalreserve.gov
+    (pressreleases/monetaryYYYYMMDDa.htm, published 2:00 p.m. New York time).
+    Returns True when a row was added. Other banks' rows stay hand-entered."""
+    have = {d["date"] for d in decisions if d["bank"] == "FED"}
+    added = False
+    for c in calendar:
+        if c["bank"] != "FED" or c["date"] > today or c["date"] in have:
+            continue
+        url = f"https://www.federalreserve.gov/newsevents/pressreleases/monetary{c['date'].replace('-', '')}a.htm"
+        try:
+            text = clean(get(url, tries=2).text)
+        except Exception as e:
+            log(f"fed {c['date']}: statement not out yet ({e})")
+            continue
+        m = FED_RE.search(text)
+        if not m:
+            log(f"fed {c['date']}: no decision sentence in {url}")
+            continue
+        lo, hi = fed_rate(m.group(2)), fed_rate(m.group(3))
+        prev = [d for d in decisions if d["bank"] == "FED" and d["date"] < c["date"]]
+        prev_hi = float(max(prev, key=lambda d: d["date"])["rate_after"].split("-")[1]) if prev else hi
+        bp = round((hi - prev_hi) * 100)
+        rng = f"{lo:.2f}–{hi:.2f}%"
+        zh, en = ((f"FOMC 維持利率 {rng}", f"FOMC holds at {rng}") if bp == 0 else
+                  (f"FOMC 升息 {bp}bp 至 {rng}", f"FOMC raises {bp} bp to {rng}") if bp > 0 else
+                  (f"FOMC 降息 {-bp}bp 至 {rng}", f"FOMC cuts {-bp} bp to {rng}"))
+        decisions.append({"date": c["date"], "bank": "FED", "type": "decision",
+                          "rate_after": f"{lo:.2f}-{hi:.2f}", "change_bp": bp,
+                          "title_zh": zh, "url": url, "title_en": en})
+        log(f"fed {c['date']}: added {en}")
+        added = True
+    if added:
+        decisions.sort(key=lambda d: d["date"])
+        rows = ",\n".join(json.dumps(d, ensure_ascii=False) for d in decisions)
+        (HERE / "cb_decisions.json").write_text(f"[\n{rows}\n]\n", encoding="utf-8")
+    return added
+
+
 def main():
     decisions = json.loads((HERE / "cb_decisions.json").read_text(encoding="utf-8"))
     calendar = json.loads((HERE / "calendar.json").read_text(encoding="utf-8"))
     today = dt.date.today().isoformat()
+    try:
+        fed_auto(decisions, calendar, today)
+    except Exception as e:
+        log(f"fed: {e}")
     upcoming = [c for c in calendar if c["date"] >= today]
     try:
         bea = bea_schedule()
