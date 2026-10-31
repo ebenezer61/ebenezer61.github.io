@@ -243,7 +243,8 @@
 
 	/* Signed bars, one per date (blue up, orange down), with an optional cumulative line.
 	   d: [iso dates], v: values. opts: {h, fmt, label, cum: bool, aria,
-	   clip: number (axis limited to +-clip; longer bars are cut and marked with a dot)} */
+	   clip: number (axis limited to +-clip; longer bars are cut and marked with a dot),
+	   barClass: fn(value, i) -> class name in place of bar-up/bar-down} */
 	M.barChart = function (mount, d, v, opts) {
 		opts = opts || {};
 		var W = mount.clientWidth > 0 ? Math.max(320, Math.min(1100, mount.clientWidth)) : 640;
@@ -271,7 +272,7 @@
 			if (v[i] == null) continue;
 			var y0 = Y(0), y1 = Y(Math.max(lo, Math.min(hi, v[i])));
 			if (v[i] < lo || v[i] > hi) bars += '<circle r="2.5" style="fill:var(--viz-ink-1)" cx="' + (X(i) + bw / 2).toFixed(1) + '" cy="' + (v[i] < lo ? T + ph + 4 : T - 4) + '"/>';
-			bars += '<rect class="' + (v[i] >= 0 ? "bar-up" : "bar-down") + '" x="' + (X(i) + gap / 2).toFixed(2) + '" width="' + Math.max(0.6, bw - gap).toFixed(2) + '" y="' + Math.min(y0, y1).toFixed(1) + '" height="' + Math.max(0.5, Math.abs(y1 - y0)).toFixed(1) + '"/>';
+			bars += '<rect class="' + (opts.barClass ? opts.barClass(v[i], i) : v[i] >= 0 ? "bar-up" : "bar-down") + '" x="' + (X(i) + gap / 2).toFixed(2) + '" width="' + Math.max(0.6, bw - gap).toFixed(2) + '" y="' + Math.min(y0, y1).toFixed(1) + '" height="' + Math.max(0.5, Math.abs(y1 - y0)).toFixed(1) + '"/>';
 		}
 		var cl = "";
 		if (opts.cum) {

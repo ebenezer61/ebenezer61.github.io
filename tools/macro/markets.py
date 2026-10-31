@@ -6,6 +6,9 @@ Sources (all public, no key):
   U.S. Treasury             daily par yield curve, one CSV per year (3M, 2Y, 10Y, 30Y)
   New York Fed              effective federal funds rate and the FOMC target range (daily)
   BLS public API v2         CPI-U and core CPI (NSA index -> y/y), unemployment rate, nonfarm payrolls
+  Taiwan (taiwan.py)        CBC overnight interbank rate, discount rate, M1B/M2, CPI, reserves,
+                            10Y bond; NDC monitoring indicator, unemployment, PMI/NMI; customs
+                            exports; MOEA export orders; TWSE margin-loan balance
 
 Output, one entry per series:
   {"id", "name", "group", "unit", "src", "freq": "d"|"m", "d0": first date,
@@ -23,6 +26,7 @@ import datetime as dt
 import io
 import json
 
+import taiwan
 from common import CACHE, START, get, post, log, now_taipei, read_json, rnd, write_json, yahoo_daily
 
 # (yahoo symbol, id, name shown on the page, group, unit)
@@ -116,7 +120,27 @@ NAME_EN = {
     "core_cpi_yoy": "Core CPI y/y",
     "unrate": "Unemployment rate",
     "nfp": "Nonfarm payrolls, m/m",
+    "tw_on": "Taiwan overnight interbank rate",
+    "tw_disc": "CBC discount rate",
+    "tw_10y": "Taiwan 10Y government bond",
+    "tw_m1b": "M1B y/y",
+    "tw_m2": "M2 y/y",
+    "tw_cpi": "Taiwan CPI y/y",
+    "tw_fxres": "Taiwan FX reserves",
+    "tw_signal": "Monitoring indicator (score)",
+    "tw_lead": "Leading index (trend-free)",
+    "tw_coin": "Coincident index (trend-free)",
+    "tw_exp_yoy": "Exports y/y (NT$)",
+    "tw_unrate": "Taiwan unemployment rate",
+    "tw_pmi": "Manufacturing PMI",
+    "tw_nmi": "Non-manufacturing NMI",
+    "tw_orders_yoy": "Export orders y/y (US$)",
+    "tw_margin": "TWSE margin-loan balance",
 }
+
+TAIWAN = ["tw_on", "tw_disc", "tw_10y", "tw_m1b", "tw_m2", "tw_cpi", "tw_fxres",
+          "tw_signal", "tw_lead", "tw_coin", "tw_exp_yoy", "tw_unrate", "tw_pmi", "tw_nmi",
+          "tw_orders_yoy", "tw_margin"]
 
 GROUP_EN = {
     "美股": "US equities",
@@ -128,6 +152,7 @@ GROUP_EN = {
     "匯率": "FX",
     "利率": "Rates",
     "總經": "US macro",
+    "台灣": "Taiwan macro",
 }
 
 
@@ -255,7 +280,10 @@ def main():
     old = {s["id"]: s for s in (read_json("markets.json", {}) or {}).get("series", [])}
     series = []
     for name, fn in [("yahoo", yahoo_series), ("treasury", treasury_series),
-                     ("nyfed", nyfed_series), ("bls", bls_series)]:
+                     ("nyfed", nyfed_series), ("bls", bls_series),
+                     ("cbc", lambda: taiwan.cbc_series(pack)), ("ndc", lambda: taiwan.ndc_series(pack)),
+                     ("customs", lambda: taiwan.customs_series(pack)), ("pmi", lambda: taiwan.pmi_series(pack)),
+                     ("orders", lambda: taiwan.orders_series(pack)), ("margin", lambda: taiwan.margin_series(pack))]:
         try:
             got = fn()
         except Exception as e:
@@ -264,7 +292,7 @@ def main():
         series += got
     # A source that failed this run keeps its previous data instead of vanishing.
     have = {s["id"] for s in series}
-    order = [i for _, i, *_ in YAHOO] + [i for _, i, _ in TREASURY] + ["spread_10y2y", "effr", "fed_upper", "fed_lower"] + [i for _, i, *_ in BLS]
+    order = [i for _, i, *_ in YAHOO] + [i for _, i, _ in TREASURY] + ["spread_10y2y", "effr", "fed_upper", "fed_lower"] + [i for _, i, *_ in BLS] + TAIWAN
     for id_ in order:
         if id_ not in have and id_ in old:
             log(f"keeping previous {id_}")

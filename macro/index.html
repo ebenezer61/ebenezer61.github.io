@@ -4,7 +4,7 @@
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<title>總經儀表板 &middot; Anna Liang</title>
-		<meta name="description" data-en="World equity indices, index futures, oil and gold, currencies, Treasury yields, the Fed rate and U.S. inflation and jobs since 2020, with a timeline of central-bank decisions and daily public headlines. Public data only, refreshed automatically." content="國際股市指數、期貨、油價黃金、匯率、美債殖利率、Fed 利率、美國通膨與就業，2020 年至今的走勢，加上各國央行決議時間軸與每日公開新聞標題。全部來自公開資料，每天自動更新。" />
+		<meta name="description" data-en="World equity indices, index futures, oil and gold, currencies, Treasury yields, the Fed rate, U.S. inflation and jobs, and Taiwan&#x27;s interbank rate, M1B/M2, business-cycle lights and exports since 2020, with a timeline of central-bank decisions and daily public headlines. Public data only, refreshed automatically." content="國際股市指數、期貨、油價黃金、匯率、美債殖利率、Fed 利率、美國通膨與就業，台灣拆款利率、M1B/M2、景氣燈號與出口，2020 年至今的走勢，加上各國央行決議時間軸與每日公開新聞標題。全部來自公開資料，每天自動更新。" />
 		<meta name="author" content="Anna Liang" />
 		<link rel="stylesheet" href="../style.css" />
 		<link rel="stylesheet" href="macro.css" />
@@ -16,8 +16,8 @@
 			<div class="wrap">
 				<p class="breadcrumb"><a href="../">&larr; Anna Liang</a><a href="flows/" data-keep-lang data-en="Institutional flows &rarr;">大戶流向 &rarr;</a><a href="ipo/" data-keep-lang data-en="Hot IPOs &rarr;">熱度 IPO &rarr;</a></p>
 				<h1 data-en="Macro Dashboard">總經儀表板</h1>
-				<p data-en="World equities, index futures, oil and gold, currencies, Treasury yields, the Fed rate and U.S. inflation and jobs since 2020; every central-bank decision linked to the bank&#x27;s own statement; public headlines every day. Public data only." class="subtitle">
-					國際股市、期貨、原油黃金、匯率、美債殖利率、Fed 利率與美國通膨就業，2020 年至今；
+				<p data-en="World equities, index futures, oil and gold, currencies, Treasury yields, the Fed rate, U.S. inflation and jobs, Taiwan&#x27;s interbank rate, money supply, business-cycle lights and exports since 2020; every central-bank decision linked to the bank&#x27;s own statement; public headlines every day. Public data only." class="subtitle">
+					國際股市、期貨、原油黃金、匯率、美債殖利率、Fed 利率與美國通膨就業，台灣拆款利率、貨幣供給、景氣燈號與出口，2020 年至今；
 					各國央行每一次決議與官方聲明連結；每天的公開新聞標題。全部來自公開資料。
 				</p>
 				<p class="status" id="status"><span data-en="Loading data&amp;hellip;" class="loading">讀取資料中&hellip;</span></p>
@@ -25,6 +25,7 @@
 					<li data-en="&lt;a href=&quot;#snapshot&quot;&gt;Markets&lt;/a&gt;"><a href="#snapshot">行情</a></li>
 					<li data-en="&lt;a href=&quot;#chart&quot;&gt;Trends &amp;amp; events&lt;/a&gt;"><a href="#chart">走勢與事件</a></li>
 					<li data-en="&lt;a href=&quot;#rates&quot;&gt;Rates &amp;amp; inflation&lt;/a&gt;"><a href="#rates">利率與通膨</a></li>
+					<li data-en="&lt;a href=&quot;#taiwan&quot;&gt;Taiwan macro&lt;/a&gt;"><a href="#taiwan">台灣總經</a></li>
 					<li data-en="&lt;a href=&quot;#cb&quot;&gt;Central banks&lt;/a&gt;"><a href="#cb">央行決議</a></li>
 					<li data-en="&lt;a href=&quot;#calendar&quot;&gt;Coming up&lt;/a&gt;"><a href="#calendar">接下來</a></li>
 					<li data-en="&lt;a href=&quot;#news&quot;&gt;Headlines&lt;/a&gt;"><a href="#news">新聞</a></li>
@@ -38,7 +39,7 @@
 				<div class="wrap">
 					<h2 data-en="Markets">行情</h2>
 					<div class="callout">
-						<p data-en="The numbers are the last close (or last trade) fetched by each automatic update, &lt;strong&gt;not live quotes&lt;/strong&gt;: GitHub Actions runs three times a day (06:37, 16:07 and 21:07 Taipei). The date in each tile&#x27;s corner is the date of that number. Click a tile to add it to the chart below.">數字是每次自動更新時抓到的最後收盤（或當下最後成交），<strong>不是即時報價</strong>：GitHub Actions 每天跑三次（台北 06:37、16:07、21:07）。每格右上角是那個數字的日期。點一格就把它加進下面的走勢圖。</p>
+						<p data-en="The numbers are the last close (or last trade) fetched by each automatic update, &lt;strong&gt;not live quotes&lt;/strong&gt;: GitHub Actions runs four times a day (06:37, 16:07, 21:07 and 03:37 Taipei). The date in each tile&#x27;s corner is the date of that number. Click a tile to add it to the chart below.">數字是每次自動更新時抓到的最後收盤（或當下最後成交），<strong>不是即時報價</strong>：GitHub Actions 每天跑四次（台北 06:37、16:07、21:07、03:37）。每格右上角是那個數字的日期。點一格就把它加進下面的走勢圖。</p>
 					</div>
 					<div id="tiles"><p class="loading" data-en="Loading&hellip;">讀取中&hellip;</p></div>
 				</div>
@@ -104,6 +105,75 @@
 				</div>
 			</section>
 
+			<section id="taiwan">
+				<div class="wrap">
+					<h2 data-en="Taiwan macro">台灣總經</h2>
+					<p data-en="Public releases from the central bank (CBC), the National Development Council (NDC), Customs, the Ministry of Economic Affairs and TWSE. Apart from TWSE&#x27;s daily margin balance, they arrive with a lag: the CBC publishes the daily interbank rates once a month (late in the following month), and monthly figures are dated by reference month, not release day. The period buttons above (Rates and inflation) apply here too." class="muted small">中央銀行、國發會、財政部關務署、經濟部統計處與證交所的公開資料。除了證交所的融資餘額是每日更新，其餘都有時間差：央行的每日拆款利率是每月一次整批公布（次月下旬），月資料的日期是統計月份，不是公布日。上方「利率與通膨」的期間按鈕也套用到這裡。</p>
+					<div class="grid2">
+						<div class="chart-card">
+							<h3 data-en="Overnight interbank rate, discount rate, 10-year bond">金融業隔夜拆款利率、重貼現率、10 年期公債</h3>
+							<p data-en="The overnight rate is the daily weighted average of the interbank call-loan market; the discount rate is the CBC&#x27;s policy rate (step line); the 10-year yield is the monthly secondary-market average." class="sub">隔夜拆款是每日加權平均利率；重貼現率是央行政策利率（階梯線）；10 年期公債是次級市場月平均。</p>
+							<div id="twratechart"></div>
+							<p data-en="CBC statistics database (EG37D01, EG28D01, EG43M01)" class="src">中央銀行統計資料庫（EG37D01、EG28D01、EG43M01）</p>
+						</div>
+						<div class="chart-card">
+							<h3 data-en="M1B and M2, year over year">M1B 與 M2 年增率</h3>
+							<p data-en="Daily averages. M1B growing faster than M2 (the &ldquo;golden cross&rdquo;) is commonly read as money moving from deposits toward the stock market." class="sub">日平均數。M1B 年增率高於 M2（俗稱黃金交叉）常被解讀為資金由定存移往股市。</p>
+							<div id="twmoneychart"></div>
+							<p data-en="CBC statistics database (EF01M01)" class="src">中央銀行統計資料庫（EF01M01）</p>
+						</div>
+						<div class="chart-card">
+							<h3 data-en="Monitoring indicator (business-cycle lights)">景氣對策信號（景氣燈號）</h3>
+							<p data-en="Composite score of nine indicators, 9 to 45 points; the colour is NDC&#x27;s light for that score." class="sub">九項指標的綜合分數（9–45 分），顏色是國發會對應的燈號。</p>
+							<div id="twsignalchart"></div>
+							<ul class="lights" id="twlights"></ul>
+							<p data-en="NDC, business indicators and monitoring indicator (data.gov.tw 6099)" class="src">國發會 景氣指標及燈號（data.gov.tw 6099）</p>
+						</div>
+						<div class="chart-card">
+							<h3 data-en="Leading and coincident indices (trend-free)">領先與同時指標（不含趨勢）</h3>
+							<p data-en="100 is the long-run trend; NDC revises recent months with each release." class="sub">100 為長期趨勢；國發會每月發布時會回溯修正近幾個月。</p>
+							<div id="twcyclechart"></div>
+							<p data-en="NDC (data.gov.tw 6099)" class="src">國發會（data.gov.tw 6099）</p>
+						</div>
+						<div class="chart-card">
+							<h3 data-en="Exports, year over year (NT$)">出口年增率（新台幣計價）</h3>
+							<p data-en="Total exports cleared through customs against the same month a year earlier, in New Taiwan dollars (the Ministry of Finance headline uses US dollars, so the two differ when the exchange rate moves)." class="sub">海關出口總值對去年同月，新台幣計價（財政部新聞稿以美元計，匯率變動時兩者會不同）。</p>
+							<div id="twexpchart"></div>
+							<p data-en="Customs Administration, trade statistics (data.gov.tw 6053)" class="src">財政部關務署 海關進出口貿易統計（data.gov.tw 6053）</p>
+						</div>
+						<div class="chart-card">
+							<h3 data-en="Taiwan CPI, year over year">台灣 CPI 年增率</h3>
+							<p data-en="The grey line marks 2%, the level the CBC watches." class="sub">灰線是央行關注的 2%。</p>
+							<div id="twcpichart"></div>
+							<p data-en="DGBAS, via the CBC statistics database (EF07M01)" class="src">主計總處，經中央銀行統計資料庫（EF07M01）</p>
+						</div>
+						<div class="chart-card">
+							<h3 data-en="Manufacturing PMI and non-manufacturing NMI">製造業 PMI 與非製造業 NMI</h3>
+							<p data-en="Seasonally adjusted purchasing managers&#x27; surveys; above 50 means expansion (the grey line)." class="sub">季調後的採購經理人調查；高於 50（灰線）代表擴張。</p>
+							<div id="twpmichart"></div>
+							<p data-en="NDC, Taiwan PMI, compiled by CIER (data.gov.tw 6100)" class="src">國發會 臺灣採購經理人指數，中經院編製（data.gov.tw 6100）</p>
+						</div>
+						<div class="chart-card">
+							<h3 data-en="Export orders, year over year (US$)">外銷訂單年增率（美元計價）</h3>
+							<p data-en="Orders taken by Taiwan firms from abroad, all regions, against the same month a year earlier. Orders lead exports, but part of them is produced overseas." class="sub">台灣廠商接到的海外訂單（全部地區）對去年同月。訂單領先出口，但有一部分在海外生產。</p>
+							<div id="twordchart"></div>
+							<p data-en="MOEA Department of Statistics, export orders by region" class="src">經濟部統計處 外銷訂單（按地區分，總計）</p>
+						</div>
+						<div class="chart-card">
+							<h3 data-en="Taiwan unemployment rate">台灣失業率</h3>
+							<p data-en="The monthly rate as used in NDC&#x27;s lagging index." class="sub">國發會落後指標所用的月失業率。</p>
+							<div id="twunchart"></div>
+							<p data-en="DGBAS, via NDC lagging-index components (data.gov.tw 6099)" class="src">主計總處，經國發會落後指標構成項目（data.gov.tw 6099）</p>
+						</div>
+						<div class="chart-card">
+							<h3 data-en="Margin-loan balance, listed stocks (NT$100 million)">上市融資餘額（億元）</h3>
+							<p data-en="Money borrowed from brokers to buy listed shares, end of each trading day; a rough gauge of retail leverage. TWSE posts it in the evening and corrects it the next day." class="sub">投資人向券商借錢買上市股票的餘額（每個交易日收盤後），大致反映散戶槓桿。證交所晚間公布，隔日修正。</p>
+							<div id="twmarginchart"></div>
+							<p data-en="TWSE, margin trading statistics (MI_MARGN)" class="src">臺灣證券交易所 信用交易統計（MI_MARGN）</p>
+						</div>
+					</div>
+				</div>
+			</section>
 			<section id="cb">
 				<div class="wrap">
 					<h2 data-en="Central-bank decisions">央行決議</h2>
@@ -147,6 +217,7 @@
 						<li data-en="&lt;strong&gt;Treasury yields&lt;/strong&gt;: the U.S. Treasury daily par yield curve."><strong>美債殖利率</strong>：U.S. Treasury 每日 par yield curve。</li>
 						<li data-en="&lt;strong&gt;Fed rate&lt;/strong&gt;: EFFR and the FOMC target range from the New York Fed (daily)."><strong>Fed 利率</strong>：New York Fed 的 EFFR 與 FOMC 目標區間（每日）。</li>
 						<li data-en="&lt;strong&gt;CPI, core CPI, unemployment, payrolls&lt;/strong&gt;: the BLS public API v2 (the keyless tier)."><strong>CPI、核心 CPI、失業率、非農</strong>：BLS public API v2（不需金鑰的版本）。</li>
+						<li data-en="&lt;strong&gt;Taiwan macro&lt;/strong&gt;: the CBC statistics database API (overnight interbank rate, discount rate, M1B/M2, CPI, foreign-exchange reserves, 10-year bond yield); NDC&#x27;s business indicators and monitoring indicator (with the unemployment rate) and Taiwan PMI/NMI, and Customs trade statistics, from data.gov.tw; MOEA export orders; the TWSE daily margin-loan balance. Except the margin balance, all arrive with a lag of weeks."><strong>台灣總經</strong>：中央銀行統計資料庫 API（隔夜拆款利率、重貼現率、M1B/M2、CPI、外匯存底、10 年期公債）、國發會景氣指標及燈號（含失業率）與採購經理人指數、財政部關務署海關進出口統計（以上來自 data.gov.tw）、經濟部統計處外銷訂單、證交所每日融資餘額。除融資餘額外，都有數週的時間差。</li>
 						<li data-en="&lt;strong&gt;Central-bank decisions&lt;/strong&gt;: compiled by hand from each bank&#x27;s press releases into &lt;code&gt;tools/macro/events/cb_decisions.json&lt;/code&gt;, every row with its official link. A new decision needs a new row."><strong>央行決議</strong>：依各央行官網新聞稿人工整理，存在 <code>tools/macro/events/cb_decisions.json</code>，每列附官方連結。新的決議出來後要手動加一列。</li>
 						<li data-en="&lt;strong&gt;Coming up&lt;/strong&gt;: meeting and BLS release dates entered by hand (&lt;code&gt;calendar.json&lt;/code&gt;); BEA&#x27;s GDP and PCE dates are read from bea.gov on every run."><strong>接下來</strong>：央行會議與 BLS 公布日期人工整理（<code>calendar.json</code>）；BEA 的 GDP、PCE 日期每次從 bea.gov 讀取。</li>
 						<li data-en="&lt;strong&gt;Headlines&lt;/strong&gt;: official RSS from the Fed, ECB, BoJ and BoE, plus Google News RSS searches on a fixed set of topics; only title, source, time and link are stored."><strong>新聞</strong>：Fed、ECB、BoJ、BoE 官方 RSS，加上 Google News RSS 對固定主題的搜尋；只存標題、來源、時間與連結。</li>
@@ -182,15 +253,20 @@
 			function change(s, t0) {
 				var a = M.at(s, t0), b = last(s);
 				if (a == null || b == null) return null;
+				if (s.unit === "分") return b - a;
 				return isRate(s) ? (b - a) * 100 : (a ? b / a - 1 : null);
 			}
 			function fmtChange(s, c) {
 				if (c == null) return "–";
+				if (s.unit === "分") return M.signed(c, 0, t(" 分", " pts"));
 				return isRate(s) ? M.signed(c, 0, " bp") : M.pct(c, 2);
 			}
 			function fmtLevel(s, v) {
 				if (v == null) return "–";
 				if (s.unit === "千人") return M.signed(v, 0) + "k";
+				if (s.unit === "分") return M.num(v, 0) + t(" 分", " pts");
+				if (s.unit === "億元") return M.en ? "NT$" + M.num(v / 10, 1) + "B" : M.num(v, 0) + " 億元";
+				if (s.unit === "億美元") return M.en ? "$" + M.num(v / 10, 1) + "B" : M.num(v, 0) + " 億美元";
 				if (isRate(s)) return M.num(v, 2) + "%";
 				return M.num(v);
 			}
@@ -273,7 +349,7 @@
 				var series = list.map(function (id, k) {
 					var s = S[id], v = s.v;
 					if (useIdx && !isRate(s)) { var b = M.at(s, w[0]) || s.v[M.bisect(s.x, w[0]) + 1] || s.v[0]; v = s.v.map(function (x) { return x == null ? null : x / b * 100; }); }
-					return { label: nm(s), slot: k + 1, x: s.x, v: v, step: id === "fed_upper" || id === "fed_lower", id: id };
+					return { label: nm(s), slot: k + 1, x: s.x, v: v, step: id === "fed_upper" || id === "fed_lower" || id === "tw_disc", id: id };
 				});
 				el("legend").innerHTML = series.map(function (s) { return '<li><span class="lk" style="--sc:var(--s' + s.slot + ')"></span>' + esc(s.label) + ' <button data-id="' + s.id + '" aria-label="' + t("移除 ", "Remove ") + esc(s.label) + '">×</button></li>'; }).join("");
 				el("legend").querySelectorAll("button").forEach(function (b) { b.addEventListener("click", function () { toggle(b.getAttribute("data-id")); }); });
@@ -326,8 +402,37 @@
 					M.barChart(el("nfpchart"), d, v, { label: t("非農月增（千人）", "Payrolls m/m (thousands)"), clip: 1500, fmt: function (x) { return M.signed(x, 0) + "k"; }, aria: t("非農就業月增", "Nonfarm payrolls, monthly change") });
 				}
 				M.lineChart(el("unchart"), pick([["unrate", t("失業率", "Unemployment"), 1], ["spread_10y2y", "10Y-2Y", 2]]), { x0: x0, x1: end, fmt: pf, yfmt: function (v) { return M.num(v, 1) + "%"; }, baseline: 0, aria: t("失業率與利差", "Unemployment and yield spread") });
+				renderTaiwan(x0, end);
 			}
 
+			/* ---------------- Taiwan ---------------- */
+			var LIGHTS = [[38, "red", "紅燈", "Red"], [32, "yred", "黃紅燈", "Yellow-red"], [23, "green", "綠燈", "Green"], [17, "yblue", "黃藍燈", "Yellow-blue"], [0, "blue", "藍燈", "Blue"]];
+			function lightOf(score) { for (var i = 0; i < LIGHTS.length; i++) if (score >= LIGHTS[i][0]) return LIGHTS[i]; return LIGHTS[LIGHTS.length - 1]; }
+			function monthBars(mount, s, x0, opts) {
+				if (!s) return;
+				var d = [], v = [];
+				s.x.forEach(function (t, i) { if (t >= x0 - 31 * DAY) { d.push(M.iso(t)); v.push(s.v[i]); } });
+				M.barChart(mount, d, v, opts);
+			}
+			function renderTaiwan(x0, end) {
+				function pick(ids) { return ids.filter(function (p) { return S[p[0]]; }).map(function (p) { var s = S[p[0]]; return { label: p[1], slot: p[2], x: s.x, v: s.v, step: !!p[3] }; }); }
+				var pf = function (v) { return M.num(v, 2) + "%"; }, p1 = function (v) { return M.num(v, 1) + "%"; };
+				M.lineChart(el("twratechart"), pick([["tw_disc", t("重貼現率", "Discount rate"), 1, true], ["tw_on", t("隔夜拆款", "Overnight"), 3], ["tw_10y", t("10 年公債", "10Y bond"), 4]]), { x0: x0, x1: end, fmt: pf, yfmt: p1, aria: t("台灣利率", "Taiwan interest rates") });
+				M.lineChart(el("twmoneychart"), pick([["tw_m1b", "M1B", 1], ["tw_m2", "M2", 2]]), { x0: x0, x1: end, fmt: pf, yfmt: p1, baseline: 0, aria: t("M1B 與 M2 年增率", "M1B and M2 y/y") });
+				monthBars(el("twsignalchart"), S.tw_signal, x0, {
+					label: t("綜合分數", "Score"), barClass: function (v) { return "l-" + lightOf(v)[1]; },
+					fmt: function (v) { var l = lightOf(v); return M.num(v, 0) + t(" 分（" + l[2] + "）", " (" + l[3] + ")"); },
+					aria: t("景氣對策信號分數", "Monitoring indicator score")
+				});
+				el("twlights").innerHTML = LIGHTS.map(function (l, i) { return '<li><span style="--lc:var(--l-' + l[1] + ')"></span>' + t(l[2], l[3]) + ' ' + (i ? l[0] + "–" + (LIGHTS[i - 1][0] - 1) : "≥ " + l[0]) + '</li>'; }).join("");
+				M.lineChart(el("twcyclechart"), pick([["tw_lead", t("領先", "Leading"), 1], ["tw_coin", t("同時", "Coincident"), 2]]), { x0: x0, x1: end, fmt: function (v) { return M.num(v, 2); }, baseline: 100, aria: t("領先與同時指標", "Leading and coincident indices") });
+				monthBars(el("twexpchart"), S.tw_exp_yoy, x0, { label: t("出口年增率", "Exports y/y"), fmt: function (v) { return M.signed(v, 1, "%"); }, aria: t("出口年增率", "Exports y/y") });
+				M.lineChart(el("twcpichart"), pick([["tw_cpi", "CPI", 2]]), { x0: x0, x1: end, fmt: pf, yfmt: p1, baseline: 2, aria: t("台灣 CPI 年增率", "Taiwan CPI y/y") });
+				M.lineChart(el("twpmichart"), pick([["tw_pmi", "PMI", 1], ["tw_nmi", "NMI", 2]]), { x0: x0, x1: end, fmt: function (v) { return M.num(v, 1); }, baseline: 50, aria: t("製造業 PMI 與非製造業 NMI", "PMI and NMI") });
+				monthBars(el("twordchart"), S.tw_orders_yoy, x0, { label: t("外銷訂單年增率", "Export orders y/y"), fmt: function (v) { return M.signed(v, 1, "%"); }, aria: t("外銷訂單年增率", "Export orders y/y") });
+				M.lineChart(el("twunchart"), pick([["tw_unrate", t("失業率", "Unemployment"), 1]]), { x0: x0, x1: end, fmt: pf, yfmt: p1, aria: t("台灣失業率", "Taiwan unemployment rate") });
+				if (S.tw_margin) M.lineChart(el("twmarginchart"), pick([["tw_margin", t("融資餘額", "Margin loans"), 7]]), { x0: x0, x1: end, fmt: function (v) { return fmtLevel(S.tw_margin, v); }, aria: t("上市融資餘額", "Margin-loan balance") });
+			}
 			/* ---------------- central banks ---------------- */
 			var cbOn = {}, onlyChg = false, cbYear = "", cbAll = false;
 			function badge(d) {

@@ -13,6 +13,8 @@
 	--viz-down:    #d95926;
 	--s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100;
 	--s5: #e87ba4; --s6: #008300; --s7: #4a3aa7; --s8: #e34948;
+	/* NDC monitoring-indicator lights */
+	--l-red: #d63b2f; --l-yred: #ec8a17; --l-green: #2e9e4f; --l-yblue: #5fa8d3; --l-blue: #1f5fbf;
 }
 @media (prefers-color-scheme: dark) {
 	:root:not([data-theme="light"]) {
@@ -22,6 +24,7 @@
 		--viz-up: #3987e5; --viz-down: #eb6834;
 		--s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500;
 		--s5: #d55181; --s6: #008300; --s7: #9085e9; --s8: #e66767;
+		--l-red: #e5574b; --l-yred: #f09a35; --l-green: #3bb062; --l-yblue: #74b8e0; --l-blue: #4a83db;
 	}
 }
 :root[data-theme="dark"] {
@@ -31,6 +34,7 @@
 	--viz-up: #3987e5; --viz-down: #eb6834;
 	--s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500;
 	--s5: #d55181; --s6: #008300; --s7: #9085e9; --s8: #e66767;
+	--l-red: #e5574b; --l-yred: #f09a35; --l-green: #3bb062; --l-yblue: #74b8e0; --l-blue: #4a83db;
 }
 
 header.hero { padding: 3.5rem 0 2rem; }
@@ -94,6 +98,13 @@ svg.ts line.ev { stroke: var(--viz-axis); stroke-dasharray: 2 3; }
 svg.ts path.evm { stroke: var(--viz-surface); stroke-width: 1; }
 svg.ts rect.bar-up { fill: var(--viz-up); }
 svg.ts rect.bar-down { fill: var(--viz-down); }
+svg.ts rect.l-red { fill: var(--l-red); }
+svg.ts rect.l-yred { fill: var(--l-yred); }
+svg.ts rect.l-green { fill: var(--l-green); }
+svg.ts rect.l-yblue { fill: var(--l-yblue); }
+svg.ts rect.l-blue { fill: var(--l-blue); }
+.lights { display: flex; flex-wrap: wrap; gap: .3rem .9rem; list-style: none; padding: 0; margin: .3rem 0 0; font-size: .82rem; color: var(--text-muted); }
+.lights span { display: inline-block; width: .7rem; height: .7rem; border-radius: 50%; margin-right: .3rem; vertical-align: -.05rem; background: var(--lc); }
 
 .tablewrap { overflow-x: auto; margin: 0 0 1rem; -webkit-overflow-scrolling: touch; scrollbar-width: thin; }
 table.rec { width: 100%; border-collapse: collapse; font-size: .86rem; margin: 0 0 .5rem; }

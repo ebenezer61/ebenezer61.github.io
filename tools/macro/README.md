@@ -7,7 +7,7 @@ here needs a secret.
 
 | Script | Output | Sources |
 | --- | --- | --- |
-| `markets.py` | `markets.json` | Yahoo Finance chart API (indices, index futures, commodities, FX, VIX, bitcoin), U.S. Treasury daily par yield curve, New York Fed EFFR and FOMC target range, BLS public API v2 (CPI, core CPI, unemployment, payrolls) |
+| `markets.py` | `markets.json` | Yahoo Finance chart API (indices, index futures, commodities, FX, VIX, bitcoin), U.S. Treasury daily par yield curve, New York Fed EFFR and FOMC target range, BLS public API v2 (CPI, core CPI, unemployment, payrolls), and through `taiwan.py`: CBC statistics database API (overnight interbank rate, discount rate, M1B/M2, CPI, FX reserves, 10-year bond), NDC 景氣指標及燈號 and 臺灣採購經理人指數 and Customs 海關進出口貿易統計 from data.gov.tw, MOEA 外銷訂單, TWSE MI_MARGN |
 | `flows.py` | `flows.json` | TWSE BFI82U, TPEx 三大法人彙總, TAIFEX 三大法人期貨 (TX), HKEX Stock Connect daily statistics, JPX 投資部門別売買状況 (weekly), CFTC Traders in Financial Futures (weekly) |
 | `events.py` | `events.json`, `news/YYYY-MM.json`, `news/index.json` | `events/cb_decisions.json` and `events/calendar.json` (hand-checked), BEA release schedule, Fed/ECB/BoJ/BoE RSS, Google News RSS |
 | `ipo.py` | `ipo.json` | `ipo.json` in this folder (hand-curated list), Yahoo Finance, Google News RSS |
@@ -50,6 +50,34 @@ source at its real cadence:
 Raw rows are cached as CSV in `cache/` and committed, so a run only asks for dates
 it does not have. `*_closed.csv` lists weekdays a source answered with no data
 (holidays), so they are not asked again.
+
+## Taiwan series
+
+`taiwan.py` adds sixteen Taiwan series (group `台灣`) to `markets.json`. All but the
+margin balance are official releases that lag by weeks:
+
+- **CBC** (`cpx.cbc.gov.tw/API/DataAPI/Get?FileName=…`, the 中央銀行統計資料庫): the
+  overnight interbank rate is a daily series, but the CBC loads it once a month, so
+  the latest point is the end of the previous month. EG37D01 (拆款利率), EG28D01
+  (central-bank rates, one row per change), EG43M01 (10-year bond), EF01M01 (M1B/M2,
+  daily-average y/y), EF07M01 (CPI y/y, FX reserves). Columns are the product of the
+  table's `structure` headers, joined with `/`. The CBC's separate open-data set 6023
+  (隔夜拆款利率) stopped updating in March 2026; do not switch to it.
+- **NDC** 景氣指標及燈號 (data.gov.tw 6099): a zip whose address changes with each
+  upload, so it is looked up on data.gov.tw every run. The unemployment rate comes
+  from the same zip (`落後指標構成項目.csv`). PMI/NMI: data.gov.tw 6100, looked up the same way.
+- **MOEA** 外銷訂單按地區分 (`service.moea.gov.tw/EE520/opendata/…`, the file name must be
+  percent-encoded): region code `00` is the total, US$ million; the page shows y/y.
+- **TWSE** MI_MARGN (`selectType=MS`): listed 融資金額 今日餘額, NT$ thousand, one request
+  per trading day through `flows.daily_backfill` into `cache/tw_margin.csv`, at most
+  300 new days per run. TWSE posts a day in the evening and may correct it the next
+  day (the 前日餘額 column); the cache keeps the first figure.
+- **Customs** 海關進出口貿易統計 (data.gov.tw 6053): exports in NT$ from 2014; the
+  page shows y/y.
+
+Python 3.13 refuses some Taiwan government certificates (no Subject Key Identifier);
+`taiwan.py` mounts an adapter that keeps verification but drops `VERIFY_X509_STRICT`
+for those hosts.
 
 ## Hand-maintained files
 
