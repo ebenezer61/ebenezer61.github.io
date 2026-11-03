@@ -108,7 +108,7 @@
 			<section id="taiwan">
 				<div class="wrap">
 					<h2 data-en="Taiwan macro">台灣總經</h2>
-					<p data-en="Public releases from the central bank (CBC), the National Development Council (NDC), Customs, the Ministry of Economic Affairs and TWSE. Apart from TWSE&#x27;s daily margin balance, they arrive with a lag: the CBC publishes the daily interbank rates once a month (late in the following month), and monthly figures are dated by reference month, not release day. The period buttons above (Rates and inflation) apply here too." class="muted small">中央銀行、國發會、財政部關務署、經濟部統計處與證交所的公開資料。除了證交所的融資餘額是每日更新，其餘都有時間差：央行的每日拆款利率是每月一次整批公布（次月下旬），月資料的日期是統計月份，不是公布日。上方「利率與通膨」的期間按鈕也套用到這裡。</p>
+					<p data-en="Public releases from the central bank (CBC), the National Development Council (NDC), Customs and TWSE. Apart from TWSE&#x27;s daily margin balance, they arrive with a lag: the CBC publishes the daily interbank rates once a month (late in the following month), and monthly figures are dated by reference month, not release day. The period buttons above (Rates and inflation) apply here too." class="muted small">中央銀行、國發會、財政部關務署與證交所的公開資料。除了證交所的融資餘額是每日更新，其餘都有時間差：央行的每日拆款利率是每月一次整批公布（次月下旬），月資料的日期是統計月份，不是公布日。上方「利率與通膨」的期間按鈕也套用到這裡。</p>
 					<div class="grid2">
 						<div class="chart-card">
 							<h3 data-en="Overnight interbank rate, discount rate, 10-year bond">金融業隔夜拆款利率、重貼現率、10 年期公債</h3>
@@ -154,10 +154,10 @@
 							<p data-en="NDC, Taiwan PMI, compiled by CIER (data.gov.tw 6100)" class="src">國發會 臺灣採購經理人指數，中經院編製（data.gov.tw 6100）</p>
 						</div>
 						<div class="chart-card">
-							<h3 data-en="Export orders, year over year (US$)">外銷訂單年增率（美元計價）</h3>
-							<p data-en="Orders taken by Taiwan firms from abroad, all regions, against the same month a year earlier. Orders lead exports, but part of them is produced overseas." class="sub">台灣廠商接到的海外訂單（全部地區）對去年同月。訂單領先出口，但有一部分在海外生產。</p>
+							<h3 data-en="Export-order direction index">外銷訂單動向指數</h3>
+							<p data-en="A diffusion index from a survey of firms&#x27; expected export orders for the coming month, counted by firm, not by amount. Above 50 (the grey line) means more firms expect a rise than a fall. Not seasonally adjusted, so it jumps around Lunar New Year." class="sub">廠商對未來一個月外銷訂單看法的擴散指數，以家數計、不是金額。高於 50（灰線）代表看增的廠商多於看減。未經季節調整，農曆年前後會大幅跳動。</p>
 							<div id="twordchart"></div>
-							<p data-en="MOEA Department of Statistics, export orders by region" class="src">經濟部統計處 外銷訂單（按地區分，總計）</p>
+							<p data-en="NDC, leading-index components (data.gov.tw 6099)" class="src">國發會 領先指標構成項目（data.gov.tw 6099）</p>
 						</div>
 						<div class="chart-card">
 							<h3 data-en="Taiwan unemployment rate">台灣失業率</h3>
@@ -217,7 +217,7 @@
 						<li data-en="&lt;strong&gt;Treasury yields&lt;/strong&gt;: the U.S. Treasury daily par yield curve."><strong>美債殖利率</strong>：U.S. Treasury 每日 par yield curve。</li>
 						<li data-en="&lt;strong&gt;Fed rate&lt;/strong&gt;: EFFR and the FOMC target range from the New York Fed (daily)."><strong>Fed 利率</strong>：New York Fed 的 EFFR 與 FOMC 目標區間（每日）。</li>
 						<li data-en="&lt;strong&gt;CPI, core CPI, unemployment, payrolls&lt;/strong&gt;: the BLS public API v2 (the keyless tier)."><strong>CPI、核心 CPI、失業率、非農</strong>：BLS public API v2（不需金鑰的版本）。</li>
-						<li data-en="&lt;strong&gt;Taiwan macro&lt;/strong&gt;: the CBC statistics database API (overnight interbank rate, discount rate, M1B/M2, CPI, foreign-exchange reserves, 10-year bond yield); NDC&#x27;s business indicators and monitoring indicator (with the unemployment rate) and Taiwan PMI/NMI, and Customs trade statistics, from data.gov.tw; MOEA export orders; the TWSE daily margin-loan balance. Except the margin balance, all arrive with a lag of weeks."><strong>台灣總經</strong>：中央銀行統計資料庫 API（隔夜拆款利率、重貼現率、M1B/M2、CPI、外匯存底、10 年期公債）、國發會景氣指標及燈號（含失業率）與採購經理人指數、財政部關務署海關進出口統計（以上來自 data.gov.tw）、經濟部統計處外銷訂單、證交所每日融資餘額。除融資餘額外，都有數週的時間差。</li>
+						<li data-en="&lt;strong&gt;Taiwan macro&lt;/strong&gt;: the CBC statistics database API (overnight interbank rate, discount rate, M1B/M2, CPI, foreign-exchange reserves, 10-year bond yield); NDC&#x27;s business indicators and monitoring indicator (with the unemployment rate and the export-order direction index) and Taiwan PMI/NMI, and Customs trade statistics, from data.gov.tw; the TWSE daily margin-loan balance. Except the margin balance, all arrive with a lag of weeks."><strong>台灣總經</strong>：中央銀行統計資料庫 API（隔夜拆款利率、重貼現率、M1B/M2、CPI、外匯存底、10 年期公債）、國發會景氣指標及燈號（含失業率、外銷訂單動向指數）與採購經理人指數、財政部關務署海關進出口統計（以上來自 data.gov.tw）、證交所每日融資餘額。除融資餘額外，都有數週的時間差。</li>
 						<li data-en="&lt;strong&gt;Central-bank decisions&lt;/strong&gt;: compiled by hand from each bank&#x27;s press releases into &lt;code&gt;tools/macro/events/cb_decisions.json&lt;/code&gt;, every row with its official link. A new decision needs a new row."><strong>央行決議</strong>：依各央行官網新聞稿人工整理，存在 <code>tools/macro/events/cb_decisions.json</code>，每列附官方連結。新的決議出來後要手動加一列。</li>
 						<li data-en="&lt;strong&gt;Coming up&lt;/strong&gt;: meeting and BLS release dates entered by hand (&lt;code&gt;calendar.json&lt;/code&gt;); BEA&#x27;s GDP and PCE dates are read from bea.gov on every run."><strong>接下來</strong>：央行會議與 BLS 公布日期人工整理（<code>calendar.json</code>）；BEA 的 GDP、PCE 日期每次從 bea.gov 讀取。</li>
 						<li data-en="&lt;strong&gt;Headlines&lt;/strong&gt;: official RSS from the Fed, ECB, BoJ and BoE, plus Google News RSS searches on a fixed set of topics; only title, source, time and link are stored."><strong>新聞</strong>：Fed、ECB、BoJ、BoE 官方 RSS，加上 Google News RSS 對固定主題的搜尋；只存標題、來源、時間與連結。</li>
@@ -429,7 +429,7 @@
 				monthBars(el("twexpchart"), S.tw_exp_yoy, x0, { label: t("出口年增率", "Exports y/y"), fmt: function (v) { return M.signed(v, 1, "%"); }, aria: t("出口年增率", "Exports y/y") });
 				M.lineChart(el("twcpichart"), pick([["tw_cpi", "CPI", 2]]), { x0: x0, x1: end, fmt: pf, yfmt: p1, baseline: 2, aria: t("台灣 CPI 年增率", "Taiwan CPI y/y") });
 				M.lineChart(el("twpmichart"), pick([["tw_pmi", "PMI", 1], ["tw_nmi", "NMI", 2]]), { x0: x0, x1: end, fmt: function (v) { return M.num(v, 1); }, baseline: 50, aria: t("製造業 PMI 與非製造業 NMI", "PMI and NMI") });
-				monthBars(el("twordchart"), S.tw_orders_yoy, x0, { label: t("外銷訂單年增率", "Export orders y/y"), fmt: function (v) { return M.signed(v, 1, "%"); }, aria: t("外銷訂單年增率", "Export orders y/y") });
+				M.lineChart(el("twordchart"), pick([["tw_orders_idx", t("動向指數", "Index"), 1]]), { x0: x0, x1: end, fmt: function (v) { return M.num(v, 1); }, baseline: 50, aria: t("外銷訂單動向指數", "Export-order direction index") });
 				M.lineChart(el("twunchart"), pick([["tw_unrate", t("失業率", "Unemployment"), 1]]), { x0: x0, x1: end, fmt: pf, yfmt: p1, aria: t("台灣失業率", "Taiwan unemployment rate") });
 				if (S.tw_margin) M.lineChart(el("twmarginchart"), pick([["tw_margin", t("融資餘額", "Margin loans"), 7]]), { x0: x0, x1: end, fmt: function (v) { return fmtLevel(S.tw_margin, v); }, aria: t("上市融資餘額", "Margin-loan balance") });
 			}

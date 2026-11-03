@@ -5,10 +5,10 @@ Sources (all public, no key):
                                               monthly), discount rate, M1B/M2, CPI, FX reserves,
                                               10-year government bond yield
   NDC 景氣指標及燈號 (data.gov.tw 6099)        monitoring-indicator score and light, leading and
-                                              coincident indices (trend-free)
+                                              coincident indices (trend-free), unemployment rate,
+                                              export-order direction index (外銷訂單動向指數)
   Customs 海關進出口貿易統計 (data.gov.tw 6053)  exports, NT$, from 2014 (y/y from 2015)
   NDC 臺灣採購經理人指數 (data.gov.tw 6100)    manufacturing PMI and non-manufacturing NMI
-  MOEA 外銷訂單按地區分                        export orders, US$, total of all regions
   TWSE 信用交易統計 (MI_MARGN)                 listed margin-loan balance, daily, cached in cache/
 
 Each function returns a list of series dicts built by markets.pack(); markets.py
@@ -23,7 +23,6 @@ import io
 import json
 import ssl
 import zipfile
-from urllib.parse import quote
 
 from requests.adapters import HTTPAdapter
 
@@ -45,8 +44,7 @@ class _LaxX509(HTTPAdapter):
         super().init_poolmanager(*a, **kw)
 
 
-for _host in ("https://cpx.cbc.gov.tw/", "https://ws.ndc.gov.tw/", "https://opendata.customs.gov.tw/",
-              "https://service.moea.gov.tw/"):
+for _host in ("https://cpx.cbc.gov.tw/", "https://ws.ndc.gov.tw/", "https://opendata.customs.gov.tw/"):
     SESSION.mount(_host, _LaxX509())
 
 
@@ -126,13 +124,15 @@ def ym_col(rows, key):
 
 
 def ndc_series(pack):
-    """NDC's monitoring indicators, and the unemployment rate from the lagging-index components."""
+    """NDC's monitoring indicators, the unemployment rate from the lagging-index components,
+    and the export-order direction index from the leading-index components. (MOEA's own
+    export-order file answers GitHub's runners with 403, so the order amounts are not used.)"""
     z = zipfile.ZipFile(io.BytesIO(get(data_gov_url(6099)).content))
 
     def rows(name):
         return list(csv.DictReader(io.StringIO(z.read(name).decode("utf-8-sig"))))
 
-    main, lag = rows("景氣指標與燈號.csv"), rows("落後指標構成項目.csv")
+    main, lead, lag = rows("景氣指標與燈號.csv"), rows("領先指標構成項目.csv"), rows("落後指標構成項目.csv")
     src = "國發會 景氣指標及燈號"
     return [s for s in (
         pack("tw_signal", "景氣對策信號（分數）", GROUP, "分", src, "m", ym_col(main, "景氣對策信號綜合分數")),
@@ -140,6 +140,8 @@ def ndc_series(pack):
         pack("tw_coin", "同時指標（不含趨勢）", GROUP, "pt", src, "m", ym_col(main, "同時指標不含趨勢指數")),
         pack("tw_unrate", "台灣失業率", GROUP, "%", f"{src}（落後指標構成項目，主計總處）", "m",
              ym_col(lag, "失業率(%)")),
+        pack("tw_orders_idx", "外銷訂單動向指數", GROUP, "pt", f"{src}（領先指標構成項目，以家數計）", "m",
+             ym_col(lead, "外銷訂單動向指數(以家數計)")),
     ) if s]
 
 
@@ -149,22 +151,6 @@ def pmi_series(pack):
     return [s for s in (
         pack("tw_pmi", "製造業 PMI", GROUP, "pt", src, "m", ym_col(rows, "PMI")),
         pack("tw_nmi", "非製造業 NMI", GROUP, "pt", src, "m", ym_col(rows, "NMI")),
-    ) if s]
-
-
-def orders_series(pack):
-    """Export orders in US$, all regions, against the same month a year earlier."""
-    url = "https://service.moea.gov.tw/EE520/opendata/" + quote("經濟部統計處_外銷訂單_按地區分.csv")
-    lvl = {}
-    for r in csv.DictReader(io.StringIO(get(url).content.decode("utf-8-sig"))):
-        if r.get("地區代碼") != "00" or r.get("統計項目") != "外銷訂單金額_美元":
-            continue
-        p = r["資料期(民國年)"]  # 'YYYMM', ROC year
-        lvl[(int(p[:-2]) + 1911, int(p[-2:]))] = float(r["統計值(金額)"])
-    yoy = sorted((f"{y}-{m:02d}-01", (v / lvl[(y - 1, m)] - 1) * 100)
-                 for (y, m), v in lvl.items() if lvl.get((y - 1, m)))
-    return [s for s in (
-        pack("tw_orders_yoy", "外銷訂單年增率（美元）", GROUP, "%", "經濟部統計處 外銷訂單（按地區分，總計）", "m", yoy),
     ) if s]
 
 

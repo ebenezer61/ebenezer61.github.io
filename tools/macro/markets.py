@@ -7,8 +7,8 @@ Sources (all public, no key):
   New York Fed              effective federal funds rate and the FOMC target range (daily)
   BLS public API v2         CPI-U and core CPI (NSA index -> y/y), unemployment rate, nonfarm payrolls
   Taiwan (taiwan.py)        CBC overnight interbank rate, discount rate, M1B/M2, CPI, reserves,
-                            10Y bond; NDC monitoring indicator, unemployment, PMI/NMI; customs
-                            exports; MOEA export orders; TWSE margin-loan balance
+                            10Y bond; NDC monitoring indicator, unemployment, export-order index,
+                            PMI/NMI; customs exports; TWSE margin-loan balance
 
 Output, one entry per series:
   {"id", "name", "group", "unit", "src", "freq": "d"|"m", "d0": first date,
@@ -134,13 +134,13 @@ NAME_EN = {
     "tw_unrate": "Taiwan unemployment rate",
     "tw_pmi": "Manufacturing PMI",
     "tw_nmi": "Non-manufacturing NMI",
-    "tw_orders_yoy": "Export orders y/y (US$)",
+    "tw_orders_idx": "Export-order direction index",
     "tw_margin": "TWSE margin-loan balance",
 }
 
 TAIWAN = ["tw_on", "tw_disc", "tw_10y", "tw_m1b", "tw_m2", "tw_cpi", "tw_fxres",
           "tw_signal", "tw_lead", "tw_coin", "tw_exp_yoy", "tw_unrate", "tw_pmi", "tw_nmi",
-          "tw_orders_yoy", "tw_margin"]
+          "tw_orders_idx", "tw_margin"]
 
 GROUP_EN = {
     "美股": "US equities",
@@ -283,7 +283,7 @@ def main():
                      ("nyfed", nyfed_series), ("bls", bls_series),
                      ("cbc", lambda: taiwan.cbc_series(pack)), ("ndc", lambda: taiwan.ndc_series(pack)),
                      ("customs", lambda: taiwan.customs_series(pack)), ("pmi", lambda: taiwan.pmi_series(pack)),
-                     ("orders", lambda: taiwan.orders_series(pack)), ("margin", lambda: taiwan.margin_series(pack))]:
+                     ("margin", lambda: taiwan.margin_series(pack))]:
         try:
             got = fn()
         except Exception as e:
